@@ -1,0 +1,8 @@
+*.env
+*.json
+*.key
+*.pem
+*.token
+settings.json
+.mcp.json
+secrets/
