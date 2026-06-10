@@ -20,9 +20,13 @@ description: >
 ## 실행 절차
 
 ### Step 1: 목표날짜 없는 할 일 검색
-Notion MCP `notion-search` 도구를 사용해 할 일 DB에서 항목들을 검색한다.
-검색어: "할 일" (query_type: internal)
-page_size: 25
+Notion MCP `notion-search` 도구로 **할 일 DB 데이터소스 안에서만** 항목들을 검색한다.
+- `data_source_url`: `collection://4709582e-1be9-8332-903b-87ce7db219fb` (할 일 DB)
+- `query`: "할 일" (DB 데이터소스 검색이므로 query는 보조용)
+- `query_type`: internal
+- `page_size`: 25
+
+(주의: `data_source_url` 없이 일반 검색만 하면 DB 항목이 빠짐 없이 나오지 않는다. 반드시 collection:// 데이터소스로 범위를 한정한다.)
 
 ### Step 2: 각 항목 확인
 검색된 항목 중 `notion-fetch`로 각 페이지를 열어 다음 조건을 확인한다:

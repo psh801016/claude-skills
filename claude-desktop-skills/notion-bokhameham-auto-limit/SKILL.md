@@ -20,7 +20,7 @@ Notion 🔧 프로젝트 데이터베이스의 "A | 보관함" 그룹이 항상 
 ## 실행 절차
 
 ### Step 1: 현재 보관함 표시 항목 조회
-notion-search 또는 notion-fetch로 collection://49d9582e-1be9-836d-a874-075f6db29687 데이터베이스에서 다음을 조회:
+`notion-fetch`로 `collection://49d9582e-1be9-836d-a874-075f6db29687` (🔧 프로젝트 DB 데이터소스)를 열어 스키마와 항목을 확인하고, 필요 시 `notion-search`에 `data_source_url: collection://49d9582e-1be9-836d-a874-075f6db29687`을 지정해 이 데이터소스 안에서만 검색한다. 다음 두 그룹을 조회:
 - PARA = "A | 보관함" 인 항목 전체 (현재 보드에 표시 중인 보관함 항목)
 - 보관함_표시 = true이고 PARA = null인 항목 (이전에 숨겨진 보관함 항목)
 

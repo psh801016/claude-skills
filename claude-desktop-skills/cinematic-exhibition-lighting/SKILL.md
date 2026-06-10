@@ -36,7 +36,7 @@ description: >
 |---|---|---|
 | **메인 변환** | 기본 (조명 변환 요청) | PROMPT + NEGATIVE |
 | **조명 레이어** | "레이어만", "빛만", "포토샵 합성용", "블랙 배경 조명", "조명 레이어" | LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE |
-| **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE |
+| **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS |
 | **둘 다** | "둘 다", "레이어도", "합성도 같이" | 두 세트 모두 출력 |
 
 ## 빠른 흐름

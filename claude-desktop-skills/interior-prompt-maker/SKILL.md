@@ -77,6 +77,8 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 **리모델링 모드:**
 > `"Use Image 1 as the immutable architectural structure, room geometry, camera, composition, and spatial reference, and use Image 2 only as the remodeling style, material, furniture, lighting, and atmosphere reference."`
 
+**색상 적용 기준(리모델링 모드):** 구조·고정 요소(벽 골조, 천장 형태, 창호 프레임 등 Image 1의 건축 구조)의 색은 **Image 1을 보존**하고, 마감재·가구·스타일 요소의 색상은 **Image 2를 적용**한다. 아래 "컬러 팔레트 잠금"의 원본 색 보존 규칙은 단일 모드와 리모델링 모드의 구조·고정 요소에만 해당한다.
+
 ---
 
 ### 2. 전환 선언 + 공간 정체성
