@@ -52,13 +52,22 @@ claude-skills/
 
 ### A. 데스크탑에서 작업한 걸 핸드폰/웹에 보이게 하기 (올리기)
 1. 데스크탑에서 스킬 작업/수정
-2. 터미널에서 이 저장소 폴더로 이동
-3. `./sync-skills.sh "무엇을 바꿨는지 메모"` 실행
+2. **PowerShell** 을 열고 이 저장소 폴더로 이동 (`cd` 로 이동)
+3. `.\sync-skills.ps1 "무엇을 바꿨는지 메모"` 실행  ← **윈도우는 이거**
+   - (Mac/Git Bash 라면 `./sync-skills.sh "메모"`)
 4. → 자동으로 GitHub에 올라감 → 핸드폰·웹 새로고침하면 보임
 
+> 윈도우에서 처음 한 번만: PowerShell에서
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 실행(스크립트 허용).
+
 ### B. 어디서든 최신 상태 받기 (내려받기)
-- 데스크탑: `git pull origin main`
+- 데스크탑: `git pull origin (현재 브랜치)`
 - 핸드폰/웹: 세션을 새로 열거나 새로고침 (항상 최신 GitHub를 봄)
+
+### 윈도우 스킬 원본 위치 (참고)
+- 데스크탑 앱 스킬: `%APPDATA%\Claude\skills`
+- Claude Code 스킬: `%USERPROFILE%\.claude\skills`
+- 위치가 다르면 `sync-skills.ps1` 위쪽의 경로 변수를 고치면 됩니다.
 
 ## 5. 한눈 점검 (헷갈릴 때)
 ```bash
