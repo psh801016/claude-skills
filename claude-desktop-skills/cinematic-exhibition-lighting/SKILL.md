@@ -36,7 +36,7 @@ description: >
 
 1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭** — GPT image는 1:1 / 3:2 / 2:3 로만 출력하므로, 원본을 미리 그 비율로 크롭해 넣어 모델이 엣지에서 공간을 발명할 여지를 없앤다.
 2. **절대 초점거리 숫자 금지** — PROMPT에 mm 숫자를 쓰지 않는다(이 스킬은 이미 미사용). "원본과 동일한 화각" 긍정형만 쓴다.
-3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 부정문 잠금도 긍정형으로 바꾼다** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 본문 카메라/기하학 잠금과 예시의 부정문(`No camera change`, `no reframing`, `no zoom change` 등)도 GPT 경로에선 "분홍 코끼리"를 유발하므로 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame and the vanishing points in the same screen positions`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용.
+3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 부정문 잠금도 긍정형으로 바꾼다** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 본문 카메라/기하학 잠금과 예시의 부정문(`No camera change`, `no reframing`, `no zoom change` 등)도 GPT 경로에선 "분홍 코끼리"를 유발하므로 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용.
 4. **엔진 선택·검증** — 구도 보존 최우선이면 ControlNet 기반 SD i2i 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 — 익스트림 다크 모드의 0.75/0.35와 스케일 동일, 용도만 다름)를 쓰고, 결과 위에 원본 50% 오버레이로 소실점·모서리 일치를 확인한다.
 
 ## 출력 모드
@@ -124,6 +124,8 @@ Image 2에 워터마크나 텍스트가 있어도 조명 특성 추출에만 집
 ---
 
 ### 2. 카메라 잠금
+
+> **★ GPT image 경로에서는 이 카메라 잠금과 아래 "3. 방 기하학 잠금"의 부정문(`No camera change`, `no reframing`, `Do not move...` 등)을 모두 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 3 참조. 부정문 LOCK은 SD/MJ/ComfyUI 디퓨전 경로 전용.**
 
 > `"Preserve exactly the original camera position, camera height, viewing angle, lens perspective, focal length feel, framing, crop, composition, horizon line, tilt, yaw, and perspective alignment from Image 1. No camera change, no reframing, no recropping, no zoom change, no perspective reinterpretation."`
 
@@ -428,6 +430,8 @@ colored smoke, fog machine look, dry ice effect, unrealistic physics
 ---
 
 ## 예시
+
+> **※ 아래 메인 변환 예시들은 SD/디퓨전 경로용(부정문 카메라 잠금·NEGATIVE 포함). GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 쓰며, 본문의 부정문 카메라/기하학 잠금(`No camera change`, `no reframing` 등)을 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 3 참조.**
 
 ### Warm Amber — 거실 공간
 
