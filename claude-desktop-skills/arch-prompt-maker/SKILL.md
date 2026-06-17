@@ -31,24 +31,25 @@ i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) �
 1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭 (진짜 해결책)** — 모델이 엣지에서 장면을 발명할 여지를 구조적으로 없앤다. GPT image는 1:1 / 3:2 / 2:3 로만 출력하므로, 원본을 미리 그 비율로 크롭해 넣는다.
 2. **종횡비 원본 일치** — 사전 크롭한 비율과 출력 비율을 동일하게 둔다.
 3. **절대 초점거리 숫자 금지** — PROMPT에 `24mm`·`50mm` 등 숫자 초점거리를 쓰지 않는다(아래 "렌즈/카메라 선택 원칙" 표는 화각 감각 참조용일 뿐). 모델이 원본 화각을 무시하고 그 렌즈로 재해석해 광각화·줌아웃을 일으킨다.
-4. **GPT image 경로 주의** — gpt-image는 부정문(`No zoom change`, `no reframing`)을 "분홍 코끼리"로 오히려 유발하고, NEGATIVE 단락도 장면 묘사로 읽는다. GPT로 돌릴 땐 ABSOLUTE CAMERA LOCK을 부정문 대신 **긍정형**("preserve the exact same camera position, framing, and field of view as the input, with every element occupying the same fraction of the frame")으로 바꿔 쓰고, **NEGATIVE는 넣지 않는다**(PROMPT만 사용). 부정문 LOCK과 NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용이다.
-5. **엔진 선택** — 구도 픽셀 보존이 최우선이면 GPT 엔진 대신 ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(Creativity 1~3 / Resemblance 7~9 시작)를 쓴다.
+4. **GPT image 경로 주의** — gpt-image는 부정문(`No zoom change`, `no reframing`)을 "분홍 코끼리"로 오히려 유발하고, NEGATIVE 단락도 장면 묘사로 읽는다. GPT로 돌릴 땐 ABSOLUTE CAMERA LOCK을 부정문 대신 **긍정형**("preserve the exact same camera position, camera height, framing, field of view, and aspect ratio as the input, with every element occupying the same fraction of the frame, all four frame edges aligning with the original, and the vanishing points in the same screen positions")으로 바꿔 쓰고, **NEGATIVE는 넣지 않는다**(PROMPT만 사용). 부정문 LOCK과 NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용이다.
+5. **엔진 선택** — 구도 픽셀 보존이 최우선이면 GPT 엔진 대신 ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 시작)를 쓴다.
 6. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리 일치를 확인하고, 어긋나면 크롭으로 정렬한다.
 
 ## 빠른 흐름
 
+0. **(구도 보존 중요 시) 실행 전 원본을 출력 합법 비율로 사전 크롭** — 위 "구도 보존 최우선 원칙" 참조
 1. 입력 이미지에서 **건물 유형** 파악 (공장/아파트/오피스/상업/공공/교육/의료)
 2. 사용자 요청에서 **변경 사항** 추출 (야간 전환, 황금시간대, 재료 교체 등)
 3. 뷰 변경 없으면 **ABSOLUTE CAMERA LOCK** 적용, 변경 요청 시 새 뷰로 교체
 4. 13단계 PROMPT + 15카테고리 NEGATIVE 작성
-5. **PROMPT + NEGATIVE 두 섹션만** 출력 — 설명 없음
+5. **PROMPT + NEGATIVE 두 섹션만** 출력 — 설명 없음. **단 GPT image 경로에서는 NEGATIVE를 생략하고 PROMPT만 출력하며, ABSOLUTE CAMERA LOCK을 부정문 대신 긍정형으로 쓴다(구도 보존 원칙 4 참조).**
 
 카메라 브랜드 (Sony, Canon, Nikon 등) 절대 명시하지 않는다.
 MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 
 ## 출력 원칙
 
-- **PROMPT와 NEGATIVE 두 섹션만** 출력한다
+- **PROMPT와 NEGATIVE 두 섹션만** 출력한다 (단, **GPT image 경로에서는 NEGATIVE를 생략하고 PROMPT만** — 구도 보존 원칙 4)
 - 설명, 분석, 주석, 이미지 생성 일절 없음
 - PROMPT는 **하나의 연속된 영어 단락**으로 작성
 - NEGATIVE는 **하나의 연속된 영어 단락**으로 작성
@@ -493,6 +494,8 @@ subtitle text, fake branding, QR codes, poster graphics, graphic overlay
 ## 적용 예시
 
 **입력:** 서울 오피스 타워 CGI — 35층, 다크 틴티드 유리 커튼월, 실버 알루미늄 멀리언, 베이지 화강석 포디움, 1층 리테일, 밝은 낮 시간
+
+> **※ 아래는 SD/디퓨전 경로 예시(NEGATIVE 포함). GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 쓰며, ABSOLUTE CAMERA LOCK을 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 4 참조.**
 
 ```
 PROMPT
