@@ -1,28 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: >
-  인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을
-  이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금,
-  조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다.
-
-  이 스킬은 아래 상황에서 반드시 사용한다:
-  - "조명 바꿔줘", "이 조명으로 바꿔줘", "레퍼런스 조명 적용해줘", "조명 이식"
-  - "분위기 바꿔줘", "드라마틱하게", "시네마틱 조명", "전시 느낌으로"
-  - "갤러리 분위기로", "뮤지엄 조명", "공연장 느낌", "행사장 조명"
-  - "CGI 렌더에 조명 입혀줘", "이미지에 이 조명 써줘"
-  - "lighting transfer", "exhibition lighting", "stage lighting apply"
-  - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우
-
-  지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀·
-  전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간.
-
-  입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택)
-  출력 — 메인 변환: PROMPT + NEGATIVE
-         조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용)
-         익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용)
-         둘 다 요청 시: 두 세트 순서대로 출력
-
-  건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용.
+description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용."
 ---
 
 # 시네마틱 전시 조명 마스터

@@ -1,23 +1,6 @@
 ---
 name: arch-prompt-maker
-description: >
-  건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI
-  image-to-image용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬.
-
-  사용자가 건물 외관 이미지와 함께 "프롬프트 만들어줘", "실사화해줘",
-  "SD 프롬프트", "MJ 프롬프트", "i2i 프롬프트 써줘", "프롬프트 뽑아줘",
-  "사실적으로 만들어줘", "렌더 느낌 없애줘", "사진처럼 만들어줘" 같은 말을
-  하면 반드시 이 스킬을 사용한다.
-
-  입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona ·
-  Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI.
-
-  지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물.
-
-  지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체,
-  사이니지 수정, 조경 업그레이드, 인물 추가.
-
-  인테리어 · 실내 공간 프롬프트는 interior-prompt-maker를 사용한다.
+description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬. 사용자가 건물 외관 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', 'SD 프롬프트', 'MJ 프롬프트', 'i2i 프롬프트 써줘', '프롬프트 뽑아줘', '사실적으로 만들어줘', '렌더 느낌 없애줘', '사진처럼 만들어줘' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI. 지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물. 지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체, 사이니지 수정, 조경 업그레이드, 인물 추가. 인테리어 · 실내 공간 프롬프트는 interior-prompt-maker를 사용한다."
 ---
 
 # 건축 외관 Image-to-Image 프롬프트 메이커

@@ -1,14 +1,6 @@
 ---
 name: magnific-compositing-prep
-description: >
-  포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용
-  프롬프트로 변환하는 스킬. 수직/수평 왜곡 최소화, 소실점 정확도 유지, 합성 친화적 배경이 핵심.
-
-  "마그네픽 프롬프트", "나노바나나", "합성 배경", "3D 합성용", "합성할 배경",
-  "수직 수평 맞게", "업스케일 프롬프트", "compositing", "합성용 업스케일" — 이 중
-  하나라도 나오면 반드시 이 스킬을 사용한다. 이미지가 없어도 공간 설명만으로 실행 가능.
-  interior-prompt-maker(CGI→실사화)·cinematic-exhibition-lighting(조명 전환)과 목적이
-  다르다 — 이 스킬은 합성 배경의 기하학 정확도 확보가 목적이다.
+description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용 프롬프트로 변환하는 스킬. 수직/수평 왜곡 최소화, 소실점 정확도 유지, 합성 친화적 배경이 핵심. '마그네픽 프롬프트', '나노바나나', '합성 배경', '3D 합성용', '합성할 배경', '수직 수평 맞게', '업스케일 프롬프트', 'compositing', '합성용 업스케일' — 이 중 하나라도 나오면 반드시 이 스킬을 사용한다. 이미지가 없어도 공간 설명만으로 실행 가능. interior-prompt-maker(CGI→실사화)·cinematic-exhibition-lighting(조명 전환)과 목적이 다르다 — 이 스킬은 합성 배경의 기하학 정확도 확보가 목적이다."
 ---
 
 # Magnific Compositing Prep 프롬프트 메이커
