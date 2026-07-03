@@ -414,35 +414,64 @@ replaced architecture from the second image, structural transfer from reference 
 조명: 카페=소프트 자연광 / 레스토랑=낮은 조도, 로컬 조명 풀
 카메라: 24–35mm
 
-### 전시부스 / 전시장 (옥타놈 시스템부스 · 블럭부스 · 전시홀) ★
+### 전시부스 / 전시장 (3종: 목공 · 블럭 · 옥타놈 + 전시홀) ★
 
-> **왜 별도 블록인가:** 전시부스는 규칙적인 알루미늄 직선 격자(포스트·빔·fascia)로 이뤄져 AI가 가장 잘 무너뜨리는 대상이다. 프레임을 "녹이거나" 벽을 매끈한 단일면으로 뭉개고, 간판 글자를 깨뜨린다. 아래 어휘·성공문장·엔진 규칙으로 이를 막는다. (3중 검수 반영: NEGATIVE 증상토큰 배제·mm 숫자 배제·fascia 텍스트 생성 금지)
+> **왜 별도 블록인가:** 전시부스는 규칙적인 알루미늄 직선 격자(포스트·빔·fascia)로 이뤄져 AI가 가장 잘 무너뜨리는 대상이다. 프레임을 "녹이거나" 벽을 매끈한 단일면으로 뭉개고, 간판 글자를 깨뜨린다. 아래 어휘·성공문장·엔진 규칙으로 이를 막는다. (검수 반영: NEGATIVE 증상토큰 배제·mm 숫자 배제·fascia 텍스트 생성 금지)
 
-**★ 옥타놈 성공 문장 (반드시 한 문장으로 고정 삽입):**
+**★★ 먼저 3종 중 무엇인지 판별 (한국 전시업계 실무 기준 — 셋은 외형이 다르다. 섞지 않는다):**
+| 유형 | 골조·시공 | 외형 식별자 |
+|---|---|---|
+| **목공부스** (독립/맞춤) | 각재+합판+퍼티+도장/시트 | **이음매 없는 매끈한 벽면(seamless), 날카롭고 깔끔한 모서리, 프레임 안 보임** |
+| **블럭부스** (렌탈 모듈) | 규격 박스 모듈 조립 | **규격 박스 모듈이 격자로 조립된 벽면, 모듈 사이 일정한 미세 접합선, 평평하고 균일한 패널면** (발광은 그래픽면 한정 옵션 — 아래 참조) |
+| **옥타놈/옥타늄** (기본/시스템) | 알루미늄 폴+바+패널 | **은색 알루미늄 프레임 격자가 노출, 그 사이 백색 인필 패널** |
+> 원본 이미지에서 위 셋 중 하나를 먼저 판정해 해당 모드만 적용한다. (업체마다 목공/블럭을 묶어 부르기도 하나, 실사화는 위 외형 식별자로 구분한다.)
+> ★블럭부스 = "규격 모듈 조립"이 핵심 정의다. 내부 LED 발광은 일부 고급형의 옵션일 뿐 정의가 아니다 — 비발광 블럭부스가 오히려 다수다. 발광을 식별자로 강제하면 벽 전체가 라이트박스처럼 전면발광하는 실패가 난다(3중 검수 만장일치 BLOCKER).
+
+**★ 옥타놈 성공 문장 (옥타놈일 때 반드시 한 문장으로 고정 삽입):**
 > `"The booth must read as a modular shell-scheme system, not a seamless drywall room: every wall bay shows visible panel-to-panel seams, slim silver anodized aluminum vertical uprights standing proud of the flat white infill panels, horizontal top beams, and slightly raised aluminum base rails."`
 
-**모드 1 — 옥타놈 / 시스템 기본부스 (프레임 노출 격자형):**
+**모드 A — 옥타놈 / 시스템 기본부스 (프레임 노출 격자형):**
 - 구조: `Octanorm-style modular exhibition shell scheme, slim silver anodized aluminum post-and-beam frame, narrow vertical posts proud of the flat white infill panels, crisp specular highlights along the post edges, standard 3x3m booth, eye-level wall height`
 - 재료: `flat matte white melamine or PVC foam infill panels, non-reflective panel surface`; 그래픽은 원본에 있을 때만 `printed graphic panel inserts`
 - 사인: `fascia header band above the booth, kept as a blank or simple placeholder signage area without legible text` (실제 상호는 후처리 합성 — 글자 생성은 깨짐 유발)
 - 조명/바닥: `clip-on spotlight arms mounted on the fascia, track spotlights washing the panels, physically mounted fixtures, grey needle-punch exhibition carpet, brushed aluminum base rails seating the booth on the floor`
 
-**모드 2 — 블럭부스 / 목공 독립부스 (매끈한 면 볼륨형 — 옥타놈과 반대):**
-- 구조: `custom-built seamless exhibition booth, concealed structural frame, painted MDF/plywood wall volumes with putty-smoothed surfaces` (프레임·seam 노출 없음)
-- 재료/디테일: `matte painted panels, laminate finish, flush integrated or backlit acrylic logo signage, clean flush corner joints, branded feature walls, integrated LED cove lighting`
-- ★구분 키: **옥타놈 = 프레임·seam 노출 격자 / 블럭부스 = seam 없는 매끈한 볼륨.** 둘을 섞지 않는다.
+**모드 B — 목공 독립부스 (매끈한 면 볼륨형):**
+- 구조: `custom-built exhibition booth with smooth continuous plastered and painted wall surfaces, sharp clean flush corners, solid built walls`
+- 재료/디테일: `matte painted walls or adhesive vinyl-wrapped walls, laminate finish, branded feature walls`; 로고 사인은 원본에 있을 때만 `edge-lit acrylic logo` (한 면에만)
+- ★대조 앵커(한 문장 삽입): `"…a solid custom-built wall, not a modular framed system and not an exposed aluminum grid."`
+
+**모드 C — 블럭부스 / 규격 박스 모듈 조립 (modular block assembly):**
+- 구조: `modular block-panel booth assembled from standardized rectangular box modules, fine consistent seams between modules, clean rectilinear module grid, flat even matte panel faces`
+- 발광은 옵션(국소 게이팅): 원본에 발광 그래픽 벽이 있을 때만 → `only the graphic panel is softly lit from behind, while the surrounding module structure, floor and ceiling are lit by ambient hall light` (벽 전체를 발광시키지 않는다)
+- ★대조 앵커(한 문장 삽입): `"…a modular box-panel assembly, not a seamless custom-built wall and not an exposed aluminum post-and-beam grid."`
+
+**★ 그래픽·마감 실재료 서브블록 (★원본에 실제 보이는 재료 1~2종만 골라 주입 — 6종 나열 금지(material soup). 없는 텍스트/로고 생성 금지):**
+- 현수막(플렉스): `PVC flex banner graphic, slight surface undulation, satin sheen`
+- 켈지(점착 실사출력): `matte (or gloss) self-adhesive vinyl film, tightly wrapped flat to the wall, crisp saturated color`; 백켈지=`opaque solid backing` / 투명켈지=`translucent vinyl on glass`
+- 커팅시트: `cut vinyl lettering and solid-color film logos, sharp die-cut edges`
+- SEG 텐션패브릭: `SEG silicone-edge tension fabric graphic, taut smooth flat matte fabric, edge sitting flush in a slim aluminum channel`
+- 포맥스/폼보드: `rigid foam PVC board (Foamex), matte smooth surface, UV-printed sharp graphics`; 입체글자=`raised cut-out lettering`
+- 아크릴: `glossy acrylic panel, transparent or frosted`
+- ★발광·광택 단일화: `backlit / edge-lit / strong specular / high-gloss` 토큰을 한 프롬프트에 여럿 겹치지 않는다 — bloom·전면발광·플라스틱화 유발. 발광/광택은 **주 피사체 재료 1개에만** 적용하고, 나머지 면은 `matte, non-emissive`로 눌러 명시한다.
+
+**★ 인물·현장 서브블록 (★조건부 — 원본 이미지에 실제로 인물이 있을 때만 켠다):**
+> Lineart/Canny primary 파이프라인에서는 컨트롤 소스(부스 렌더/도면)에 인물 엣지가 없다. 컨트롤에 없는 인물을 프롬프트로만 주입하면 얼굴·손 붕괴·반투명 고스팅·구조 경합이 난다(3중 검수 BLOCKER). 원본에 인물이 없으면 이 서브블록을 통째로 생략한다.
+- 원본 근경에 인물이 있을 때만: `Korean booth staff in a business suit or a plain branded uniform, natural working posture` (텍스트 없는 복장)
+- 배경 군중: `a few small out-of-focus figures in the far background of the aisle` (원거리·아웃포커스 한정, 밀집 금지)
+- ★텍스트 발생 소품은 넣지 않거나 blank로: 명찰은 `a plain lanyard with a blank card`까지만, 브로슈어·명함함·브랜드백은 글자 깨짐을 부르므로 생략하거나 `unbranded, no legible text`로. (fascia 텍스트 금지 원칙과 동일 — 글자는 후처리 합성)
+- ★원본에 인물이 없는데 사람을 넣고 싶다면 → 이 스킬로 굽지 말고 **person-layer-maker**로 인물을 별도 레이어 생성해 포토샵 합성한다(위치·인원·교체 수정 가능).
 
 **전시장 배경 (부스가 홀 안에 놓인 광각 샷일 때만):**
-- 배경: `exposed high-ceiling truss grid, fire sprinkler pipes, suspended rigging banners overhead, rows of neighboring shell booths, trade-fair aisle, grey aisle carpet`
+- 배경: `exposed high-ceiling truss grid, fire sprinkler pipes, suspended rigging banners overhead, rows of neighboring booths, trade-fair aisle, grey aisle carpet`
 - 오브젝트: `neighboring booth edges, brochure stands, cable covers, small product displays, aisle stanchions`
-- 인물: `a few slightly out-of-focus visitors in the aisle` (구조 중요 샷에선 약하게만)
 - 조명: `cool neutral exhibition hall lighting from metal-halide and fluorescent fixtures, slight fluorescent green bias only in ambient shadows, mixed with warm booth spotlights` (4000K대는 중성백색이지 녹색이 아니다 — 녹색끼는 그림자에만 미세하게)
 - 촬영: `deep-focus architectural trade-show photography` (얕은 심도 금지 — 구조 보존 약화)
 
-**★ 엔진 규칙 (전시부스는 반드시):** 규칙적 알루미늄 직선격자라 i2i 시 ControlNet 병행이 사실상 필수다. 우선순위 — **Lineart(또는 Lineart-realistic) 또는 Canny를 primary 구조 컨트롤**(포스트·패널·fascia 윤곽 보존), **MLSD는 긴 직선·소실점 보조로 optional**, **Depth는 부스 볼륨·통로 전후관계 보조로만**. MLSD 단독은 짧은 포스트 두께·패널 seam·조명 암을 날려 부족하다. GPT 단독 경로보다 SD+ControlNet을 권장한다.
+**★ 엔진 규칙 (전시부스는 반드시):** 규칙적 직선격자라 i2i 시 ControlNet 병행이 사실상 필수다. 우선순위 — **Lineart(또는 Lineart-realistic) 또는 Canny를 primary 구조 컨트롤**(포스트·패널·모서리 윤곽 보존), **MLSD는 긴 직선·소실점 보조로 optional**, **Depth는 부스 볼륨·통로 전후관계 보조로만** (특히 블럭부스는 Depth로 박스 모듈 입체감 보존). MLSD 단독은 짧은 포스트 두께·패널 seam·조명 암을 날려 부족하다. GPT 단독 경로보다 SD+ControlNet을 권장한다.
 
 **★ GPT-image 경로 긍정형 잠금문 (NEGATIVE 대신 PROMPT에 이어붙임):**
-> `"straight rigid aluminum extrusion posts, crisp orthogonal booth grid, clean panel seams, physically mounted spotlights, blank or deliberately simple fascia signage, the booth reads as a real modular shell-scheme exhibition stand photographed on a trade-show floor."`
+> `"straight rigid booth structure, crisp orthogonal module grid, clean panel seams, physically mounted spotlights, blank or deliberately simple signage, the booth reads as a real exhibition stand photographed on a trade-show floor."`
 
 ---
 

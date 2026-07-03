@@ -1,6 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
+description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 조명 레이어 세트('레이어 세트', '조명 나눠서', '따로 컨트롤'): 빔/헤이즈/스팟 풀/컬러 워시 4분리 프롬프트 + 블렌드 가이드 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 사람을 별도 레이어로 합성하려면 person-layer-maker 사용(조명 레이어는 인물 위에 얹는다) 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
 ---
 
 # 시네마틱 전시 조명 마스터
@@ -23,6 +23,7 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 |---|---|---|
 | **메인 변환** | 기본 (조명 변환 요청) | PROMPT + NEGATIVE |
 | **조명 레이어** | "레이어만", "빛만", "포토샵 합성용", "블랙 배경 조명", "조명 레이어" | LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE |
+| **조명 레이어 세트** ★ | "레이어 세트", "조명 나눠서", "레이어 분리", "따로따로 컨트롤" | 4분리 레이어 프롬프트 (빔/헤이즈/스팟 풀/컬러 워시) + 블렌드 가이드 |
 | **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS |
 | **둘 다** | "둘 다", "레이어도", "합성도 같이" | 두 세트 모두 출력 |
 
@@ -182,6 +183,15 @@ Image 2에서 추출한 빔 패턴·광원 위치를 반영하여 작성:
 - 교차형: `"crossing diagonal beam spotlights from left and right ceiling positions"`
 - 수직 집중: `"tight vertical spotlights from ceiling grid focused on stage area"`
 - 사이드 플러드: `"side-wash beams from left and right wall positions"`
+
+**무대 조명 효과 어휘 (Image 2 분석·요청에 맞춰 선택 — 겹치는 발광 토큰 최소화):**
+- 빔/워시/스팟 구분: `sharp defined beam` (빔) / `broad soft color wash across the wall` (워시) / `focused light pool on the floor or subject` (스팟)
+- 백라이트·림: `strong backlight from behind the stage creating rim highlights on subject edges`
+- LED 월 글로우: `soft screen-glow spill from the LED wall onto nearby floor and subjects` (스크린 콘텐츠 자체는 잠금 유지)
+- 고보 패턴(레퍼런스에 있을 때만): `patterned gobo light texture projected on the floor`
+- 객석 스필: `dim warm light spill over the audience area, far dimmer than the stage`
+- 헤이즈 농도 3단계: `light haze` (빔 윤곽만) / `medium haze` (기본) / `heavy haze` (공기 자체가 발광, 대비 저하 감수)
+- 무빙헤드 등 조명 기구 자체는 원본(Image 1)에 있을 때만 유지 — 새 기구를 만들어 넣지 않는다 (physically mounted fixtures 원칙)
 
 ---
 
@@ -418,6 +428,45 @@ colored smoke, fog machine look, dry ice effect, unrealistic physics
 **GPT image 경로 분기:** LIGHT LAYER NEGATIVE를 생략하고, 블록 ①·⑥의 부정문(`No room, no architecture...`)을 긍정형으로 바꾼다 —
 - ① 대체: `"The entire frame is a pure black void in which volumetric light beams are the only visible content."`
 - ⑥ 대체: `"Pure light art on a pure black background, photorealistic light physics, high dynamic range, deep pure black surroundings, bright luminous beams with natural falloff and soft edge gradients — a compositing-ready light layer."`
+
+---
+
+## 조명 레이어 세트 (LAYER SET — 포토샵 개별 컨트롤용 4분리) ★
+
+### 개념
+조명 레이어 1장은 빔·헤이즈·스팟·워시가 한 덩어리라 "빔만 줄이고 헤이즈만 키우기"가 불가능하다. **레이어 세트 모드는 조명을 4개 성분으로 분리 생성**해 포토샵에서 각각 불투명도·색조·마스크로 따로 컨트롤한다 — 한 번에 나온 결과를 수정 못 해 버리는 일을 없앤다.
+
+각 레이어는 위 "LIGHT LAYER PROMPT 작성 순서"의 블록 ①(블랙 배경)·②(비율=생성 파라미터)·④·⑤·⑥ 규칙을 그대로 상속하고, **③(빔 묘사) 자리만 아래 성분별 묘사로 바꾼다.** 색온도는 판단표의 모드를 4장 모두 동일하게 적용(혼합 모드면 빔=주색, 워시=보조색 배분 가능).
+
+### 4분리 성분 (각각 별도 생성 = 별도 프롬프트 출력)
+
+| # | 레이어 | ③ 자리 묘사 | 블렌드/불투명도 시작값 |
+|---|---|---|---|
+| L1 | **빔 (BEAM)** | `"only sharp well-defined volumetric light beams with natural falloff and non-clipping brightness, crisp edges, minimal ambient glow around them"` (빔 코어를 순백으로 만들지 않는다) | Screen 또는 Linear Dodge(Add), **40~70%** — 하이라이트가 날아가면 하향 |
+| L2 | **헤이즈 (HAZE)** | `"only soft atmospheric haze glow filling the beam paths and upper air, with light haze / medium haze / heavy haze density, without any defined beam edges"` (농도 1개 선택) | Screen, 30~60% |
+| L3 | **스팟 풀 (SPOT POOL)** | `"only soft elliptical light pools on the floor and subject positions where the spotlights land, gentle hotspot centers with natural falloff, without visible beams in the air"` | Screen, 50~80% |
+| L4 | **컬러 워시 (COLOR WASH)** | `"only a broad smooth color wash gradient as if colored stage light washing across walls and surfaces, soft and even, without beams, pools, or particles"` | **블랙 배경 규격이면 Screen 20~40%.** Soft Light/Color는 레이어를 50% 그레이 기반으로 만들었을 때만 20~50% (블랙 배경에 Soft Light를 걸면 검정 영역이 화면을 어둡게 만든다) |
+
+> 모든 블렌드 값은 **시작값**이다 — 결과를 보고 레이어별 불투명도로 조정하는 것이 이 모드의 존재 이유다.
+
+### 출력 형식 (레이어 세트 요청 시)
+```
+LIGHT LAYER SET — 생성 파라미터: 사이즈/종횡비를 합성 대상 원본과 동일하게 설정
+L1 BEAM PROMPT
+[연속 영어 단락]
+L2 HAZE PROMPT
+[연속 영어 단락]
+L3 SPOT POOL PROMPT
+[연속 영어 단락]
+L4 COLOR WASH PROMPT
+[연속 영어 단락]
+블렌드 가이드(시작값): L1 Screen/Linear Dodge 40~70% · L2 Screen 30~60% · L3 Screen 50~80% · L4 Screen 20~40%(50% 그레이 기반 제작 시 Soft Light 20~50%) — 각 레이어 불투명도로 조절
+```
+- LIGHT LAYER NEGATIVE는 4장 공통으로 1회만 출력(기존 "항상 동일" 블록). GPT 경로면 생략+긍정형 전환(위 분기 규칙 동일).
+- 필요 없는 성분은 생성하지 않아도 된다(예: 워시 없는 조명이면 L4 생략) — 어떤 성분을 쓸지는 Image 2 분석으로 판단해 명시한다.
+
+### 인물·레이어 합성 파이프라인 연계 (조명 샌드위치)
+사람을 넣으려면 **person-layer-maker** 스킬로 인물을 별도 레이어로 생성하고, 조명은 인물을 사이에 두고 나눠 얹는다 — **바닥·벽에 깔리는 빛(L3 스팟 풀·L4 워시)은 인물 아래, 공기 중의 빛(L1 빔·L2 헤이즈)은 인물 위**. 인물이 빔을 자연스럽게 가로막아 입체감이 생기고 인물 발광을 막는다. 표준 레이어 순서: 베이스 → 반사 → L3·L4 → 인물 그림자 → 인물(+클리핑 색보정) → L1 빔 → L2 헤이즈 → 통합 그레인(맨 위 1회).
 
 ---
 
