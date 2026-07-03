@@ -1,6 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용."
+description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
 ---
 
 # 시네마틱 전시 조명 마스터
@@ -12,9 +12,9 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 
 이 스킬은 카메라·기하학을 4중 잠금하지만, i2i 엔진 자체가 구도(화각·종횡비)를 틀 수 있다. 근본 원인은 **종횡비 불일치**다.
 
-1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭** — GPT image는 1:1 / 3:2 / 2:3 로만 출력하므로, 원본을 미리 그 비율로 크롭해 넣어 모델이 엣지에서 공간을 발명할 여지를 없앤다.
+1. **★ 실행 전 원본을 대상 엔진이 지원하는 비율로 사전 크롭** — 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본을 미리 그 비율로 크롭해 넣고, **gpt-image-2는 제약 내 임의 해상도를 지원**하므로 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 사용자에게 경고 후 진행하고(비율 맞춤 크롭에만 적용), 크롭은 목표 비율·방향을 1~2줄로 안내하거나 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다. 모델이 엣지에서 공간을 발명할 여지를 없애는 유일한 구조적 해결책이다.
 2. **절대 초점거리 숫자 금지** — PROMPT에 mm 숫자를 쓰지 않는다(이 스킬은 이미 미사용). "원본과 동일한 화각" 긍정형만 쓴다.
-3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 부정문 잠금도 긍정형으로 바꾼다** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 본문 카메라/기하학 잠금과 예시의 부정문(`No camera change`, `no reframing`, `no zoom change` 등)도 GPT 경로에선 "분홍 코끼리"를 유발하므로 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용.
+3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 본문·예시의 모든 부정문을 긍정형으로 바꾼다 (2·3·6·9·10단계 포함)** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 카메라/기하학 잠금의 부정문(`No camera change`, `no reframing` 등)은 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로, 6단계의 `No fantasy or illustration style`·9단계의 `not a CGI render`·10단계의 부정문 나열은 긍정형 대체문(`"a professionally photographed real-world cinematic event space, with the material fidelity and lighting physics of documentary stage photography, every material, structure, furniture piece, and screen exactly as in Image 1"`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
 4. **엔진 선택·검증** — 구도 보존 최우선이면 ControlNet 기반 SD i2i 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 — 익스트림 다크 모드의 0.75/0.35와 스케일 동일, 용도만 다름)를 쓰고, 결과 위에 원본 50% 오버레이로 소실점·모서리 일치를 확인한다.
 
 ## 출력 모드
@@ -29,8 +29,9 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 ## 빠른 흐름
 
 1. **출력 모드 판단** (위 표 참조)
-2. **입력 확인**: Image 1 (원본) + Image 2 (조명 레퍼런스) + 색온도 키워드 (선택)
-3. **Image 2 조명 분석** (아래 "조명 추출 가이드" 참조)
+2. **입력 확인**: Image 1 (원본) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) — **메인 변환·익스트림 다크에서 Image 1이 없으면 프롬프트를 지어내지 말고 원본 이미지를 요청한다** (조명 레이어 모드만 이미지 없이 가능)
+2-1. **(구도 보존 중요 시) 사전 크롭 안내**: 대상 엔진 비율 확인 후 크롭 안내 또는 직접 크롭 — 위 "구도 보존 최우선 원칙" 1
+3. **Image 2 조명 분석** (아래 "조명 추출 가이드" 참조) — **Image 2가 없으면** 조명 분석을 생략하고 색온도 판단표의 기본값(Neutral Cinematic)으로 진행하며, 1단계·6단계 문장에서 Image 2 참조를 제거한 대체 문장을 쓴다(아래 각 단계 참조)
 4. **색온도 판단** (아래 색온도 판단표 참조)
 5. **메인 변환** → 4중 잠금 + PROMPT + NEGATIVE
 6. **조명 레이어** → LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE
@@ -42,9 +43,10 @@ MJ 파라미터(`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 ## 출력 원칙
 
 설명·분석·주석·이미지 생성 없음. 프롬프트 섹션만 출력.
+단, 예외 2가지: (a) 사전 크롭이 필요한 경우 크롭 안내(목표 비율·방향) 1~2줄 허용, (b) 필수 입력(Image 1)이 없으면 프롬프트를 지어내지 말고 이미지를 요청.
 모든 PROMPT·LIGHT LAYER PROMPT는 **하나의 연속된 영어 단락**.
 
-**메인 변환 출력 형식:**
+**메인 변환 출력 형식 (GPT image 경로에서는 NEGATIVE 섹션 생략 — PROMPT만):**
 ```
 PROMPT
 [연속 영어 단락]
@@ -99,6 +101,9 @@ Image 2에 워터마크나 텍스트가 있어도 조명 특성 추출에만 집
 
 > `"Use Image 1 as the immutable architectural structure, room geometry, camera position, composition, original materials, surface finishes, furniture layout, and all spatial elements. Extract ONLY the lighting direction, beam pattern, color temperature, contrast ratio, volumetric quality, and atmospheric mood from Image 2 — do not transfer any structural, material, spatial, stylistic, or textual content from Image 2."`
 
+**Image 2 없는 경우 대체 문장 (존재하지 않는 이미지를 참조하지 않는다):**
+> `"Use Image 1 as the immutable architectural structure, room geometry, camera position, composition, original materials, surface finishes, furniture layout, and all spatial elements. Transform only the lighting, color temperature, and atmospheric mood."`
+
 ---
 
 ### 2. 카메라 잠금
@@ -138,7 +143,9 @@ Preserve all side panel positions and branded display panel placements.
 > `"Preserve the original materials, surface finishes, textures, and color palette of all architectural and decorative elements exactly as they appear in Image 1. Preserve the original furniture layout, furniture design, seating arrangement, object placement, and all fixtures. Do not substitute, replace, upgrade, recolor, or alter any material, finish, furniture piece, seating unit, or object. The lighting transformation must reveal and enhance the existing surfaces — not change them."`
 
 **LED 스크린·디지털 디스플레이가 있는 경우 추가:**
-> `"Preserve the LED screen and display panel structures and frame positions. Screen content and display imagery may be atmospherically adapted to the new lighting mood while maintaining screen placement and scale."`
+> `"Preserve the LED screen and display panel structures, frame positions, placement, and scale. The existing screen content may receive only brightness and color-temperature grading to match the new lighting mood — keep the same imagery, no semantic replacement of screen content."`
+
+**색 보존과 조명 색온도의 관계 (문자 충돌 방지):** 색온도 조명은 표면의 '보이는 색'을 바꾼다. 잠금의 의미는 **재료의 고유 색(intrinsic base color)** 보존이며, 조명에 의한 지각 색 변화는 허용이다. 필요 시 PROMPT에 `"preserve the intrinsic material base colors; only the perceived illumination color may shift due to the new lighting"`을 덧붙인다.
 
 ---
 
@@ -167,6 +174,8 @@ Preserve all side panel positions and branded display panel placements.
 Image 2에서 추출한 빔 패턴·광원 위치를 반영하여 작성:
 
 > `"Apply dramatic exhibition-grade lighting with strong volumetric light beams visible in the air, using directional spotlights from ceiling and side angles referencing the [빔 패턴 묘사] lighting composition of Image 2. Include subtle haze and dust particles floating within the light rays to enhance depth and atmospheric realism. Add refined sparkling highlights on reflective surfaces and secondary light elements, generating soft shimmering glints without overexposure or neon effects. Ensure controlled glossy reflections and premium stage-grade lighting quality. Maintain high contrast between deep surrounding darkness and focused light pools. No fantasy or illustration style — cinematic professional event hall mood only."`
+
+**Image 2 없는 경우:** `referencing the [빔 패턴 묘사] lighting composition of Image 2` 부분을 빼고, 조명 레이어 섹션의 기본값처럼 빔을 직접 묘사한다 — `"using three to five vertical downlight beams from the ceiling center and soft crossing secondary beams from the sides"`. (GPT 경로에서는 마지막 문장 `No fantasy...`를 긍정형 `cinematic professional event hall mood, grounded in real stage-lighting physics`로 바꾼다.)
 
 빔 패턴 묘사 예시:
 - 방사형: `"fan-radiating beam pattern from overhead ceiling truss"`
@@ -357,8 +366,8 @@ stage layout from reference image, ceiling structure from reference image
 **① 블랙 배경 선언 (항상 고정)**
 > `"Pure solid black background. Complete darkness as the base. No room, no architecture, no surfaces, no objects, no floor, no ceiling, no walls — only pure black void."`
 
-**② 비율 선언 — Image 1과 동일하게 (항상 포함)**
-> `"Match the exact aspect ratio and frame dimensions of Image 1 so this layer aligns perfectly for compositing."`
+**② 비율 — 생성 설정으로 지정 (프롬프트 문장이 아니라 파라미터로)**
+조명 레이어는 txt2img라 Image 1이 엔진에 첨부되지 않는다 — 프롬프트로 "Image 1과 같은 비율"을 요구해도 수행 불가. **생성 파라미터(사이즈/종횡비)를 합성 대상 원본과 동일하게 설정하라고 사용자에게 1줄 안내**하고, 프롬프트에는 Image 1 참조를 넣지 않는다. Image 1 자체가 없는 실행(조명 레이어 단독 요청)이면 사용자가 원하는 출력 크기(Width/Height)를 직접 지정하도록 안내한다. (합성 시 정렬은 포토샵에서 캔버스 크기로 맞춘다.)
 
 **③ 빔 묘사 — Image 2 패턴 반영**
 Image 2의 빔 패턴·광원 위치 읽은 뒤 묘사. 아래 색온도별 템플릿 참조.
@@ -404,6 +413,11 @@ colored smoke, fog machine look, dry ice effect, unrealistic physics
 **Image 2 없는 경우 (레퍼런스 없이 조명 레이어만 요청):**
 빔 패턴은 Neutral Cinematic 기본값으로 — 천장 중앙 3-5개 수직 다운라이트 빔,
 좌우 사이드에서 약한 교차 보조 빔, 전체 Neutral Cool White 색온도.
+프롬프트에 "the reference image" 같은 참조 문구를 넣지 않는다(txt2img에는 레퍼런스가 첨부되지 않음 — 유령 참조 금지). 빔 형태를 직접 묘사한다.
+
+**GPT image 경로 분기:** LIGHT LAYER NEGATIVE를 생략하고, 블록 ①·⑥의 부정문(`No room, no architecture...`)을 긍정형으로 바꾼다 —
+- ① 대체: `"The entire frame is a pure black void in which volumetric light beams are the only visible content."`
+- ⑥ 대체: `"Pure light art on a pure black background, photorealistic light physics, high dynamic range, deep pure black surroundings, bright luminous beams with natural falloff and soft edge gradients — a compositing-ready light layer."`
 
 ---
 
@@ -446,10 +460,11 @@ cartoon, anime, illustration, sketch, watercolor, concept art, matte painting, s
 ### 조명 레이어 예시 — Mixed (Cool Blue + Warm Amber) / 컨퍼런스홀 기준
 
 포토샵 합성용. 이 이미지를 원본 위에 올리고 **Screen** 또는 **Linear Dodge(Add)** 모드 적용.
+생성 시 **사이즈/종횡비 파라미터를 Image 1과 동일하게 설정**한다 (프롬프트가 아니라 생성 설정에서).
 
 ```
 LIGHT LAYER PROMPT
-Pure solid black background. Complete darkness as the base. No room, no architecture, no surfaces, no objects, no floor, no ceiling, no walls — only pure black void. Match the exact aspect ratio and frame dimensions of Image 1 so this layer aligns perfectly for compositing. Multiple dramatic volumetric light beams radiating downward and crossing in a wide fan pattern from upper center positions, referencing the radiating beam composition of the reference image. Primary beams descend from the top-center area spreading outward in a symmetrical fan formation, with secondary crossing diagonal beams from upper-left and upper-right angles meeting near the center-lower zone. Subtle floating dust particles and atmospheric haze suspended within and around the light beams, creating depth and three-dimensional volumetric presence. Refined sparkling light particles and soft glinting highlights scattered within the illuminated beam zones, delicate and organic without overexposure or neon quality. Dominant cool blue and cold white primary beams from upper center, with warm amber and deep gold secondary accent beams from side angles. Blue-silver atmospheric glow surrounding the primary beam edges, warm golden glow around accent beams, creating layered mixed-temperature light atmosphere. Pure light art, photorealistic light physics, high dynamic range, deep pure black surrounding areas with no grey or noise, bright luminous beams with natural falloff and soft edge gradients. No room, no architecture, no objects, no text, no watermark, no people. Compositing-ready light layer on pure black background.
+Pure solid black background. Complete darkness as the base. No room, no architecture, no surfaces, no objects, no floor, no ceiling, no walls — only pure black void. Multiple dramatic volumetric light beams radiating downward and crossing in a wide symmetrical fan pattern from upper center positions. Primary beams descend from the top-center area spreading outward in a symmetrical fan formation, with secondary crossing diagonal beams from upper-left and upper-right angles meeting near the center-lower zone. Subtle floating dust particles and atmospheric haze suspended within and around the light beams, creating depth and three-dimensional volumetric presence. Refined sparkling light particles and soft glinting highlights scattered within the illuminated beam zones, delicate and organic without overexposure or neon quality. Dominant cool blue and cold white primary beams from upper center, with warm amber and deep gold secondary accent beams from side angles. Blue-silver atmospheric glow surrounding the primary beam edges, warm golden glow around accent beams, creating layered mixed-temperature light atmosphere. Pure light art, photorealistic light physics, high dynamic range, deep pure black surrounding areas with no grey or noise, bright luminous beams with natural falloff and soft edge gradients. No room, no architecture, no objects, no text, no watermark, no people. Compositing-ready light layer on pure black background.
 
 LIGHT LAYER NEGATIVE
 room, architecture, walls, ceiling, floor, furniture, objects, people, faces, background elements, interior space, outdoor scene, any solid surface, grey background, white background, colored background, gradient background, noise in dark areas, grain in shadows, visible texture in black areas, text, watermark, logo, signage, labels, readable letters, neon lights, LED strips, lens flares, chromatic aberration, lens artifacts, overexposed blown areas, clipped highlights, flat even glow, studio light look, illustration, cartoon, painted look, digital art style, fantasy glow, magical sparkles, colored smoke, fog machine look, dry ice effect, unrealistic physics
@@ -465,17 +480,19 @@ room, architecture, walls, ceiling, floor, furniture, objects, people, faces, ba
 순수 블랙이 아니라 — 테이블·의자·천장이 거의 보이지 않는 짙은 실루엣으로 남고, 빛줄기가 압도적인 주인공이 된다.
 Magnific nanobanana img2img에 최적화된 프롬프트.
 
+> **★ 이 모드는 '4중 잠금' 모드가 아니다 — 무드 강화 후처리 모드다.** 높은 Creativity(0.75)/낮은 Resemblance(0.35)는 **구도·배치 수준만 대략 유지**하고 표면 디테일·색감·텍스처를 대폭 변형한다. 픽셀 수준 구조 보존이 필요한 결과물에는 쓰지 않는다. 사용자에게 "원본 색감·디테일이 크게 변합니다" 경고를 한 줄 덧붙인다.
+
 ### EXTREME DARK PROMPT 작성 원칙
 
 Image 1 (시네마틱 변환 결과물)을 Magnific에 올리고 아래 프롬프트를 입력한다.
 Image 2 레퍼런스 없음. 단독 img2img 변환.
 
-**출력 형식:**
+**출력 형식 (항상 이 구성 — Magnific/nanobanana에 입력하는 것은 PROMPT와 SETTINGS 뿐):**
 ```
 EXTREME DARK PROMPT
 [연속 영어 단락]
 
-EXTREME DARK NEGATIVE
+EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음)
 [연속 영어 단락]
 
 MAGNIFIC SETTINGS
@@ -502,18 +519,21 @@ Resemblance: [값]
 **⑤ 사진 리얼리즘**
 > `"Photorealistic dramatic concert event lighting. Real photograph quality. Not CGI, not illustration."`
 
-### EXTREME DARK NEGATIVE (항상 동일)
+### EXTREME DARK NEGATIVE (SD 계열 img2img 대체 경로 전용)
+
+> **주의:** Magnific 업스케일러와 nanobanana(Gemini 계열 의미기반 모델)에는 별도 NEGATIVE 입력 필드가 없고, 의미기반 모델에 부정 나열을 이어붙이면 억제어를 오히려 그린다(구도 보존 원칙 3과 동일 논리). **Magnific/nanobanana 경로에서는 이 NEGATIVE를 생략**하고 ②의 긍정형 어둠 묘사(`crushed into near-black deep shadow` 등)로 흡수한다. 아래 블록은 SD 계열 img2img로 대체 실행할 때만 NEGATIVE 필드에 넣는다.
 
 ```
 bright ambient lighting, evenly lit room, visible wall textures, visible ceiling detail, visible floor surface, colorful surfaces, bright backgrounds, cheerful lighting, daylight, studio lighting, flat lighting, fully visible furniture, fully visible architecture, neon effects, overexposed bloom, fake lens flares, illustration, cartoon, CGI render look, Unreal Engine look, text, watermark, logo
 ```
 
-### Magnific 설정값 (항상 이 값)
+### Magnific 설정값 (항상 이 값 — 0~1 스케일)
 
 ```
 Creativity: 0.75
 Resemblance: 0.35
 ```
+(구도 보존용 기본값 0.1~0.3 / 0.85~1.0과 정반대인 것은 의도 — 이 모드는 변형 허용 모드다. 위 개념의 경고 참조.)
 
 ### 익스트림 다크 예시 — Cool Blue / 컨퍼런스홀
 
@@ -521,7 +541,7 @@ Resemblance: 0.35
 EXTREME DARK PROMPT
 Extreme darkness transformation. Push all ambient light to near-black. Maximum contrast between deep shadow and spotlight beams. All walls, ceiling, floor, stage platform crushed into near-black deep shadow. All furniture — tables, chairs — become barely visible dark silhouettes against black. All screens and panels fall into darkness. Only the faintest silhouette outlines remain, no surface detail, no color, no texture visible. Only the crossing spotlight beams remain as the dominant light source. The volumetric beam rays are the sole illumination — intense, sharp, and high contrast against the surrounding blackness. Haze and atmospheric particles within the beam paths are visible and glowing. Cool blue and cold white spotlight beams cutting through black darkness. Photorealistic dramatic concert event lighting. Real photograph quality. Not CGI, not illustration.
 
-EXTREME DARK NEGATIVE
+EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음)
 bright ambient lighting, evenly lit room, visible wall textures, visible ceiling detail, visible floor surface, colorful surfaces, bright backgrounds, cheerful lighting, daylight, studio lighting, flat lighting, fully visible furniture, fully visible architecture, neon effects, overexposed bloom, fake lens flares, illustration, cartoon, CGI render look, Unreal Engine look, text, watermark, logo
 
 MAGNIFIC SETTINGS

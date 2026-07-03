@@ -10,9 +10,11 @@ argument-hint: "[Instagram URL 또는 @계정명 또는 username]"
 ## 입력값
 사용자 입력: **$ARGUMENTS**
 
-- URL 형태: `https://www.instagram.com/USERNAME/` → USERNAME 추출
-- @형태: `@USERNAME` → USERNAME 추출  
+- URL 형태: `https://www.instagram.com/USERNAME/` → path 첫 세그먼트만 USERNAME으로 추출 (쿼리스트링, 트레일링 슬래시 무시)
+- **예약 path 거부**: 첫 세그먼트가 `p`, `reel`, `reels`, `stories`, `explore`, `accounts`, `tv`, `direct` 등 예약어면 username이 아니다 — 게시물/릴 URL이므로 프로필 URL 또는 계정명을 다시 요청한다
+- @형태: `@USERNAME` → USERNAME 추출
 - 계정명만: `USERNAME` → 그대로 사용
+- 추출 결과는 `^[A-Za-z0-9._]{1,30}$` 검증 + **선행/후행 `.`과 연속 `..` 금지**. 불일치하면 진행하지 말고 계정명을 다시 물어본다.
 
 입력값이 없으면 분석할 Instagram 계정 URL 또는 @계정명을 물어본다.
 
@@ -21,8 +23,7 @@ argument-hint: "[Instagram URL 또는 @계정명 또는 username]"
 ## 실행 절차
 
 ### STEP 1 — 계정명 파싱
-- 입력값에서 Instagram username을 추출한다
-- URL 형태(`https://www.instagram.com/USERNAME/`)와 `@USERNAME` 형태 모두 처리
+- 위 규칙으로 Instagram username을 추출·검증한다
 
 ### STEP 2 — Apify로 프로필 스크래핑
 `mcp__Apify__call-actor`를 두 번 호출한다:
@@ -51,12 +52,15 @@ argument-hint: "[Instagram URL 또는 @계정명 또는 username]"
 }
 ```
 
-두 런이 완료될 때까지 `mcp__Apify__get-actor-run`으로 상태를 확인하고, 완료되면 `mcp__Apify__get-actor-output`으로 결과를 가져온다.
+- 기본적으로 `call-actor`는 런 완료까지 대기 후 결과를 반환한다. 별도 폴링이 필요한 경우에만 `mcp__Apify__get-actor-run`으로 상태 확인(간격 10초, 최대 10분, 초과 시 중단·보고).
+- **결과 회수는 `mcp__Apify__get-dataset-items`로 한다** (datasetId는 call-actor/get-actor-run 응답의 defaultDatasetId). ⚠️ 구 도구명 `get-actor-output`은 존재하지 않는다 — 사용 금지.
 
-> ⚠️ get-actor-output 시 `fields` 파라미터로 필요한 필드만 요청해 토큰 초과를 방지:
+> ⚠️ get-dataset-items 시 `fields` 파라미터로 필요한 필드만 요청해 토큰 초과를 방지:
 > - 프로필: `id, username, fullName, biography, followersCount, followsCount, postsCount`
 > - 게시물: `shortCode, caption, likesCount, commentsCount, timestamp, type, displayUrl, url`
 > - `images` 필드는 요청하지 않는다 (토큰 초과 원인)
+
+**게이트: 프로필 결과가 비어 있으면(계정 없음·오타·삭제) 즉시 중단하고 username 재확인을 요청한다. 빈 데이터로 STEP 3~7을 진행해 빈/틀린 리포트를 만들지 않는다.**
 
 ### STEP 3 — 데이터 분석 및 가공
 수집된 데이터에서 아래 항목을 계산한다:
@@ -87,7 +91,7 @@ argument-hint: "[Instagram URL 또는 @계정명 또는 username]"
 **스타일 기준:**
 - 배경: `#0f0f1a`, 카드: `#1a1a2e`
 - 메인 컬러: `#e91e8c` (계정 성격에 따라 조정)
-- Chart.js 4.4.0 CDN 사용
+- Chart.js 4.4.0 CDN 사용 (오프라인/차단 환경에서는 차트가 비므로 인터넷 필요 명시)
 - 모바일 반응형
 
 ### STEP 5 — Google Drive 이미지 폴더 구조 제안
@@ -106,24 +110,26 @@ foreach ($f in $folders) {
 }
 ```
 
-### STEP 6 — 브라우저에서 이미지 일괄 다운로드 (선택)
+### STEP 6 — 브라우저에서 이미지 일괄 다운로드 (선택 — 사용자가 이미지 저장을 명시 요청한 경우만)
+> 실행 조건: 사용자가 이미지 다운로드를 원한다고 말했을 때만. 사용자 브라우저 점유는 짧게(장시간 자동제어 금지 — 2026-07-01 지시).
 > Apify CDN URL은 IP 인증 제한으로 직접 다운로드 불가 → 브라우저 세션을 활용
 
-Chrome MCP로 Instagram 계정 페이지를 열고:
+Chrome MCP로 Instagram 계정 페이지를 연다 (도구명은 소문자·하이픈: `mcp__claude-in-chrome__navigate` 등. deferred 상태면 ToolSearch로 일괄 로드 후 사용):
 
-1. `mcp__Claude_in_Chrome__navigate` → `https://www.instagram.com/{USERNAME}/`
+1. `mcp__claude-in-chrome__navigate` → `https://www.instagram.com/{USERNAME}/`
 2. Instagram 내부 API로 전체 게시물의 CDN URL을 브라우저 세션 기준으로 수집:
    ```javascript
    // /api/v1/users/web_profile_info/?username={USERNAME} 로 userId 획득
    // /api/v1/feed/user/{userId}/?count=50 로 미디어 URL 수집 (페이지네이션)
    ```
-3. 각 게시물을 `{카테고리폴더}_{제목}_{날짜}.jpg` 파일명으로 매핑
+3. 각 게시물을 `{카테고리폴더}_{제목}_{날짜}.jpg` 파일명으로 매핑 — 파일명은 Windows 금지문자 치환, 최대 80자로 절단, 중복 시 `_2` 접미사
 4. 페이지에 File System Access API 버튼을 주입:
    ```javascript
    // 사용자가 Google Drive 폴더 선택 → fetch+blob으로 직접 파일 쓰기
    // window.showDirectoryPicker() → dirHandle.getDirectoryHandle() → fileHandle.createWritable()
    ```
 5. 사용자에게 버튼 클릭 안내 → 자동 분류 저장
+6. 완료 판정: 다운로드 성공/실패 개수와 실패 URL 목록을 보고한다. 저장 확인 전에 "완료"라고 말하지 않는다.
 
 ### STEP 7 — 포스터 디자인 자료 생성
 `G:\내 드라이브\{USERNAME}\09_포스터_디자인자료\` 안에 4~5개 파일 생성 (수강생모집은 클래스/강의 계정 한정):
@@ -138,14 +144,14 @@ Chrome MCP로 Instagram 계정 페이지를 열고:
 ## 실행 순서 요약
 
 ```
-1. username 파싱
+1. username 파싱·검증
 2. Apify 프로필 스크래핑 (details)
 3. Apify 게시물 스크래핑 (posts, max 50)
-   └─ 두 런 동시 시작 → 완료 대기
+   └─ 결과는 get-dataset-items(fields 제한)로 회수 → 비어 있으면 중단
 4. 데이터 분석 (ER, 해시태그, 카테고리 추출)
 5. 분석 HTML 생성 → Desktop 저장
 6. Google Drive 폴더 구조 생성
-7. Chrome MCP 이미지 다운로드 버튼 주입
+7. (선택 — 사용자가 이미지 저장을 명시 요청한 경우만) Chrome MCP 이미지 다운로드 버튼 주입
 8. 포스터 디자인 자료 4~5개 파일 생성
 ```
 
@@ -155,11 +161,12 @@ Chrome MCP로 Instagram 계정 페이지를 열고:
 
 | 상황 | 대응 |
 |------|------|
-| Apify 런 FAILED | `mcp__Apify__get-actor-run`으로 에러 확인 후 재시도 1회 |
-| 토큰 초과 | `fields` 파라미터로 필드 제한, images 필드 제외 |
+| Apify 런 FAILED | `mcp__Apify__get-actor-run`으로 에러 확인 후 재시도 1회, 재실패 시 중단·보고 |
+| 계정 없음 / dataset 비어 있음 | username 재확인 요청, 후속 STEP 진행 금지 (빈 리포트 생성 금지) |
+| 토큰 초과 | get-dataset-items의 `fields` 파라미터로 필드 제한, images 필드 제외 |
 | G:\내 드라이브 없음 | Desktop에 폴더 생성 후 사용자에게 안내 |
-| Chrome MCP 미연결 | 다운로드 스크립트(.ps1) 생성으로 대체 |
-| CDN 403 오류 | File System Access API 버튼 방식으로 전환 |
+| Chrome MCP 미연결 | 이미지 다운로드 단계는 건너뛰고 대시보드의 Instagram 링크로 대체 + Chrome 확장 연결 후 재실행 안내 (직접 다운로드 .ps1은 CDN 403에 걸리므로 만들지 않는다) |
+| CDN 403 오류 | File System Access API 버튼 방식(브라우저 세션)만 유효. 세션 밖 재시도 반복 금지 |
 | 비공개 계정 | 스크래핑 불가 안내, 공개 계정만 가능 설명 |
 
 ---

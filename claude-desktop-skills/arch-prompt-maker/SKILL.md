@@ -1,6 +1,6 @@
 ---
 name: arch-prompt-maker
-description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬. 사용자가 건물 외관 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', 'SD 프롬프트', 'MJ 프롬프트', 'i2i 프롬프트 써줘', '프롬프트 뽑아줘', '사실적으로 만들어줘', '렌더 느낌 없애줘', '사진처럼 만들어줘' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI. 지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물. 지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체, 사이니지 수정, 조경 업그레이드, 인물 추가. 인테리어 · 실내 공간 프롬프트는 interior-prompt-maker를 사용한다."
+description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬. 사용자가 건물 외관 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', 'SD 프롬프트', 'MJ 프롬프트', 'i2i 프롬프트 써줘', '프롬프트 뽑아줘', '사실적으로 만들어줘', '렌더 느낌 없애줘', '사진처럼 만들어줘' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI. 지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물. 지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체, 사이니지 수정, 조경 업그레이드, 인물 추가. 인테리어 · 실내 공간(전시부스 실내 포함) 프롬프트는 interior-prompt-maker를 사용한다. 레퍼런스 이미지의 조명을 이식하는 요청은 cinematic-exhibition-lighting을 쓰고, 단순 야간/황금시간대/날씨 전환은 외관이면 이 스킬이 담당한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 이 스킬, 실내 공간이 주체면 interior — 둘 다 크게 보이면 사용자에게 확인. 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
 ---
 
 # 건축 외관 Image-to-Image 프롬프트 메이커
@@ -11,10 +11,15 @@ description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusio
 
 i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) 틀어짐**. 근본 원인은 문구가 아니라 **종횡비 불일치**다 — 원본을 모델이 다른 비율로 강제하면 모자란 부분을 "프레임 밖을 발명"해 채우며 줌아웃·요소 추가가 생긴다. 따라서 문구보다 1·2가 먼저다.
 
-1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭 (진짜 해결책)** — 모델이 엣지에서 장면을 발명할 여지를 구조적으로 없앤다. GPT image는 1:1 / 3:2 / 2:3 로만 출력하므로, 원본을 미리 그 비율로 크롭해 넣는다.
+1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭 (진짜 해결책)** — 모델이 엣지에서 장면을 발명할 여지를 구조적으로 없앤다. 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본을 미리 그 비율로 크롭해 넣고, **gpt-image-2는 제약 내 임의 해상도를 지원**하므로 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 중요 요소 절단 위험을 사용자에게 경고 후 진행한다(이 경고는 출력 비율 맞춤 크롭에만 적용). 크롭은 사용자에게 목표 비율·방향을 1~2줄로 안내하거나, 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다.
 2. **종횡비 원본 일치** — 사전 크롭한 비율과 출력 비율을 동일하게 둔다.
 3. **절대 초점거리 숫자 금지** — PROMPT에 `24mm`·`50mm` 등 숫자 초점거리를 쓰지 않는다(아래 "렌즈/카메라 선택 원칙" 표는 화각 감각 참조용일 뿐). 모델이 원본 화각을 무시하고 그 렌즈로 재해석해 광각화·줌아웃을 일으킨다.
-4. **GPT image 경로 주의** — gpt-image는 부정문(`No zoom change`, `no reframing`)을 "분홍 코끼리"로 오히려 유발하고, NEGATIVE 단락도 장면 묘사로 읽는다. GPT로 돌릴 땐 ABSOLUTE CAMERA LOCK을 부정문 대신 **긍정형**("preserve the exact same camera position, camera height, framing, field of view, and aspect ratio as the input, with every element occupying the same fraction of the frame, all four frame edges aligning with the original, and the vanishing points in the same screen positions")으로 바꿔 쓰고, **NEGATIVE는 넣지 않는다**(PROMPT만 사용). 부정문 LOCK과 NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용이다.
+4. **GPT image 경로 주의 — PROMPT 전체에서 부정문 금지** — gpt-image는 부정문(`No zoom change`, `no reframing`)을 "분홍 코끼리"로 오히려 유발하고, NEGATIVE 단락도 장면 묘사로 읽는다. GPT로 돌릴 땐 **본문의 모든 부정문 블록(카메라 잠금·기하학 잠금·컬러 잠금·재료 Avoid 문구·최종 선언의 "not an enhanced render" 포함)을 긍정형으로 바꿔 쓰고, NEGATIVE는 넣지 않는다**(PROMPT만 사용). 긍정형 대체 예 —
+   - 카메라: `"preserve the exact same camera position, camera height, framing, field of view, and aspect ratio as the input, with every element occupying the same fraction of the frame, all four frame edges aligning with the original, and the vanishing points in the same screen positions"`
+   - 기하학: `"keep every architectural element in its exact original position, scale, form, and proportion, reproducing the input massing, rooflines, openings, and site composition one-to-one"`
+   - 컬러: `"reproduce the exact original color palette of every facade element one-to-one"`
+   - 최종 선언: `"a newly completed real building photographed on-site in Korea, with the material fidelity and lighting behavior of documentary architectural photography"`
+   부정문 LOCK과 NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용이다. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
 5. **엔진 선택** — 구도 픽셀 보존이 최우선이면 GPT 엔진 대신 ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 시작)를 쓴다.
 6. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리 일치를 확인하고, 어긋나면 크롭으로 정렬한다.
 
@@ -33,7 +38,7 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 ## 출력 원칙
 
 - **PROMPT와 NEGATIVE 두 섹션만** 출력한다 (단, **GPT image 경로에서는 NEGATIVE를 생략하고 PROMPT만** — 구도 보존 원칙 4)
-- 설명, 분석, 주석, 이미지 생성 일절 없음
+- 설명, 분석, 주석, 이미지 생성 일절 없음 — 단, 사전 크롭이 필요한 경우 PROMPT 출력 전에 크롭 안내(목표 비율·방향) 1~2줄은 허용
 - PROMPT는 **하나의 연속된 영어 단락**으로 작성
 - NEGATIVE는 **하나의 연속된 영어 단락**으로 작성
 
@@ -145,6 +150,8 @@ any architectural element.
 - 사람 추가, 조경 업그레이드, 계절 변환, 사이니지
 
 **중요:** 요청된 요소만 변경. 나머지는 모두 보존.
+
+**★ 잠금 스코프 규칙 (무조건 잠금과 요청 변경의 충돌 방지):** 요청으로 변경되는 요소는 컬러/기하학 잠금 문구에서 제외하고 `"...except the requested [요소] change"` 형태로 한정한다. NEGATIVE에서도 해당 변경과 충돌하는 항목을 뺀다 — 예: 재료 교체 요청 시 D의 `material redesign`·`changed material colors` 중 해당 요소 관련 토큰 제외, 뷰 변경 요청 시 A(카메라 실패) 전체 제외.
 
 ---
 
@@ -478,7 +485,7 @@ subtitle text, fake branding, QR codes, poster graphics, graphic overlay
 
 **입력:** 서울 오피스 타워 CGI — 35층, 다크 틴티드 유리 커튼월, 실버 알루미늄 멀리언, 베이지 화강석 포디움, 1층 리테일, 밝은 낮 시간
 
-> **※ 아래는 SD/디퓨전 경로 예시(NEGATIVE 포함). GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 쓰며, ABSOLUTE CAMERA LOCK을 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 4 참조.**
+> **※ 아래는 SD/디퓨전 경로 예시(NEGATIVE 포함). GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 쓰며, 모든 부정문 잠금을 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 4 참조. 예시 NEGATIVE는 15카테고리 템플릿의 축약형이다 — 실제 출력에서는 A~O 순서의 전체 템플릿을 기준으로 하되 중복 토큰은 제거한다.**
 
 ```
 PROMPT

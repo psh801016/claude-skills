@@ -5,7 +5,11 @@ description: "마감재 · 표면 · 재질 사진을 3D 소프트웨어(3DS Max
 
 # 심리스 텍스처(알베도/PBR) 프롬프트 메이커
 
-마감재·표면 사진을, 3D 소프트웨어에 바로 import 할 수 있는 **평탄하고(delit), 이음새 없이 타일링되는(seamless), 정사각형 알베도(albedo/diffuse) 텍스처**를 만드는 image 프롬프트로 변환한다.
+마감재·표면 사진을, 3D 소프트웨어에 바로 import 할 수 있는 **평탄하고(de-lit, 탈조명), 이음새 없이 타일링되는(seamless) 알베도(albedo/diffuse) 텍스처**를 만드는 image 프롬프트로 변환한다.
+
+**출력 타입 2종 (먼저 결정):**
+- **MATERIAL_TILE (기본):** 1:1 정사각, 상하좌우 4방향 심리스 — 단일 재질 면.
+- **WALL_SECTION:** 여러 구역으로 구성된 벽(투톤·웨인스코트·띠 구성) — 그 면의 비율 보존, **가로만** 심리스, 세로 구성은 한 섹션 유지 (아래 "통합 원칙" 참조). 1:1을 강제하지 않는다.
 
 ## 핵심 원칙
 
@@ -18,9 +22,10 @@ description: "마감재 · 표면 · 재질 사진을 3D 소프트웨어(3DS Max
 
 1. **프롬프트를 "첨부 이미지 변환" 명령으로 작성한다.** 첫 문장은 반드시:
    > `"Use the ATTACHED reference image as the exact source and transform THAT SAME surface — do not invent, redesign, or re-imagine. Preserve precisely as in the source: [패널 배치/모듈 크기·위치/색/결/줄눈]. Change ONLY: (1) DELIGHT, (2) RECTIFY to orthographic, (3) make edges seamlessly tileable."`
+   - (3)의 심리스 문구는 출력 타입에 따라 분기: **MATERIAL_TILE** = `"make all four edges seamlessly tileable"` / **WALL_SECTION** = `"make it horizontally seamless left-to-right only; preserve the top and bottom boundaries; not vertically tileable"`
    - 변하는 건 **조명·원근·이음새 3가지뿐.** 배치·비율·색·재질은 원본 고정.
    - 불필요 요소(글자·사이니지·배너·가구 등)는 "remove ... so only the [면] remains" 로 제거 지시.
-2. **사용자에게 실행법을 반드시 안내한다:** ⓐ **원본 사진 첨부 필수**(텍스트만 ❌) ⓑ **img2img / 이미지 편집 모드**로 실행 ⓒ SD 계열이면 **Resemblance 높게 / Creativity 낮게**, 나노바나나·Gemini면 "이 이미지를 편집" 형태.
+2. **사용자에게 실행법을 반드시 안내한다:** ⓐ **원본 사진 첨부 필수**(텍스트만 ❌) ⓑ **img2img / 이미지 편집 모드**로 실행 ⓒ 엔진별 설정 — **Magnific이면 Creativity 0.1~0.2 / Resemblance 0.8~0.9 (0~1 스케일)**, **SD 계열(A1111/ComfyUI img2img)이면 denoising strength 0.3~0.45 낮게**, 나노바나나·Gemini면 "이 이미지를 편집" 형태 ⓓ **모드 B(장면+재질 지정)는 장면 전체를 첨부하지 말고 대상 재질 영역을 먼저 크롭한 이미지를 첨부 원본으로 쓴다(사전 크롭 필수)** — 고정 유사도 img2img는 장면 전체(가구·벽·천장)를 그대로 재현하므로 프롬프트의 isolate 문구만으로는 영역 추출이 안 된다. 크롭이 불가하면 편집형 생성기(나노바나나/Gemini) 경로로 안내 ⓔ 생성기가 출력 비율을 강제(1:1 등)하면 프롬프트로 비율을 요구하지 말고 **원본을 대상 면 비율로 크롭해 첨부**한다.
 
 > 패널 크기가 제각각인 벽(불규칙 구성)은 **격자를 새로 규칙화하지 말고 원본 배치를 그대로 보존**한다 — 규칙화는 균일 그리드 재질에만.
 
@@ -49,6 +54,8 @@ MJ 파라미터(`--v`, `--ar` 등) 포함하지 않는다.
 ## 출력 원칙
 
 - **PROMPT와 NEGATIVE 두 섹션만** 출력 — 두 섹션 앞·사이에는 설명을 넣지 않으며, 실행법 안내(원본 첨부·img2img 모드·설정값)는 두 섹션이 모두 끝난 **이후에만** 덧붙인다
+- 단, 사용자가 "프롬프트만 줘"라고 엄격 출력을 요구하면 실행법 안내를 생략한다 — **사용자의 출력 계약이 우선**
+- **NEGATIVE 분기:** gpt-image·나노바나나(Gemini) 등 **negative 입력 필드가 없는 의미기반 생성기** 대상이면 NEGATIVE 섹션을 생략하고, 핵심 억제 항목을 긍정형으로 PROMPT에 흡수한다(예: baked shadows 억제 → `"perfectly even shadowless lighting"`, seams 억제 → `"perfectly continuous edges"`). NEGATIVE 섹션은 SD/ComfyUI 디퓨전 경로 전용
 - PROMPT는 **하나의 연속된 영어 단락**, NEGATIVE도 **하나의 연속된 영어 단락**
 - 사용자가 PBR 맵(노멀/러프니스/AO)을 요청하면 그때만 추가 섹션을 붙인다 (아래 "PBR 맵 확장")
 
@@ -84,7 +91,9 @@ MJ 파라미터(`--v`, `--ar` 등) 포함하지 않는다.
 > `"Use the ATTACHED reference image as the exact source and transform THAT SAME [면/재질] into a flat orthographic seamless tileable PBR albedo texture — do not invent, redesign, or re-imagine. Preserve precisely as in the source: [배치/모듈/색/결/줄눈]."`
 
 **대안 — 설명 프레이밍** (텍스트 전용 생성기에서만): 원본을 못 첨부할 때.
-> `"A flat orthographic seamless tileable PBR albedo (base color / diffuse) texture map of [재질 구체적 묘사], extracted faithfully from the reference image for direct use in 3D software."`
+> `"A flat orthographic seamless tileable PBR albedo (base color / diffuse) texture map of [재질 구체적 묘사 — 색상값·패턴 스케일·모듈 치수까지 직접 서술] for direct use in 3D software."`
+
+> ⚠️ **텍스트 전용 경로에서는 "extracted faithfully from the reference image" 같은 참조 문구를 절대 넣지 않는다** — 첨부되지 않은 이미지를 참조시키면 환각을 유발한다(아래 예시들의 해당 구문도 텍스트 전용으로 복사할 때는 제거하고 Claude가 원본 분석에서 뽑은 구체 묘사로 대체한다).
 
 **모드 B는 영역 한정을 추가:**
 > `"...isolate only the [지정 재질, 예: blue low-pile carpet] region from the scene and generate its texture, ignoring all other surfaces."`
@@ -190,6 +199,8 @@ low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo
 ## PBR 맵 확장 (옵션 — 요청 시에만)
 
 사용자가 "노멀맵", "러프니스맵", "AO맵", "PBR 풀세트"를 요청하면, 같은 재질에 대해 추가 섹션을 출력한다. 각 맵은 albedo와 동일한 구도·타일링을 공유해야 한다.
+
+> ⚠️ 이미지 생성기로 만든 노멀/러프니스/AO는 **물리 측정 기반 PBR이 아니라 시각적 추정 맵**이다. 3D에 바로 넣지 말고 Substance/Materialize/렌더러 프리뷰에서 검수·보정 후 사용하도록 안내를 덧붙인다.
 
 - **NORMAL MAP PROMPT:** `"Tangent-space normal map of the same [재질] texture, same seamless tiling and alignment as the albedo, dominant blue/purple palette, encoding surface height as RGB normals, no color/albedo information, no lighting."`
 - **ROUGHNESS MAP PROMPT:** `"Grayscale roughness map of the same [재질] texture, same tiling, white = rough and black = smooth, representing micro-surface variation only, no color, no lighting."`

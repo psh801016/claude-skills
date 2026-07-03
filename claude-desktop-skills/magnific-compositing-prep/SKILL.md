@@ -1,6 +1,6 @@
 ---
 name: magnific-compositing-prep
-description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용 프롬프트로 변환하는 스킬. 수직/수평 왜곡 최소화, 소실점 정확도 유지, 합성 친화적 배경이 핵심. '마그네픽 프롬프트', '나노바나나', '합성 배경', '3D 합성용', '합성할 배경', '수직 수평 맞게', '업스케일 프롬프트', 'compositing', '합성용 업스케일' — 이 중 하나라도 나오면 반드시 이 스킬을 사용한다. 이미지가 없어도 공간 설명만으로 실행 가능. interior-prompt-maker(CGI→실사화)·cinematic-exhibition-lighting(조명 전환)과 목적이 다르다 — 이 스킬은 합성 배경의 기하학 정확도 확보가 목적이다."
+description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용 프롬프트로 변환하는 스킬. 수직/수평 왜곡 최소화, 소실점 정확도 유지, 합성 친화적 배경이 핵심. '마그네픽 프롬프트', '합성 배경', '3D 합성용', '합성할 배경', '수직 수평 맞게', '합성용 업스케일' — 이 중 하나라도 나오면 반드시 이 스킬을 사용한다. '나노바나나'·'업스케일 프롬프트'는 단독으로는 발동하지 않는다 — 합성/업스케일 전처리 문맥이 함께 있을 때만 이 스킬이다(나노바나나 단독 이미지 생성 요청, 실사화 결과물의 단순 업스케일 설정 문의는 해당 스킬이 담당: 심리스 텍스처 목적이면 texture-prompt-maker, 실사화 업스케일 설정은 interior/arch 스킬의 엔진 선택 절). 이미지가 없어도 공간 설명만으로 실행 가능. interior-prompt-maker(CGI→실사화)·cinematic-exhibition-lighting(조명 전환)과 목적이 다르다 — 이 스킬은 합성 배경의 기하학 정확도 확보가 목적이다."
 ---
 
 # Magnific Compositing Prep 프롬프트 메이커
@@ -8,14 +8,18 @@ description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지
 포토샵 3D 합성 배경을 Magnific nanobanana 4x로 업스케일하기 위한 전처리 프롬프트 생성.
 수직/수평 라인과 소실점 보존이 최우선이며, 새로운 왜곡·오브젝트 추가를 원천 차단한다.
 
+> 용어: 여기서 "nanobanana"는 **Magnific 업스케일러의 nanobanana 엔진 프리셋**을 뜻한다(원래 nano-banana는 Google Gemini 계열 이미지 모델의 별칭 — 공식명 Gemini Flash Image). SETTINGS(Creativity/Resemblance/Detail/HDR)는 Magnific UI 슬라이더 값이며 Google Gemini API 파라미터가 아니다.
+
 ## 처리 순서
 
 1. **소스 판별** — 실사진 / CGI 렌더 구분
 2. **고유 요소 추출** — 브랜드·로고 / 특징 재료·패턴 / 핵심 구조물
 3. **공간 유형 파악** — 아래 목록에서 매칭
-4. **PROMPT + NEGATIVE + SETTINGS 세 섹션만 출력** — 설명·분석·체크리스트 없음
+4. **PROMPT + SETTINGS + NEGATIVE(SD 대체 경로 전용) 세 섹션을 항상 이 구성으로 출력** — 설명·분석·체크리스트 없음. NEGATIVE 섹션 제목은 반드시 `NEGATIVE (SD/ComfyUI 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음)`으로 표기해 사용처 혼동을 차단한다
 
-**절대 금지:** 카메라 브랜드(Sony, Canon, Nikon, Hasselblad 등) / MJ 파라미터(`--v`, `--ar` 등)
+**절대 금지:** 카메라 브랜드(Sony, Canon, Nikon, Hasselblad 등) / MJ 파라미터(`--v`, `--ar` 등) / 절대 초점거리 mm 숫자
+
+**NEGATIVE 사용처 (결정 규칙):** Magnific/nanobanana 실행 시 입력하는 것은 **PROMPT + SETTINGS 뿐**이다. NEGATIVE를 프롬프트에 이어붙이지 않는다 — 의미기반 엔진(nanobanana)은 부정 나열을 장면 묘사로 읽어 역효과를 내고, Magnific UI에는 NEGATIVE 전용 필드가 없다. PROMPT의 긍정형 기하학 잠금(`perfect rectilinear perspective, straight parallel lines` 등)이 억제를 대신한다. NEGATIVE 섹션은 **SD/ComfyUI 계열로 대체 실행할 때만** 그 negative 필드에 넣는 참고용이며, 출력 시 섹션 제목에 이를 명기한다.
 
 ---
 
@@ -203,6 +207,18 @@ vinyl or terrazzo floor pattern and seam,
 acoustic panel perforation depth, diffuse ceiling panel even glow,
 matte wall paint subtle variation, handrail metal surface detail
 ```
+
+### 전시부스 / 전시홀 (옥타놈 시스템부스 · 블럭부스)
+```
+anodized aluminum post and beam edge specular highlight, panel-to-panel seam depth,
+matte white melamine or PVC infill panel surface, fascia header band flatness,
+grey needle-punch exhibition carpet pile, aluminum base rail edge,
+overhead truss and spotlight specular, straight vertical frame lines preserved
+```
+> 옥타놈 부스는 수직/수평 프레임 직선 보존이 생명이다. CGI 소스면 Creativity를 더 낮게(0.1~0.2) 잡아 격자 왜곡을 막고, 포스트가 패널보다 볼록 돌출된 seam을 유지시킨다.
+
+### 목록에 없는 공간 (fallback)
+위 목록에 없는 공간(체육관, 종교시설, 공장 내부, 지하주차장 등)은 키워드 블록을 생략하거나 임의 창작하지 말고, **가장 유사한 블록을 선택**하거나 그 공간의 **바닥·벽·천장·조명 4요소**를 같은 형식(재료명 + micro-texture/seam/falloff 패턴)으로 직접 작성한다.
 
 ---
 
