@@ -1,6 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 조명 레이어 세트('레이어 세트', '조명 나눠서', '따로 컨트롤'): 빔/헤이즈/스팟 풀/컬러 워시 4분리 프롬프트 + 블렌드 가이드 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 사람을 별도 레이어로 합성하려면 person-layer-maker 사용(조명 레이어는 인물 위에 얹는다) 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
+description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 조명 레이어 세트('레이어 세트', '조명 나눠서', '따로 컨트롤'): 빔/헤이즈/스팟 풀/컬러 워시 4분리 프롬프트 + 블렌드 가이드 익스트림 다크: EXTREME DARK PROMPT + MAGNIFIC SETTINGS(Magnific img2img 전용) + NEGATIVE(SD 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음) 둘 다 요청 시: 두 세트 순서대로 출력 사람을 별도 레이어로 합성하려면 person-layer-maker 사용(조명 레이어는 인물 위·아래로 나눠 쌓는다 — 공기 중 빔/헤이즈는 인물 위, 바닥·벽 스팟풀/컬러워시는 인물 아래) 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
 ---
 
 # 시네마틱 전시 조명 마스터
@@ -8,11 +8,13 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 인테리어·건축·행사 공간에 시네마틱 전시 조명을 이식한다.
 구조는 4중 완전 잠금 — 오직 조명·분위기만 변환.
 
+> **용어·엔진 정리:** 이 문서의 "nanobanana"는 **Magnific 업스케일러의 nanobanana 엔진 프리셋**을 뜻한다(원래 nano-banana는 Google Gemini 계열 이미지 모델의 별칭 — 공식명 Gemini Flash Image). MAGNIFIC SETTINGS(Creativity/Resemblance)는 Magnific UI 슬라이더 값이다. **NEGATIVE 처리는 엔진 계열로 갈린다** — Magnific·Gemini/nano-banana·GPT image 등 **의미기반 모델 경로에는 NEGATIVE를 넣지 않고**(부정 나열을 장면 묘사로 읽어 역효과), 부정문을 긍정형으로 흡수한다. NEGATIVE 블록은 **SD/ComfyUI 디퓨전 대체 경로 전용**이다. 본문에서 "GPT image 경로"라 적힌 규칙은 Gemini/nano-banana 등 다른 의미기반 모델에도 동일하게 적용된다.
+
 ## ★ 구도 보존 최우선 원칙 (실패 1순위 방지)
 
 이 스킬은 카메라·기하학을 4중 잠금하지만, i2i 엔진 자체가 구도(화각·종횡비)를 틀 수 있다. 근본 원인은 **종횡비 불일치**다.
 
-1. **★ 실행 전 원본을 대상 엔진이 지원하는 비율로 사전 크롭** — 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본을 미리 그 비율로 크롭해 넣고, **gpt-image-2는 제약 내 임의 해상도를 지원**하므로 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 사용자에게 경고 후 진행하고(비율 맞춤 크롭에만 적용), 크롭은 목표 비율·방향을 1~2줄로 안내하거나 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다. 모델이 엣지에서 공간을 발명할 여지를 없애는 유일한 구조적 해결책이다.
+1. **★ 실행 전 원본을 대상 엔진이 지원하는 비율로 사전 크롭** — 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본을 미리 그 비율로 크롭해 넣고, **임의 해상도를 지원하는 엔진/모델(사용 전 사양 확인)**이면 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 사용자에게 경고 후 진행하고(비율 맞춤 크롭에만 적용), 크롭은 목표 비율·방향을 1~2줄로 안내하거나 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다. 모델이 엣지에서 공간을 발명할 여지를 없애는 유일한 구조적 해결책이다.
 2. **절대 초점거리 숫자 금지** — PROMPT에 mm 숫자를 쓰지 않는다(이 스킬은 이미 미사용). "원본과 동일한 화각" 긍정형만 쓴다.
 3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 본문·예시의 모든 부정문을 긍정형으로 바꾼다 (2·3·6·9·10단계 포함)** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 카메라/기하학 잠금의 부정문(`No camera change`, `no reframing` 등)은 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로, 6단계의 `No fantasy or illustration style`·9단계의 `not a CGI render`·10단계의 부정문 나열은 긍정형 대체문(`"a professionally photographed real-world cinematic event space, with the material fidelity and lighting physics of documentary stage photography, every material, structure, furniture piece, and screen exactly as in Image 1"`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
 4. **엔진 선택·검증** — 구도 보존 최우선이면 ControlNet 기반 SD i2i 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 — 익스트림 다크 모드의 0.75/0.35와 스케일 동일, 용도만 다름)를 쓰고, 결과 위에 원본 50% 오버레이로 소실점·모서리 일치를 확인한다.
@@ -22,9 +24,10 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 | 모드 | 트리거 | 출력 |
 |---|---|---|
 | **메인 변환** | 기본 (조명 변환 요청) | PROMPT + NEGATIVE |
-| **조명 레이어** | "레이어만", "빛만", "포토샵 합성용", "블랙 배경 조명", "조명 레이어" | LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE |
+| **조명 레이어** | "레이어만", "빛만 레이어", "빛만 뽑아", "포토샵 합성용", "블랙 배경 조명", "조명 레이어" | LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE |
 | **조명 레이어 세트** ★ | "레이어 세트", "조명 나눠서", "레이어 분리", "따로따로 컨트롤" | 4분리 레이어 프롬프트 (빔/헤이즈/스팟 풀/컬러 워시) + 블렌드 가이드 |
-| **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS |
+| **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "빛만 눌러", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE(SD 대체 경로 전용) + MAGNIFIC SETTINGS |
+> 트리거 우선순위: "빛만 살려/눌러" 계열은 **익스트림 다크** 우선, "빛만 레이어/뽑아"는 **조명 레이어**로 판정한다.
 | **둘 다** | "둘 다", "레이어도", "합성도 같이" | 두 세트 모두 출력 |
 
 ## 빠른 흐름
@@ -547,6 +550,8 @@ EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에
 MAGNIFIC SETTINGS
 Creativity: [값]
 Resemblance: [값]
+Detail: [값]
+HDR: [값]
 ```
 
 ### EXTREME DARK PROMPT 내용 (항상 이 구조로)
@@ -561,6 +566,7 @@ Resemblance: [값]
 > `"Only the crossing spotlight beams remain as the dominant light source. The volumetric beam rays are the sole illumination — intense, sharp, and high contrast against the surrounding blackness. Haze and atmospheric particles within the beam paths are visible and glowing."`
 
 **④ 색온도 (앞서 분석한 모드 그대로 적용)**
+- Neutral Cinematic (기본값 — 색온도 키워드·Image 2 없을 때): `"Neutral cool-white spotlight beams with subtle silver undertones cutting through black darkness."`
 - Cool Blue: `"Cool blue and cold white spotlight beams cutting through black darkness."`
 - Warm Amber: `"Warm amber and gold spotlight beams cutting through black darkness."`
 - Mixed: `"Dominant cool blue primary beams and warm amber accent beams cutting through black darkness."`
@@ -581,8 +587,11 @@ bright ambient lighting, evenly lit room, visible wall textures, visible ceiling
 ```
 Creativity: 0.75
 Resemblance: 0.35
+Detail: 0.4
+HDR: 0.1
 ```
 (구도 보존용 기본값 0.1~0.3 / 0.85~1.0과 정반대인 것은 의도 — 이 모드는 변형 허용 모드다. 위 개념의 경고 참조.)
+**Detail/HDR:** 다크 플레이트는 **HDR 낮게(~0.1)** — HDR을 올리면 눌러둔 암부가 다시 살아나 실루엣이 풀린다. Detail은 빔·헤이즈 입자감 확보용 **0.4 전후**, 노이즈가 과하면 0.3으로 낮춘다.
 
 ### 익스트림 다크 예시 — Cool Blue / 컨퍼런스홀
 
@@ -596,4 +605,6 @@ bright ambient lighting, evenly lit room, visible wall textures, visible ceiling
 MAGNIFIC SETTINGS
 Creativity: 0.75
 Resemblance: 0.35
+Detail: 0.4
+HDR: 0.1
 ```

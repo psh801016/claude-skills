@@ -1,6 +1,6 @@
 ---
 name: interior-prompt-maker
-description: "인테리어 · 실내 공간 CGI · 렌더 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 실내 사진 프롬프트로 변환하는 전문 스킬. 이미지 1장(원본 실사화)과 2장(구조 보존 + 스타일 리모델링) 두 가지 모드를 자동 판단한다. 사용자가 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '리모델링 프롬프트 써줘', 'i2i 프롬프트 뽑아줘', 'SD/MJ 프롬프트', '사진처럼 만들어줘', 'CGI 느낌 없애줘', '인테리어 프롬프트' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 실내 렌더, 화이트 모델, 클레이 모델 — 모든 실내 CGI. 지원 공간: 거실 · 주방 · 침실 · 욕실 · 오피스 · 카페 · 레스토랑 · 호텔 로비 · 병원 · 교육 공간 · 공공 서비스홀. 건물 외관 프롬프트는 arch-prompt-maker, 재질·텍스처 추출은 texture-prompt-maker, 포토샵 합성용 업스케일 전처리는 magnific-compositing-prep, 구조·재료는 그대로 두고 조명·분위기만 이식할 때는 cinematic-exhibition-lighting을 사용한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 arch, 실내 공간(전시부스 실내 포함)이 주체면 이 스킬 — 둘 다 크게 보이면 사용자에게 확인. 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
+description: "인테리어 · 실내 공간 CGI · 렌더 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 실내 사진 프롬프트로 변환하는 전문 스킬. 이미지 1장(원본 실사화)과 2장(구조 보존 + 스타일 리모델링) 두 가지 모드를 자동 판단한다. 사용자가 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '리모델링 프롬프트 써줘', 'i2i 프롬프트 뽑아줘', 'SD/MJ 프롬프트', '사진처럼 만들어줘', 'CGI 느낌 없애줘', '인테리어 프롬프트' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 실내 렌더, 화이트 모델, 클레이 모델 — 모든 실내 CGI. 지원 공간: 거실 · 주방 · 침실 · 욕실 · 오피스 · 카페 · 레스토랑 · 호텔 로비 · 병원 · 교육 공간 · 공공 서비스홀. 건물 외관 프롬프트는 arch-prompt-maker, 재질·텍스처 추출은 texture-prompt-maker, 포토샵 합성용 업스케일 전처리는 magnific-compositing-prep, 구조·재료는 그대로 두고 조명·분위기만 이식할 때는 cinematic-exhibition-lighting, 원본에 없는 인물을 별도 레이어로 합성할 때는 person-layer-maker를 사용한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 arch, 실내 공간(전시부스 실내 포함)이 주체면 이 스킬 — 둘 다 크게 보이면 사용자에게 확인. 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
 ---
 
 # 인테리어 Image-to-Image 프롬프트 메이커
@@ -15,11 +15,13 @@ description: "인테리어 · 실내 공간 CGI · 렌더 이미지를 Stable Di
 
 i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) 틀어짐**. 근본 원인은 문구가 아니라 **종횡비 불일치**다 — 16:9 원본을 모델이 다른 비율로 강제하면, 모자란 부분을 "프레임 밖 공간을 발명"해 채우며 줌아웃·측벽 추가가 생긴다. 따라서 문구보다 1·2가 먼저다.
 
-1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭 (진짜 해결책)** — 모델이 엣지에서 방을 발명할 여지를 구조적으로 없앤다. 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본 16:9를 미리 3:2(가로형)로 크롭해 넣고, **gpt-image-2는 제약 내 임의 해상도를 지원**하므로 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 중요 요소 절단 위험을 사용자에게 경고 후 진행한다(이 경고는 출력 비율 맞춤 크롭에만 적용 — 영역 추출 목적의 의도적 크롭은 대상 아님). "넓히지 마"(강제 불가)를 "넓힐 여지 없음"(구조 보장)으로 바꾸는 유일한 단계다.
+1. **★ 실행 전 원본을 출력 합법 비율로 사전 크롭 (진짜 해결책)** — 모델이 엣지에서 방을 발명할 여지를 구조적으로 없앤다. 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본 16:9를 미리 3:2(가로형)로 크롭해 넣고, **임의 해상도를 지원하는 엔진/모델(사용 전 사양 확인)**이면 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 중요 요소 절단 위험을 사용자에게 경고 후 진행한다(이 경고는 출력 비율 맞춤 크롭에만 적용 — 영역 추출 목적의 의도적 크롭은 대상 아님). "넓히지 마"(강제 불가)를 "넓힐 여지 없음"(구조 보장)으로 바꾸는 유일한 단계다.
 2. **종횡비 원본 일치** — 사전 크롭한 비율과 출력 비율을 동일하게 둔다.
 3. **절대 초점거리 숫자 금지** — 프롬프트에 `24mm`·`35mm` 등 숫자 초점거리를 절대 쓰지 않는다. 모델이 원본 화각을 무시하고 그 렌즈로 재해석해 광각화·줌아웃을 일으킨다. 오직 "원본과 동일한 화각·시점·프레이밍" **긍정형** 상대 표현만 쓴다.
 4. **부정문("do not widen / zoom out") 금지** — 의미기반 모델에선 "분홍 코끼리" 효과로 오히려 그 변형을 유발한다. 항상 "원본과 동일하게 / 프레임 점유율 동일 / 네 모서리 정렬 / 소실점 동일 위치" 같은 **긍정 대응**으로 쓴다.
-5. **GPT image 경로에서는 NEGATIVE를 넣지 않는다** — gpt-image는 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. PROMPT(긍정형)만 사용한다. NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로에서만 쓴다.
+5. **GPT image 경로에서는 NEGATIVE를 넣지 않는다** — gpt-image는 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. PROMPT(긍정형)만 사용한다. NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로에서만 쓴다. **PROMPT 본문 안의 부정문 블록도 전부 긍정형으로 바꾼다 — 카메라·anti-CGI(9단계)뿐 아니라 컬러 잠금(3단계)·리모델링 잠금도 포함**한다:
+   - 컬러 잠금 긍정형: `"reproduce the exact original design color palette of every material and surface one-to-one, converting only CGI surface quality to photographic realism"`
+   - 리모델링 잠금 긍정형: `"keep Image 1's architecture and fixed elements exactly, using only elements present in Image 1 or Image 2"`
 6. **엔진 선택 규칙** — 구도 픽셀 보존이 최우선이면 **GPT 엔진을 쓰지 않는다.** ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(**0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게** 에서 시작, 이미지별 튜닝)를 쓴다.
 7. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리가 일치하는지 확인하고, 어긋나면 크롭으로 정렬한다.
 
@@ -394,7 +396,7 @@ replaced architecture from the second image, structural transfer from reference 
 재료: 세라믹 타일 줄눈, 자연석 다공성, 브러시드 니켈
 디테일: 거울 깊이감, 물 자국, 실리콘 이음새, 배수구
 조명: 디퓨즈드 미러 조명, 컨트롤된 하이라이트
-카메라: 24mm 광각 또는 24–28mm
+카메라: 24–28mm 광각
 
 ### 오피스/작업공간
 재료: 어쿠스틱 패널, 매트 데스크, 상업용 카펫, 금속 프레임
@@ -477,7 +479,7 @@ replaced architecture from the second image, structural transfer from reference 
 
 ## 예시
 
-> **※ 아래 예시는 SD/디퓨전 경로용(NEGATIVE 포함).** GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 사용하며, PROMPT 말미의 부정문 블록(`No render look...`)을 9단계의 GPT 긍정형 대체 문장으로 바꾼다.
+> **※ 아래 예시는 SD/디퓨전 경로용(NEGATIVE 포함).** GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 사용하며, PROMPT 안의 **모든** 부정문(말미 `No render look...`뿐 아니라 컬러 잠금 `do NOT redesign or recolor...`·리모델링 잠금 `do NOT invent elements absent...`)을 3·9단계의 GPT 긍정형 대체 문장으로 바꾼다(원칙 5).
 
 ### 단일 모드 — 한국 공공 도서관 서비스홀
 
