@@ -20,7 +20,7 @@ i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) �
    - 컬러: `"reproduce the exact original color palette of every facade element one-to-one"`
    - 최종 선언: `"a newly completed real building photographed on-site in Korea, with the material fidelity and lighting behavior of documentary architectural photography"`
    부정문 LOCK과 NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용이다. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
-5. **엔진 선택** — 구도 픽셀 보존이 최우선이면 GPT 엔진 대신 ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 시작)를 쓴다.
+5. **엔진 선택** — 구도 픽셀 보존이 최우선이면 GPT 엔진 대신 ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 시작)를 쓴다. **FLUX 파이프라인이면 FLUX-native 컨트롤 모델(FLUX.1 Depth-dev 또는 Canny-dev 택일) — SD/SDXL 계열 ControlNet·LoRA는 구조가 달라 로드 불가**이니 FLUX 전용으로 교체한다(dev 계열은 비상업 라이선스 주의, 2026-07 기준).
 6. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리 일치를 확인하고, 어긋나면 크롭으로 정렬한다.
 
 ## 빠른 흐름

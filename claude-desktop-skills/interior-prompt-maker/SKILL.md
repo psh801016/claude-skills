@@ -20,7 +20,7 @@ i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) �
 3. **절대 초점거리 숫자 금지** — 프롬프트에 `24mm`·`35mm` 등 숫자 초점거리를 절대 쓰지 않는다. 모델이 원본 화각을 무시하고 그 렌즈로 재해석해 광각화·줌아웃을 일으킨다. 오직 "원본과 동일한 화각·시점·프레이밍" **긍정형** 상대 표현만 쓴다.
 4. **부정문("do not widen / zoom out") 금지** — 의미기반 모델에선 "분홍 코끼리" 효과로 오히려 그 변형을 유발한다. 항상 "원본과 동일하게 / 프레임 점유율 동일 / 네 모서리 정렬 / 소실점 동일 위치" 같은 **긍정 대응**으로 쓴다.
 5. **GPT image 경로에서는 NEGATIVE를 넣지 않는다** — gpt-image는 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. PROMPT(긍정형)만 사용한다. NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로에서만 쓴다.
-6. **엔진 선택 규칙** — 구도 픽셀 보존이 최우선이면 **GPT 엔진을 쓰지 않는다.** ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(**0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게** 에서 시작, 이미지별 튜닝)를 쓴다.
+6. **엔진 선택 규칙** — 구도 픽셀 보존이 최우선이면 **GPT 엔진을 쓰지 않는다.** ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(**0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게** 에서 시작, 이미지별 튜닝)를 쓴다. **FLUX 파이프라인이면 FLUX-native 컨트롤 모델(FLUX.1 Depth-dev 또는 Canny-dev 중 택일, 동시 사용은 ComfyUI 스태킹으로 별도 검증)** 을 쓴다 — SD/SDXL 계열 ControlNet·LoRA는 구조가 달라 **로드 자체가 불가**하니 FLUX 전용으로 교체. 주의: dev 계열은 비상업 라이선스(상업 프로젝트는 라이선스 확인), BFL API 신규 통합에서는 deprecated 표시(로컬 ComfyUI open-weight 경로는 사용 가능, 2026-07 기준).
 7. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리가 일치하는지 확인하고, 어긋나면 크롭으로 정렬한다.
 
 ## 빠른 흐름
@@ -468,7 +468,7 @@ replaced architecture from the second image, structural transfer from reference 
 - 조명: `cool neutral exhibition hall lighting from metal-halide and fluorescent fixtures, slight fluorescent green bias only in ambient shadows, mixed with warm booth spotlights` (4000K대는 중성백색이지 녹색이 아니다 — 녹색끼는 그림자에만 미세하게)
 - 촬영: `deep-focus architectural trade-show photography` (얕은 심도 금지 — 구조 보존 약화)
 
-**★ 엔진 규칙 (전시부스는 반드시):** 규칙적 직선격자라 i2i 시 ControlNet 병행이 사실상 필수다. 우선순위 — **Lineart(또는 Lineart-realistic) 또는 Canny를 primary 구조 컨트롤**(포스트·패널·모서리 윤곽 보존), **MLSD는 긴 직선·소실점 보조로 optional**, **Depth는 부스 볼륨·통로 전후관계 보조로만** (특히 블럭부스는 Depth로 박스 모듈 입체감 보존). MLSD 단독은 짧은 포스트 두께·패널 seam·조명 암을 날려 부족하다. GPT 단독 경로보다 SD+ControlNet을 권장한다.
+**★ 엔진 규칙 (전시부스는 반드시):** 규칙적 직선격자라 i2i 시 ControlNet 병행이 사실상 필수다. 우선순위 — **Lineart(또는 Lineart-realistic) 또는 Canny를 primary 구조 컨트롤**(포스트·패널·모서리 윤곽 보존), **MLSD는 긴 직선·소실점 보조로 optional**, **Depth는 부스 볼륨·통로 전후관계 보조로만** (특히 블럭부스는 Depth로 박스 모듈 입체감 보존). MLSD 단독은 짧은 포스트 두께·패널 seam·조명 암을 날려 부족하다. GPT 단독 경로보다 SD+ControlNet을 권장한다. **FLUX 파이프라인이면 FLUX-native 컨트롤(Canny-dev 또는 Depth-dev 택일, 동시 사용은 ComfyUI 스태킹 검증 필요)로 구성한다 — SD/SDXL 계열 CN은 로드 불가.** 참조용 커뮤니티 파이프라인: PH's Archviz x AI(civitai, SDXL→FLUX 단계식 — 2026-07 조회 기준, dev 계열 비상업 라이선스 주의).
 
 **★ GPT-image 경로 긍정형 잠금문 (NEGATIVE 대신 PROMPT에 이어붙임):**
 > `"straight rigid booth structure, crisp orthogonal module grid, clean panel seams, physically mounted spotlights, blank or deliberately simple signage, the booth reads as a real exhibition stand photographed on a trade-show floor."`
