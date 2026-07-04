@@ -31,7 +31,7 @@ description: "이미 실사화된 공간 사진(전시부스·행사장·인테�
 2. **기존 인물 분기**: 베이스에 이미 사람이 있으면 — 유지(기존 인물의 조명·색을 신규 인물의 **매칭 앵커**로 사용) / 제거(인페인트로 지우고 바닥 재구성 후 진행) 중 확인.
 3. **인물 구성 확인**: 몇 명, 역할, 근/중/원경, **포즈 분류(서기/앉기/기대기)** — 미지정이면 장면에 맞는 기본 구성을 제안하고 확인.
 4. **컷 분할 계획 → GROUP PROMPT 출력** (경로 A 기본. NB Pro는 의미기반 — NEGATIVE 없음, 긍정형만). 컷 수 = 인원을 **컷당 2~3명 상한**으로 나누되, **같은 거리대(근/중/원경)·상호작용 무리 단위로 묶는다**(분할 규칙은 GROUP PROMPT 템플릿 절 참조). 각 컷마다 GROUP PROMPT 1개를 출력하고, 컷이 여럿이면 같은 조명 문구 + 첫 컷 레퍼런스 재투입으로 일관성을 유지한다.
-5. **PHOTOSHOP STEPS + SCALE ANCHOR + 품질 게이트 출력**
+5. **REPLACE PROMPT 템플릿 + PHOTOSHOP STEPS + SCALE ANCHOR + 품질 게이트 출력** (출력 형식의 구성 그대로)
 
 ## 출력 형식 (항상 이 구성)
 
@@ -64,6 +64,10 @@ QUALITY GATE — 재생성 판정 기준
 
 **공통 골격 (사람만 분리 친화 — 단색 배경·간격 배치·접지):**
 > `"Ultra photorealistic group photograph of [N] people arranged side by side with clear gaps between each figure, on a clean bare seamless [배경색] studio floor with only minimal soft contact shadows, against a plain solid empty [배경색] background, clean separable silhouettes, every figure fully visible from head to shoes inside the frame. From left to right: (1) [성별·연령·복장·역할·포즈], (2) [성별·연령·복장·역할·포즈], (3) [...]. Lighting matched to the destination scene: [조명 방향+색온도+대비], a single clear directional key light shared by all figures. Natural body proportions, candid unposed everyday stances, distinct faces and outfits for each person, realistic skin texture, individual hair strands, natural fabric drape and wrinkles, [카메라 높이 표현]. Documentary candid style, each person looking [시선 방향]."`
+
+**★ 골격 변형 2종 (공통 골격은 "서기·간격·전신" 라인업 전제 — 아래 컷 유형이면 해당 절만 바꿔 쓴다):**
+- **클러스터 컷 (상담 그룹 등 상호작용 무리):** `arranged side by side with clear gaps between each figure` → `standing close together in natural conversational spacing, bodies angled toward each other, the group reading as one connected cluster with a clean outer silhouette` — 클러스터는 1레이어 유지라 내부 간격이 필요 없다. 클러스터+단독 인물이 한 컷이면 **클러스터와 단독 인물 사이에만** 간격을 명시한다.
+- **착석 컷 (앉은 인물):** `every figure fully visible from head to shoes` → `each figure seated on a simple gray box at the same height as the destination chair or desk, the entire seated figure and box fully visible in the frame`, `candid unposed everyday stances` → `natural seated posture, upper body upright` — 포즈군 통일 원칙에 따라 착석 인물은 어차피 별도 컷이다.
 
 - **좌→우 슬롯 명세**: 인물마다 번호 슬롯으로 성별·나이·복장·포즈를 따로 박는다 — 안 그러면 비슷한 얼굴·복장이 반복된다(`distinct faces and outfits` 포함).
 - **★플랫 라인업 규격**: 일괄 컷은 장면의 광각을 흉내내지 않고 **왜곡 없는 정면 라인업**으로 생성한다 — 골격에 `"rendered with a flat distortion-free perspective, as if photographed from a distance with a narrow field of view, all figures at the same camera distance"`를 포함. 컷 좌우 끝 인물에 광각 왜곡이 박히면 재배치가 불가능해진다. 장면의 원근은 배치·스케일(±15~20%)로만 대응하고, 그 이상은 거리대별 컷 분리.
@@ -140,7 +144,7 @@ QUALITY GATE — 재생성 판정 기준
 
 - 생성: **Higgsfield Nano Banana Pro**(웹 — 2026-07 기준 무료 UNLIMITED, 제품 정책은 변동 가능) 세로 프레이밍, 3~4 변형 중 선택. 같은 인물 재사용은 **레퍼런스 이미지 재투입**으로 캐릭터 일관성 유지. SD 계열로 인물을 생성하는 경우에만 negative 사용 가능(이 스킬의 기본 경로 NB Pro는 긍정형만).
 - 업스케일: 베이스가 Magnific 업스케일본이면 인물도 해상도를 맞춰 합성 — **인물은 Creativity 0.1 / Resemblance 0.95**(얼굴 변형 방지, 0~1 스케일).
-- Magnific **Relight**: 컷아웃 인물에 베이스를 광원 레퍼런스로 걸어 색광을 자동 일치 — 수동 색매칭 전에 시도할 가치가 있는 지름길.
+- Magnific **Relight**: 컷아웃 인물에 베이스를 광원 레퍼런스로 걸어 색광을 자동 일치 — **순서: 컷아웃 직후 Relight 먼저 시도 → 부족하면 PHOTOSHOP STEPS 4의 수동 색 매칭(Match Color→Camera Raw→Curves)으로 보완**. 두 절차는 경쟁이 아니라 지름길→정밀 순의 한 파이프라인이다.
 - **NB Pro(기본 경로)에서는 NEGATIVE를 출력하지 않는다** — 의미기반이라 부정 나열이 역효과. 억제는 긍정형으로만. SD 계열로 대체 생성할 때만 negative를 쓴다(위 생성 규칙).
 
 ## 대안·고급 경로 (요청 시 안내)

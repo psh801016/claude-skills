@@ -1,6 +1,6 @@
 ---
 name: arch-prompt-maker
-description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬. 사용자가 건물 외관 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', 'SD 프롬프트', 'MJ 프롬프트', 'i2i 프롬프트 써줘', '프롬프트 뽑아줘', '사실적으로 만들어줘', '렌더 느낌 없애줘', '사진처럼 만들어줘' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI. 지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물. 지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체, 사이니지 수정, 조경 업그레이드, 인물 추가. 인테리어 · 실내 공간(전시부스 실내 포함) 프롬프트는 interior-prompt-maker를 사용한다. 레퍼런스 이미지의 조명을 이식하는 요청은 cinematic-exhibition-lighting을 쓰고, 단순 야간/황금시간대/날씨 전환은 외관이면 이 스킬이 담당한다. 파사드 재질을 심리스 타일링 텍스처로 뽑는 것은 texture-prompt-maker, 포토샵 합성 배경의 업스케일 전처리는 magnific-compositing-prep를 사용한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 이 스킬, 실내 공간이 주체면 interior — 둘 다 크게 보이면 사용자에게 확인. 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
+description: "건축 외관 CGI · 렌더 · 모델 이미지를 Stable Diffusion / Midjourney / ComfyUI · GPT image(image-to-image)용 사실적 건축 사진 프롬프트로 변환하는 전문 스킬(GPT 경로는 NEGATIVE 없이 긍정형 PROMPT만). 사용자가 건물 외관 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', 'SD 프롬프트', 'MJ 프롬프트', 'GPT 프롬프트', 'i2i 프롬프트 써줘', '프롬프트 뽑아줘', '사실적으로 만들어줘', '렌더 느낌 없애줘', '사진처럼 만들어줘' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 · V-Ray · Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 — 모든 건축 외관 CGI. 지원 건물: 아파트 · 공장 · 오피스 타워 · 상업 · 공공 · 교육 · 의료 건물. 지원 작업: 실사화, 야간 전환, 황금시간대, 날씨 변경, 파사드 재료 교체, 사이니지 수정, 조경 업그레이드, 인물 추가. 인테리어 · 실내 공간(전시부스 실내 포함) 프롬프트는 interior-prompt-maker를 사용한다. 레퍼런스 이미지의 조명을 이식하는 요청은 cinematic-exhibition-lighting을 쓰고, 단순 야간/황금시간대/날씨 전환은 외관이면 이 스킬이 담당한다. 파사드 재질을 심리스 타일링 텍스처로 뽑는 것은 texture-prompt-maker, 포토샵 합성 배경의 업스케일 전처리는 magnific-compositing-prep를 사용한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 이 스킬, 실내 공간이 주체면 interior — 둘 다 크게 보이면 사용자에게 확인. 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
 ---
 
 # 건축 외관 Image-to-Image 프롬프트 메이커
@@ -241,6 +241,8 @@ any architectural element.
 
 ### 13. 준공 상태 + 최종 선언
 PROMPT 마지막.
+
+**판정 규칙:** 소스에 풍화·오염·패티나·노후 흔적이 보이거나 사용자가 기존/리모델링 건물이라고 말하면 → 노후 variant. 그 외(깨끗한 신축 렌더 기본) → 신축 variant.
 
 **신축 완공:**
 > `"The final image should feel like a high-end professional architectural photograph — realistic, grounded, urban, observational, and physically believable rather than stylized or cinematic. The result must look like a newly completed real building photographed on-site in Korea, not an enhanced render."`

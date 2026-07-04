@@ -41,6 +41,8 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 6. **조명 레이어** → LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE
 7. **익스트림 다크** → EXTREME DARK PROMPT + NEGATIVE + Magnific 설정값
 
+> 5~7은 순차 실행이 아니다 — 1단계에서 판정된 모드에 해당하는 것만 실행한다("둘 다"면 해당 세트 모두 순서대로).
+
 카메라 브랜드(Sony, Canon, Hasselblad 등) 절대 명시하지 않는다.
 MJ 파라미터(`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 

@@ -193,6 +193,7 @@ low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo
 - **석재/대리석:** `mineral veining, stone porosity, soft vein transition, micro roughness, honed surface`
 - **금속:** `brushed metal grain, micro scratches, subtle anisotropic direction, matte metallic base color`
 - **타일:** `ceramic surface, grout line grid, slight glaze variation, edge bevel, uniform module`
+- **전시 마감재:** 부스 카펫 `grey needle-punch exhibition carpet, dense short fiber, matte absorption` / 인필 패널 `flat matte white melamine panel surface, fine consistent panel seam` / 알루미늄 프로파일 `anodized aluminum profile, subtle brushed grain, satin specular` / SEG 패브릭 `taut tension fabric weave, matte print surface` — 패널·프로파일은 규칙 모듈 재질이므로 구조/표면 분리 규칙(★)을 반드시 적용
 
 ---
 
