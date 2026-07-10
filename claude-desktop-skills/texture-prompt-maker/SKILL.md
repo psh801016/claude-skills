@@ -55,7 +55,7 @@ MJ 파라미터(`--v`, `--ar` 등) 포함하지 않는다.
 
 - **PROMPT와 NEGATIVE 두 섹션만** 출력 — 두 섹션 앞·사이에는 설명을 넣지 않으며, 실행법 안내(원본 첨부·img2img 모드·설정값)는 두 섹션이 모두 끝난 **이후에만** 덧붙인다
 - 단, 사용자가 "프롬프트만 줘"라고 엄격 출력을 요구하면 실행법 안내를 생략한다 — **사용자의 출력 계약이 우선**
-- **NEGATIVE 분기:** gpt-image·나노바나나(Gemini) 등 **negative 입력 필드가 없는 의미기반 생성기** 대상이면 NEGATIVE 섹션을 생략하고, 핵심 억제 항목을 긍정형으로 PROMPT에 흡수한다(예: baked shadows 억제 → `"perfectly even shadowless lighting"`, seams 억제 → `"perfectly continuous edges"`). NEGATIVE 섹션은 SD/ComfyUI 디퓨전 경로 전용
+- **NEGATIVE 사용처:** NEGATIVE 섹션은 **항상 출력**(조건부 생략 금지)하되, 제목을 `NEGATIVE (SD/ComfyUI 디퓨전 전용 — gpt-image·나노바나나에는 입력하지 않음)`으로 표기한다. gpt-image·나노바나나(Gemini) 등 negative 입력 필드가 없는 의미기반 생성기 대상이면 이 섹션은 입력하지 않고, 핵심 억제 항목을 긍정형으로 PROMPT에 흡수한다(예: baked shadows 억제 → `"perfectly even shadowless lighting"`, seams 억제 → `"perfectly continuous edges"`)
 - PROMPT는 **하나의 연속된 영어 단락**, NEGATIVE도 **하나의 연속된 영어 단락**
 - 사용자가 PBR 맵(노멀/러프니스/AO)을 요청하면 그때만 추가 섹션을 붙인다 (아래 "PBR 맵 확장")
 
@@ -125,6 +125,8 @@ MJ 파라미터(`--v`, `--ar` 등) 포함하지 않는다.
 재질 고유의 색과 미세 디테일은 살린다.
 
 > `"Strictly photorealistic and faithful to the original material — preserve exact base-color values and micro-detail (pores, grain, fiber, micro-scratches, surface roughness texture). 4K ultra-high resolution (3840px or higher), 1:1 square aspect ratio, no watermark, no text. No artistic photography effects."`
+>
+> ※ 비율 분기: 위 `1:1 square aspect ratio`는 일반 타일링 텍스처 기본값이다. **통합 모드(WALL_SECTION)에서는 1:1을 강제하지 않고** `preserve the wall-section aspect proportion`으로 대체한다(예시 참조).
 
 재질별 디테일 키워드는 아래 "재질별 키워드" 참고.
 
@@ -152,12 +154,14 @@ visible seams, seam lines, tiling seams, obvious repeating pattern, repetition a
 mirrored edges, distinct landmark features, isolated stains, standout marks, single eye-catching spot
 ```
 
-**그리드 붕괴 억제 (모듈/패널/타일/벽돌 재질 필수):**
+**그리드 붕괴 억제 (모듈/패널/타일/벽돌 재질 필수 — 재질별 취사 규칙 준수):**
 ```
-irregular grid, staggered joints, offset panels, running-bond offset, broken grid, misaligned joints,
-shifted rows, randomized layout, distorted grid, warped joints, wavy seam lines,
+irregular grid, broken grid, misaligned joints, shifted rows, randomized layout,
+distorted grid, warped joints, wavy seam lines,
 inconsistent module size, discontinuity band, mismatched rows
 ```
+- **정렬형 그리드 재질에만 추가**(타일·패널·커튼월 등 줄눈이 상하좌우 일직선인 경우): `staggered joints, offset panels, running-bond offset`
+- **어긋쌓기가 정상 패턴인 재질에는 위 3개 토큰 금지**(벽돌 running bond, 헤링본 등) — PROMPT의 `running-bond coursing`과 충돌해 정상 패턴 자체를 억제한다. 대신 `inconsistent coursing, uneven course height`를 쓴다.
 
 **재질 정체성 상실 억제 (원본 재질을 다른 재질로 바꾸지 않게):**
 ```
@@ -216,7 +220,7 @@ low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo
 PROMPT
 A flat orthographic seamless tileable PBR albedo (base color / diffuse) texture map of weathered exposed concrete with fine aggregate grain and subtle tonal mottling, extracted faithfully from the reference image for direct use in 3D software. Completely delit: neutralize all direct and indirect lighting to zero, erase every cast shadow, self-shadow, specular highlight, glare, hotspot, and lighting gradient, leaving only the pure even base-color albedo data that will react solely to virtual lights in 3D software, uniform neutral studio illumination, perfectly flat and dry color. Perfectly flattened straight-on orthographic front view as if photographed exactly perpendicular to the surface, correct all perspective, foreshortening, and lens distortion while strictly preserving the concrete's inherent surface forms without warping. Perfectly seamless and tileable across all four edges with no visible seam lines, natural continuity and stochastic non-repeating variation so the texture never looks artificially repeated when tiled over a large wall, disperse or remove any distinct landmark feature, isolated stains, standout marks, or single eye-catching spots that would reveal the repetition. Strictly photorealistic and faithful to the original material, preserve exact base-color values and micro-detail including fine aggregate grain, form-tie marks, micro-pores, and hairline variation, matte cement surface. 4K ultra-high resolution, 1:1 square aspect ratio, no watermark, no text, no artistic photography effects.
 
-NEGATIVE
+NEGATIVE (SD/ComfyUI 디퓨전 전용 — gpt-image·나노바나나에는 입력하지 않음)
 baked shadows, cast shadows, self-shadows, drop shadows, specular highlights, glare, hotspots, directional lighting, lighting gradient, baked ambient occlusion, uneven illumination, shiny reflections, perspective distortion, lens distortion, vanishing point, angled view, tilted surface, foreshortening, warped structure, skewed pattern, visible seams, seam lines, tiling seams, obvious repeating pattern, repetition artifacts, mirrored edges, distinct landmark features, isolated stains, standout marks, single eye-catching spot, artistic effects, photo filters, vignetting, chromatic aberration, color grading, HDR, oversaturation, stylized, illustration, painterly, bokeh, depth of field, blur, color shift, recolored, altered material color, inaccurate base color, fake material, plastic look, procedural look, AI texture artifacts, low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo, border, frame
 ```
 
@@ -226,7 +230,7 @@ baked shadows, cast shadows, self-shadows, drop shadows, specular highlights, gl
 PROMPT
 A flat orthographic seamless tileable PBR albedo (base color / diffuse) texture map of blue low-pile commercial loop carpet, extracted faithfully from the reference image for direct use in 3D software; isolate only the blue carpet floor region from the scene and generate its texture, ignoring all other surfaces, furniture, and walls. Completely delit: neutralize all direct and indirect lighting to zero, erase every cast shadow, self-shadow, specular highlight, glare, hotspot, and lighting gradient, leaving only the pure even base-color albedo data that will react solely to virtual lights in 3D software, uniform neutral studio illumination, perfectly flat and dry color. Perfectly flattened straight-on orthographic top-down view as if photographed exactly perpendicular to the floor, correct all perspective and foreshortening while preserving the carpet's weave direction and fiber pattern without warping. Perfectly seamless and tileable across all four edges with no visible seam lines, natural continuity and stochastic non-repeating variation so the carpet never looks artificially repeated when tiled over a large floor, disperse or remove any distinct landmark feature, isolated stains, or standout marks that would reveal the repetition. Strictly photorealistic and faithful to the original material, preserve exact blue base-color value and micro-detail including woven fiber texture, visible loop weave, pile direction, and thread variation, soft matte absorption. 4K ultra-high resolution, 1:1 square aspect ratio, no watermark, no text, no artistic photography effects.
 
-NEGATIVE
+NEGATIVE (SD/ComfyUI 디퓨전 전용 — gpt-image·나노바나나에는 입력하지 않음)
 baked shadows, cast shadows, self-shadows, drop shadows, specular highlights, glare, hotspots, directional lighting, lighting gradient, baked ambient occlusion, uneven illumination, shiny reflections, furniture, walls, ceiling, other surfaces, scene objects, perspective distortion, lens distortion, vanishing point, angled view, tilted surface, foreshortening, warped structure, skewed pattern, visible seams, seam lines, tiling seams, obvious repeating pattern, repetition artifacts, mirrored edges, distinct landmark features, isolated stains, standout marks, single eye-catching spot, artistic effects, photo filters, vignetting, chromatic aberration, color grading, HDR, oversaturation, stylized, illustration, painterly, bokeh, depth of field, blur, color shift, recolored, altered material color, inaccurate base color, fake material, plastic look, procedural look, AI texture artifacts, low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo, border, frame
 ```
 
@@ -238,6 +242,6 @@ baked shadows, cast shadows, self-shadows, drop shadows, specular highlights, gl
 PROMPT
 A flat orthographic seamless tileable PBR albedo (base color / diffuse) texture map of the complete warm beige acoustic wall finish, extracted faithfully from the reference image; capture the entire wall as a single unified wall-section texture that can be applied at once, preserving its full vertical composition — an upper large-format warm-beige fabric-wrapped acoustic panel zone, a horizontal white micro-perforated acoustic accent band at mid-height, and a lower warm-beige micro-perforated acoustic panel zone with subtle panel seam rhythm. Isolate only the wall material and ignore the ceiling, signage, equipment, furniture, and floor. Completely delit: neutralize all direct and indirect lighting to zero, erase every cast shadow, self-shadow, specular highlight, glare, hotspot, and lighting gradient, leaving only the pure even base-color albedo data that will react solely to virtual lights in 3D software, uniform neutral studio illumination, perfectly flat and dry color. Perfectly flattened straight-on orthographic front view as if photographed exactly perpendicular to the wall, correct all perspective, foreshortening, and lens distortion while strictly preserving the acoustic panel module proportions, seam rhythm, divider band position, and micro-perforation grid without warping. Horizontally seamless and tileable left-to-right with no visible vertical seam so it wraps a long wall, keep the vertical composition intact as one full wall-height section, and apply stochastic non-repeating variation so the wall never looks artificially repeated, dispersing any distinct landmark feature, scuff mark, or isolated stain that would reveal the repetition. Strictly photorealistic and faithful to the original material, preserve exact warm beige base-color values and micro-detail including fine acoustic perforation dots, subtle panel weave grain, panel joint lines, and slight tonal variation, matte sound-absorbing finish. 4K ultra-high resolution, preserve the wall-section aspect proportion, no watermark, no text, no artistic photography effects.
 
-NEGATIVE
+NEGATIVE (SD/ComfyUI 디퓨전 전용 — gpt-image·나노바나나에는 입력하지 않음)
 ceiling, ceiling grid, downlights, downlight glow, banner, signage, text banner, LED panel, blue glow, loudspeakers, microphone stand, tripod, wall sconce, wall clock, stage, podium, tables, desks, chairs, carpet, floor, people, baked shadows, cast shadows, self-shadows, specular highlights, glare, hotspots, directional lighting, lighting gradient, baked ambient occlusion, uneven illumination, shiny reflections, perspective distortion, lens distortion, vanishing point, angled view, tilted surface, foreshortening, warped structure, skewed pattern, visible vertical seam, tiling seams, obvious repeating pattern, repetition artifacts, mirrored edges, distinct landmark features, isolated stains, scuff marks, standout marks, artistic effects, photo filters, vignetting, chromatic aberration, color grading, HDR, oversaturation, stylized, illustration, painterly, bokeh, depth of field, blur, color shift, recolored, altered material color, inaccurate base color, fake material, plastic look, procedural look, AI texture artifacts, low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo, border, frame
 ```

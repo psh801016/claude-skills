@@ -95,7 +95,7 @@ argument-hint: "[Instagram URL 또는 @계정명 또는 username]"
 - 모바일 반응형
 
 ### STEP 5 — Google Drive 이미지 폴더 구조 제안
-수집된 게시물 내용을 분석해 8~10개 카테고리를 자동 제안하고, 아래 폴더 구조를 `G:\내 드라이브\{USERNAME}\`에 생성한다:
+수집된 게시물 내용을 분석해 **최대 8개** 카테고리(번호 01~08)를 자동 제안하고, `09_포스터_디자인자료`는 **고정 번호(항상 09)의 산출물 폴더**로 마지막에 추가한다(카테고리 수가 8개 미만이어도 포스터 폴더 번호는 09 고정 — 번호 충돌 방지). 아래 폴더 구조를 `G:\내 드라이브\{USERNAME}\`에 생성한다:
 
 ```powershell
 $folders = @(
@@ -108,6 +108,8 @@ $folders = @(
 foreach ($f in $folders) {
   New-Item -ItemType Directory -Path "G:\내 드라이브\{USERNAME}\$f" -Force | Out-Null
 }
+# 분석리포트 사본 복사 (출력물 목록의 '사본' — 이 단계가 없으면 G:\에 리포트가 남지 않는다)
+Copy-Item "$env:USERPROFILE\Desktop\{USERNAME}_분석리포트.html" "G:\내 드라이브\{USERNAME}\" -Force
 ```
 
 ### STEP 6 — 브라우저에서 이미지 일괄 다운로드 (선택 — 사용자가 이미지 저장을 명시 요청한 경우만)
@@ -199,4 +201,4 @@ G:\내 드라이브\{USERNAME}\
 | 스크래퍼 | Actor ID | 비고 |
 |----------|----------|------|
 | 인스타그램 (공식) | `apify/instagram-scraper` | 99.8% 성공률, 270K 사용자 |
-| 인스타그램 대안 | `zuzka/instagram-scraper` | 백업용 |
+| 인스타그램 대안 | `zuzka/instagram-scraper` | 백업 후보 — **실존 미검증**. 사용 전 `mcp__Apify__search-actors`로 실존·평판 확인 후 사용, 없으면 다른 인기 인스타 스크래퍼를 검색해 대체 |

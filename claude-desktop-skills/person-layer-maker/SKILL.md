@@ -138,7 +138,7 @@ QUALITY GATE — 재생성 판정 기준
 
 ## Higgsfield · Magnific 운용 규칙
 
-- 생성: **Higgsfield Nano Banana Pro**(웹 — 2026-07 기준 무료 UNLIMITED, 제품 정책은 변동 가능) 세로 프레이밍, 3~4 변형 중 선택. 같은 인물 재사용은 **레퍼런스 이미지 재투입**으로 캐릭터 일관성 유지. SD 계열로 인물을 생성하는 경우에만 negative 사용 가능(이 스킬의 기본 경로 NB Pro는 긍정형만).
+- 생성: **Higgsfield Nano Banana Pro**(웹 — 2026-07 기준 무료 UNLIMITED, 제품 정책은 변동 가능) 세로 프레이밍, 3~4 변형 중 선택. 같은 인물 재사용은 **레퍼런스 이미지 재투입**으로 캐릭터 일관성 유지. SD 계열로 인물을 생성하는 경우에만 negative 사용 가능(이 스킬의 기본 경로 NB Pro는 긍정형만). SD 경로 negative는 표준 인물 항목만 간단히: `mannequin look, waxy skin, plastic skin, distorted face, bad anatomy, broken hands, extra limbs, cutout edge halo` — 별도 섹션으로 출력하지 않고 사용자가 SD 사용을 밝힌 경우에만 인라인으로 안내한다.
 - 업스케일: 베이스가 Magnific 업스케일본이면 인물도 해상도를 맞춰 합성 — **인물은 Creativity 0.1 / Resemblance 0.95**(얼굴 변형 방지, 0~1 스케일).
 - Magnific **Relight**: 컷아웃 인물에 베이스를 광원 레퍼런스로 걸어 색광을 자동 일치 — 수동 색매칭 전에 시도할 가치가 있는 지름길. 무료 대안으로 **IC-Light**(오픈소스·MIT)의 배경조건(fbc) 모델이 같은 일(컷아웃 인물을 배경 조명에 자동 매칭)을 한다 — 단 결과는 구워진 이미지이고 디테일 그림자는 불완전하므로 매칭 후 포토샵 미세보정(동봉 배경제거기 BRIA RMBG는 비상업 라이선스 주의).
 - NEGATIVE는 출력하지 않는다 — NB Pro는 의미기반(부정 나열 역효과). 억제는 긍정형으로만.
