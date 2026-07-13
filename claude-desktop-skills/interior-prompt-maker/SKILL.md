@@ -489,6 +489,22 @@ replaced architecture from the second image, structural transfer from reference 
 - ★텍스트 발생 소품은 넣지 않거나 blank로: 명찰은 `a plain lanyard with a blank card`까지만, 브로슈어·명함함·브랜드백은 글자 깨짐을 부르므로 생략하거나 `unbranded, no legible text`로. (fascia 텍스트 금지 원칙과 동일 — 글자는 후처리 합성)
 - ★원본에 인물이 없는데 사람을 넣고 싶다면 → 이 스킬로 굽지 말고 **person-layer-maker**로 인물을 별도 레이어 생성해 포토샵 합성한다(위치·인원·교체 수정 가능).
 
+**★ 행사형 전시홀 서브블록 (2026-07-13 신규 · 3중검수 반영 — 적용 조건: 부스존/무대·중앙 설치물/관객석/휴게존 중 **2개 이상의 존이 한 프레임에 뚜렷이 구분되어 공존**하는 와이드샷일 때만. 부스 안에 의자 몇 개 보이는 수준엔 적용 금지):**
+> 성격이 다른 존을 뭉뚱그리면 모델이 공간 위계를 재배치한다. 대응: **1단계 첫 문장의 보존 나열에 존을 열거**한다 — 단일 모드는 보존 나열에, 리모델링 모드는 `Use Image 1 as the immutable ...` 목록 안에 삽입: `booth positions, central [stage / media volume / feature installation — 원본에 실제 있는 것] geometry, carpet zone boundary, seating rows, circulation`. **컬러 팔레트 잠금(3단계)도 존별로 끊어** 명시한다.
+> ⚠ 한계 명시: 존 경계 토큰은 **약한 바이어스**일 뿐 공간 락이 아니다 — 실제 영역 유지는 i2i의 낮은 denoise/높은 structure strength(또는 ControlNet)가 담당한다. 높은 denoise에서는 토큰이 있어도 존이 번질 수 있다.
+- 휴게존 인조잔디 카펫(★원본에서 인조잔디로 확인될 때만, 색도 원본 채도 그대로): `[원본 색] artificial turf carpet with realistic fiber pile texture, directional sheen, seam tape lines[, slight flattening along walking paths — 원본에 통행 자국이 보일 때만]` + 강채도 녹색이면 바운스 게이팅 1줄: `saturated green confined to the turf zone, only a subtle green bounce on immediately adjacent surfaces, neutral white balance across the rest of the hall` (발광 게이팅과 동일 원리 — 대면적 강채도는 diffuse bounce로 홀 전체를 물들인다).
+- 행사 관객석(★원본의 의자 유형·재질 그대로 — 플라스틱으로 단정 금지): `audience seating matching the original chair type, material and arrangement, identical chairs repeated in rows but each with slightly different scuff marks and a few degrees of rotation variation` — per-instance 미세 변주가 복제 어셋 티를 막는 **긍정형 1차 수단**(관객석은 동일 제품 반복이 정답이므로 형태·색 변주를 유발하는 표현 금지). SD 경로 NEGATIVE의 `cloned objects`는 보조.
+- 무대/백드롭: 백드롭 그래픽은 fascia 텍스트 금지 원칙과 동일 — `the backdrop graphic kept as the same overall composition and colors, with no new legible text`.
+- 착석 인물이 원본에 있으면 인물·현장 서브블록(위) 규칙 그대로(원경 실루엣 유지·텍스트 소품 금지), 없으면 person-layer-maker로.
+
+**★ LED 미디어아트 발광 볼륨 서브블록 (적용 조건: 원본에 **입체 미디어 볼륨**(깊이·측면이 보이는 독립 구조물)이 있을 때만 — 평면 LED월·프로젝션 스크린·플러시 그래픽 패널에는 구조 문구를 적용하지 않는다(없는 입체 매스 발명 유발)):**
+- 구조(★재료·색은 원본 확인 후 기입): `a vertical slatted structural volume matching the original material, color and geometry, carrying a large-format fine-pitch LED media surface` — 프레임 격자는 부스 격자와 동일하게 구조 보존 대상.
+- 발광 게이팅(핵심): `only the media surface is emissive, emitting [원본 콘텐츠 색] light streaks with believable local bloom and slightly blown highlights at the brightest streaks, the fine LED pitch reading as a soft continuous glow with individual pixels blurred by lens diffraction, screen light spilling only onto surfaces immediately adjacent to the volume, which receive the colored light but are themselves matte and non-emissive, neutral white balance across the rest of the hall` — 발광은 미디어 표면 1개에만(발광 단일화 규칙의 적용례), 스필은 인접면 한정, **선명한 픽셀 격자·모아레를 그리지 않게 soft glow로 명시**(실촬영에서 격자는 회절·블룸으로 뭉개진다).
+- 스필 ↔ 팔레트 잠금 충돌 방지(3단계에 예외 1줄 추가): `colored illumination from the media surface may tint the light and shadows on nearby surfaces without replacing or recoloring their underlying materials.`
+- 미디어 콘텐츠는 **gestalt만 약속**: 3단계 팔레트 잠금에 콘텐츠 색을 명시(`[콘텐츠 색] — glowing media-art light streaks on the media surface only`)하고 `preserving the overall streak layout and color family of the source content` — 정확한 스트릭 형태는 i2i가 재렌더한다(허용). "동일 구성 복제"를 약속하는 표현은 쓰지 않는다.
+- 광택 바닥이 원본에 있으면: `soft reflection of the media surface on the polished floor` 1줄(반사는 2차 발광이 아니므로 단일화 규칙과 충돌 없음).
+- 조명(7단계)과의 정합: 혼합 조명 문구에 `colored screen light from the media volume` 1회만 언급 — 발광 토큰 중복 금지.
+
 **전시장 배경 (부스가 홀 안에 놓인 광각 샷일 때만):**
 - 배경: `exposed high-ceiling truss grid, fire sprinkler pipes, suspended rigging banners overhead, rows of neighboring booths, trade-fair aisle, grey aisle carpet`
 - 오브젝트: `neighboring booth edges, brochure stands, cable covers, small product displays, aisle stanchions`
