@@ -557,10 +557,14 @@ Resemblance: [값]
 ### EXTREME DARK PROMPT 내용 (항상 이 구조로)
 
 **① 극단적 어둠 선언 (★ 전면 near-black 금지 — 빔 안 닿는 곳만 한정)**
-> `"Extreme darkness transformation: push everything the beams do NOT reach toward near-black, while every surface the beams strike stays fully lit and alive. Maximum contrast between the bright beam-lit pools and the surrounding darkness."`
+> `"Extreme darkness transformation: push everything the beams do NOT reach toward near-black, while every surface the beams strike stays fully lit and alive. Strong contrast between the bright beam-lit pools and the surrounding darkness, while the shadowed areas keep faint volumetric form and depth rather than crushing to pure black."`
+
+(`maximum contrast`는 쓰지 않는다 — i2i에서 블랙 클리핑을 밀어붙여 실루엣 blackout(반려된 실패)을 재유발한다. `strong contrast` + faint form 유지 앵커를 한 문장에 붙인다.)
 
 **② 빛이 안 닿는 곳만 어둠 (완전 실루엣 금지 — faint form 유지)**
-> `"Everything the beams do NOT reach falls into deep rich shadow — the ceiling void, the back of the hall, the far rows, the deep corners sink toward near-black but never a flat dead cutout, retaining faint form and depth."`
+> `"Everything the beams do NOT reach falls into deep rich shadow — the ceiling void, the back of the hall, the far rows, the deep corners sink toward near-black while keeping faint volumetric form and depth in the shadows."`
+
+(의미기반 모델에 들어가는 PROMPT이므로 `never a flat dead cutout` 같은 실패-명사구를 넣지 않는다 — 약한 모델이 그 명사구를 오히려 렌더한다. 긍정형 `keeping faint form`만 쓴다.)
 
 **③ 빔 + 빛-물체 상호작용 살림 (★핵심 — 이 문장이 빠지면 죽은 그림이 된다)**
 > `"The crossing spotlight beams are the dominant light source — intense sharp volumetric rays with glowing haze and drifting dust particles inside them — but every surface the light lands on stays fully alive: bright elliptical spotlight pools spilling across the surfaces the beams touch, soft light washing down edges, colored light grazing the walls where side beams strike, and gentle rim highlights skimming the tops of objects in the light. Render realistic light spill, sheen, and colored illumination sitting on the real materials."`
@@ -578,12 +582,13 @@ Resemblance: [값]
 
 ### EXTREME DARK NEGATIVE (SD 계열 img2img 대체 경로 전용)
 
-> **주의:** Magnific 업스케일러와 nanobanana(Gemini 계열 의미기반 모델)에는 별도 NEGATIVE 입력 필드가 없고, 의미기반 모델에 부정 나열을 이어붙이면 억제어를 오히려 그린다(구도 보존 원칙 3과 동일 논리). **Magnific/nanobanana 경로에서는 이 NEGATIVE를 입력하지 않고**(섹션 출력은 유지) ②의 긍정형 어둠 묘사(`sink toward near-black … retaining faint form` 등)로 흡수한다. 아래 블록은 SD 계열 img2img로 대체 실행할 때만 NEGATIVE 필드에 넣는다.
+> **주의:** Magnific 업스케일러와 nanobanana(Gemini 계열 의미기반 모델)에는 별도 NEGATIVE 입력 필드가 없고, 의미기반 모델에 부정 나열을 이어붙이면 억제어를 오히려 그린다(구도 보존 원칙 3과 동일 논리). **Magnific/nanobanana 경로에서는 이 NEGATIVE를 입력하지 않고**(섹션 출력은 유지) ②의 긍정형 어둠 묘사(`sink toward near-black while keeping faint volumetric form` 등)로 흡수한다. 아래 블록은 SD 계열 img2img로 대체 실행할 때만 NEGATIVE 필드에 넣는다.
 > **★ 표면-빛 효과를 죽이는 토큰은 넣지 않는다** — `visible wall/floor/ceiling surface`, `fully visible furniture/architecture`, 무조건적 `colorful surfaces`는 빔이 닿는 표면까지 억제해 죽은 그림(실패모드 b)을 재현한다. 색 억제는 "고르게 밝은 색"으로만 한정한다(`colorful evenly-lit surfaces`, `flat daylight color`). 표면 보존은 긍정형 PROMPT의 ③·③-a가 담당한다.
 
 ```
-bright ambient lighting, evenly lit room, colorful evenly-lit surfaces, flat daylight color, bright backgrounds, cheerful lighting, daylight, studio lighting, flat fill lighting, neon effects, overexposed bloom, blown highlights, fake lens flares, illustration, cartoon, CGI render look, Unreal Engine look, text, watermark, logo
+bright ambient lighting, evenly lit room, colorful evenly-lit surfaces, flat daylight color, cheerful lighting, daylight, studio lighting, flat fill lighting, grey washed shadows, noise in dark areas, neon effects, overexposed bloom, blown highlights, fake lens flares, illustration, cartoon, CGI render look, Unreal Engine look, text, watermark, logo
 ```
+(`bright backgrounds`는 넣지 않는다 — 빔이 뒷벽을 때리는 밝은 표면까지 억제한다.)
 
 ### Magnific 설정값 (0~1 스케일 — 2프리셋)
 
@@ -595,15 +600,17 @@ Resemblance: 0.55
 **그림자 비중 강화(단, 표면 빛은 유지 — 원본이 너무 밝을 때만):**
 ```
 Creativity: 0.6
-Resemblance: 0.48
+Resemblance: 0.48   ← 허용 하한. 0.48 미만 금지
 ```
-(원본에 잔여 앰비언트가 강해 어둠이 안 먹을 때만 Resemblance를 이 선까지 낮춘다. 그 이하로 내리면 Magnific이 실제 재질을 환각·대량 변형해 ③이 의존하는 "real materials"와 빛 묻음이 사라진다 — 실루엣 blackout(반려된 실패)이 되므로 금지. 구도 보존용 기본값 0.1~0.3 / 0.85~1.0보다 변형 허용이 크다.)
+(원본에 잔여 앰비언트가 강해 어둠이 안 먹을 때만 Resemblance를 하한 0.48까지 낮춘다. **0.48 미만으로 내리면** Magnific이 실제 재질을 환각·대량 변형해 ③이 의존하는 "real materials"와 빛 묻음이 사라진다 — 실루엣 blackout(반려된 실패)이 되므로 금지. 0.48은 실측 튜닝 시작점이지 보증값이 아니다 — 원본 앰비언트가 아주 강하면 0.48에서도 재질 변형이 날 수 있으니 결과에서 재질·빛 묻음 유지를 확인하고 필요하면 0.5 쪽으로 되올린다. 구도 보존용 기본값 0.1~0.3 / 0.85~1.0보다 변형 허용이 크다.)
 
 ### 익스트림 다크 예시 — Mixed / 무대 행사장 (빛-물체 상호작용 살림, 검증 사례)
 
+> **★ 예시의 재질·색 묘사(dark matte stage deck, royal blue fabric chairs, beige walls, matte-black LED wall 등)는 이 검증 사례의 원본에 실제로 있던 것들이다. 템플릿으로 쓸 때는 반드시 사용자의 원본 이미지에 실제로 보이는 재질·색으로 교체한다** — 원본에 없는 재질을 그대로 복사하면 재질 환각을 유도한다(③-a "원본에 있는 재질만" 원칙과 동일).
+
 ```
 EXTREME DARK PROMPT
-Transform Image 1 into an extreme-dark cinematic stage scene lit primarily by overhead spotlight beams, with clearly visible side accent beams also lighting the nearby surfaces, keeping every surface the light actually touches fully alive while everything the light misses sinks into deep shadow. Crossing volumetric spotlight beams radiate in a wide symmetrical fan from the ceiling truss — dominant cool blue and cold white beams down the center, warm amber and gold accent beams from the outer sides — each ray a solid three-dimensional shaft with a bright luminous core, soft feathered edges, and visible glowing haze and drifting dust particles inside it. Render the light-on-material physics precisely: on the dark matte stage deck, crisp elliptical spotlight pools with soft penumbra and a faint low sheen; on the polished tiled floor and aisle, brighter wet-looking specular pools and elongated beam reflections stretching toward the camera; on the royal blue fabric chairs, cool light raking the velvety covers is absorbed as matte diffuse glow with brighter rim highlights feathering along the top edges of the front rows, the blue beam color mixing physically with the chairs' own blue as accurate colored reflection; on the beige walls and columns, warm side beams graze the rough plaster as a soft warm wash fading with distance; the powered-off matte-black central LED wall stays the darkest anchor with only a faint edge sheen and no emission. Everything the beams do not reach — the ceiling void, the back of the hall, the far rows, the deep corners — falls into rich clean near-black shadow that still retains faint form and depth, never a flat dead cutout. Preserve the exact same camera position, wide-angle framing, composition, and every element's placement as Image 1. High dynamic range with brilliant beam cores, natural falloff, deep noise-free shadows with no grey wash, strong contrast between the glowing illuminated pools and the surrounding darkness, correct color mixing between the colored beams and each material's own base color. Photorealistic dramatic concert-grade stage lighting on a real built hall, true photograph quality, physically believable light-on-surface behavior — not CGI, not illustration.
+Transform Image 1 into an extreme-dark cinematic stage scene lit primarily by overhead spotlight beams, with clearly visible side accent beams also lighting the nearby surfaces, keeping every surface the light actually touches fully alive while everything the light misses sinks into deep shadow. Crossing volumetric spotlight beams radiate in a wide symmetrical fan from the ceiling truss — dominant cool blue and cold white beams down the center, warm amber and gold accent beams from the outer sides — each ray a solid three-dimensional shaft with a bright luminous core, soft feathered edges, and visible glowing haze and drifting dust particles inside it. Render the light-on-material physics precisely: on the dark matte stage deck, crisp elliptical spotlight pools with soft penumbra and a faint low sheen; on the polished tiled floor and aisle, brighter wet-looking specular pools and elongated beam reflections stretching toward the camera; on the royal blue fabric chairs, cool light raking the velvety covers is absorbed as matte diffuse glow with brighter rim highlights feathering along the top edges of the front rows, the blue beam color mixing physically with the chairs' own blue as accurate colored reflection; on the beige walls and columns, warm side beams graze the rough plaster as a soft warm wash fading with distance; the powered-off matte-black central LED wall stays the darkest anchor with only a faint edge sheen and no emission. Everything the beams do not reach — the ceiling void, the back of the hall, the far rows, the deep corners — falls into rich clean near-black shadow while keeping faint volumetric form and depth. Preserve the exact same camera position, wide-angle framing, composition, and every element's placement as Image 1. High dynamic range with brilliant beam cores, natural falloff, deep noise-free shadows with no grey wash, strong contrast between the glowing illuminated pools and the surrounding darkness, correct color mixing between the colored beams and each material's own base color. Photorealistic dramatic concert-grade stage lighting on a real built hall, true photograph quality, physically believable light-on-surface behavior — not CGI, not illustration.
 
 EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음)
 bright ambient lighting, evenly lit room, colorful evenly-lit surfaces, flat daylight color, daylight, studio lighting, flat fill lighting, cheerful lighting, grey washed shadows, noise in dark areas, neon effects, overexposed bloom, blown highlights, fake lens flares, illustration, cartoon, CGI render look, Unreal Engine look, changed camera angle, changed framing, text, watermark, logo
