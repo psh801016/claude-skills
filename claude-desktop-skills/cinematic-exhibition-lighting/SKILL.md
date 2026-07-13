@@ -536,12 +536,33 @@ room, architecture, walls, ceiling, floor, furniture, objects, people, faces, ba
 
 > **★ 이 모드는 '4중 잠금' 모드가 아니다 — 무드 강화 img2img다.** Resemblance를 낮추면 표면 디테일·색감이 변한다. **물체·구조를 유지하려면 Resemblance 0.5~0.55**(아래 설정값 참조). 색감·디테일이 크게 변할 수 있음을 사용자에게 한 줄 경고한다.
 
+### ★★ 입력 판별 최우선 — 조명 보존 모드 vs 조명 생성 모드 (2026-07-13 ASURA 반복 질책)
+
+**가장 큰 실패 = 이미 조명이 입혀진 입력의 조명을 익스트림 다크가 재발명해 원본과 틀어지는 것.** 익스트림 다크는 입력 이미지에 따라 두 모드로 갈린다 — 실행 전 Image 1을 보고 반드시 판별한다:
+
+| 모드 | 진입 조건 (★호출 시점 결정론 — 이미지 추론 금지) | 조명 처리 |
+|---|---|---|
+| **B. 조명 보존 (★기본 — 메인 변환 다음 단계)** | **이 스킬의 메인 변환(①) 결과물을 이어받아 다크로 굽는 단계면 무조건 B** (=직전 조명 작업의 산출물이라는 provenance로 결정) | **기존 빔의 위치·방향·각도·색·개수·부채꼴 패턴을 그대로 보존**하고 주변 암부만 더 눌러 어둠 강화. 빔 재발명·재배치·재색·재패턴 금지 |
+| **A. 조명 생성** | 조명이 아직 안 입혀진 밝고 균등한 원본(CGI 실사화 등)에 처음 조명을 넣으며 다크로 만드는 경우 | 아래 ①~⑤ 기본 흐름대로 빔을 새로 묘사·생성 |
+
+> **★ 판별은 이미지 내용 추론이 아니라 호출 맥락으로 결정한다(3중 검수 BLOCKER B2).** "Image 1에 빔이 보이면 B" 같은 자연어 추론은 창문 반사광·밝은 벽 그라데이션·약한 앰비언트를 빔으로 오판해 잘못된 프리셋을 걸어 실패 #1을 재발시킨다. **직전에 조명을 입힌 결과물을 이어받는 작업이면 = 무조건 모드 B**로 못박는다. ASURA 표준 워크플로우(메인 변환 ① → 익스트림 다크 ②)의 ②는 항상 이 경우 = **B가 기본값**. 맥락이 불명확하면 A/B를 추측하지 말고 ASURA에게 "①을 이어받는 다크입니까"를 확인한다.
+
 ### EXTREME DARK PROMPT 작성 원칙
 
 Image 1 (시네마틱 변환 결과물)을 Magnific에 올리고 아래 프롬프트를 입력한다.
 Image 2 레퍼런스 없음. 단독 img2img 변환.
+**아래 ①~⑤는 조명 생성 모드(A) 기준이다. 조명 보존 모드(B)면 ①·③·④ 대신 "조명 보존 모드 프롬프트"(바로 아래) 를 쓴다.**
 
-**출력 형식 (항상 이 구성 — Magnific/nanobanana에 입력하는 것은 PROMPT와 SETTINGS 뿐):**
+### 조명 보존 모드(B) 프롬프트 — ★기본, 이미 조명 입힌 입력용
+
+**★ 긍정 단언형으로 쓴다(3중 검수 MAJOR M2).** 부정 열거(`do not move/recolor/re-pattern`)는 의미기반 모델에서 그 변형 대상의 salience를 오히려 올리고, 실제 강제자는 텍스트가 아니라 **Resemblance 슬라이더**다. "지키고 싶은 상태를 긍정으로 단언 + 슬라이더로 강제"가 부정문 나열보다 강하다. 한 단락으로:
+> `"Preserve the existing spotlight beams exactly as they already appear in Image 1 — their positions, directions, angles, colors, spread and fan pattern remain as visible, byte-for-byte the same lighting. Beam geometry and hue stay unchanged; beam brightness may soften only through the global exposure reduction. The single change is a global reduction of ambient and shadow exposure around those beams: everything outside the beams settles into rich clean near-black while keeping faint volumetric form and depth. Every surface the beams already illuminate keeps its existing light [원본에 있는 재질별 빛 반응 — ③-a에서 골라 삽입], staying as in Image 1 with only the surrounding non-beam area darkened."`
+
+- 그 뒤에 **켜진 LED/디스플레이 처리**(있으면 — ③-b), 카메라 보존, HDR 마무리를 이어 붙인다(아래 ⑤ 뒤 공통 블록 참조).
+- 색온도는 **새로 지정하지 않는다** — 이미 입혀진 색을 보존한다(④ 생략).
+- **★ 어둠은 Magnific 프롬프트가 만들지 못한다(3중 검수 MAJOR M1).** Magnific/nanobanana는 보존·업스케일 중심이라 낮은 Creativity에서 전역 노출을 거의 안 낮춘다. **다크닝은 투입 전 선행 단계에서 완성**한다 — 원본(① 결과물)을 포토샵 Curves/노출 다운으로 먼저 어둡게 만든 뒤 Magnific에 넣거나, 아예 형태 100% 보존 레이어 경로(아래)를 쓴다. Magnific 값은 **조명 보존 프리셋**(아래 설정값)으로 형태·조명 재발명 여지를 최소화하는 용도지, 어둡게 만드는 용도가 아니다.
+
+**출력 형식 (★ 다크는 항상 이 2세트를 한 번에 함께 출력 — 한 방 i2i + 형태 100% 보존 레이어 대안):**
 ```
 EXTREME DARK PROMPT
 [연속 영어 단락]
@@ -552,7 +573,30 @@ EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에
 MAGNIFIC SETTINGS
 Creativity: [값]
 Resemblance: [값]
+
+──────────────────────────────
+◆ 형태 100% 보존 대안 (원본 안 틀어지게 — 포토샵 Screen 합성)
+LIGHT LAYER SET — 생성 파라미터: 사이즈/종횡비를 원본과 동일하게 설정
+L1 BEAM PROMPT
+[연속 영어 단락]
+L2 HAZE PROMPT
+[연속 영어 단락]
+L3 SPOT POOL PROMPT
+[연속 영어 단락]
+L4 COLOR WASH PROMPT
+[연속 영어 단락]
+LIGHT LAYER NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)
+[연속 영어 단락 · 4장 공통 1회]
+블렌드 가이드(시작값): L1 Screen/Linear Dodge 40~70% · L2 Screen 30~60% · L3 Screen 50~80% · L4 Screen 20~40%
+어둠 처리: 원본 레이어 자체에 Curves/노출 다운 또는 검은 레이어 Multiply로 눌러 다크 무드를 만들고, 그 위에 L1~L4를 Screen으로 얹는다 (원본 픽셀은 그대로 → 형태 절대 유지).
+켜진 LED OFF: Curves/Multiply로는 켠 화면이 안 꺼진다(잔상 남음) → LED 패널 영역을 마스크로 잡아 순수 검정(#000)으로 fill하는 별도 레이어를 추가한다. LED를 켠 채 둘 거면 생략.
+레이어 품질: L1~L4는 무압축 PNG·순수 검정(#000) 배경으로 생성(압축 fringe·회색 배경은 Screen 합성 시 사각 halo 유발).
 ```
+- Magnific/nanobanana에 입력하는 것은 EXTREME DARK의 PROMPT와 SETTINGS 뿐이다. LIGHT LAYER SET은 별도 txt2img 생성 후 포토샵 합성용.
+- 조명 레이어 세트의 색온도·빔 패턴은 다크에 적용한 색온도 모드(Cool Blue/Warm Amber/Mixed)와 동일하게 맞춘다. 작성 규칙은 아래 "조명 레이어 세트" 모드를 그대로 따른다.
+
+**★ 병행 게이트(3중 검수 절충 — ASURA "항상" + 검수 "조건부"):** 결과물에 **반복 구조(의자 줄·객석·카펫 웨이브·패널 격자·글자)가 있거나 상업 납품용**이면 = 형태 크리티컬 → **위 2세트를 항상 함께 출력**한다. ASURA의 행사장·컨퍼런스홀 작업은 사실상 항상 이 조건이다. 반복 구조 없는 단순 무드 테스트만 원샷 i2i 하나로 생략 가능.
+**★ i2i 성공 기준(BLOCKER):** "형태 100% 보존"은 EXTREME DARK(i2i) 경로의 보장이 아니다 — 결과 위에 원본 50% 오버레이로 의자 행·카펫 경계·패널 위치를 대조하고, 틀어졌으면 레이어 경로(형태 100% primary)로 전환한다.
 
 ### EXTREME DARK PROMPT 내용 (항상 이 구조로)
 
@@ -572,6 +616,21 @@ Resemblance: [값]
 **③-a 재질별 빛 반응 (원본에 있는 재질만 골라 명시하면 고도화됨):**
 > 패브릭 의자/천 = `"cool light raking across velvety fabric is absorbed as matte diffuse glow with brighter rim highlights feathering along the top edges, the beam color mixing physically with the fabric's own hue as accurate colored reflection"` · 무대 데크(매트) = `"crisp elliptical spotlight pools with soft penumbra and a faint low sheen"` · 광택 타일 바닥 = `"brighter wet-looking specular pools and elongated beam reflections stretching toward the camera"` · 거친 벽/기둥 = `"warm side beams graze the rough plaster as a soft warm wash fading with distance, warming the surface tone"` · 꺼진 블랙 LED/유리 = `"stays the darkest anchor with only a faint edge sheen, no emission"`. 색광이 물체 고유색과 **물리적으로 섞이는(mixing/absorption)** 것을 명시한다 — 채도·명도 결과값을 강제하지 말고 물리 반사 동사로만 제어한다(예: 파란빔이 파란의자에 physically mixing, 골드빔이 크림벽에 warming). 결과값(saturation↑ 등) 강제는 컬러 노이즈·디테일 붕괴를 유발한다.
 
+**③-b 켜진 LED 스크린·디스플레이 처리 (★있으면 필수 — 2026-07-13 ASURA 반복 질책 + 3중 검수 반영):** 원본에 **켜져서 콘텐츠가 표시된 LED 스크린**을 다크에서 어떻게 둘지 3상태 중 하나를 명시적으로 고른다(3중 검수 BLOCKER — 기존 메인 변환의 재료잠금 `keep the same screen imagery`와 충돌하므로 상태를 분기해야 한다):
+
+| LED 상태 | 언제 | 처리 |
+|---|---|---|
+| `LED_CONTENT_PRESERVE` | 스크린을 켠 채 두고 싶을 때 | 메인 변환의 재료잠금 그대로(밝기·색온도만 그레이딩). 아래 OFF 문구 미사용 |
+| `LED_DIM` | 켜되 아주 어둡게 | 권장 안 함 — 잔상 위험. 꼭 필요하면 콘텐츠를 유지하되 노출만 크게 낮춤 |
+| `LED_POWERED_OFF` (★ASURA 기본) | 완전히 꺼서 블랙 패널로 | 아래 긍정 단언 문구. **이 상태에서는 재료잠금의 `keep the same imagery`류 문구를 절대 함께 넣지 않는다**(직접 충돌) |
+
+`LED_POWERED_OFF` 문구 — **긍정 목표상태를 앞세우고, 부정 열거는 짧은 보강 1개로만**(3중 검수 M2: `no purple content`처럼 두려운 산출물을 세세히 호명하면 오히려 salience가 올라 잔상 확률↑):
+> `"The [central LED screen / display panels] are a single flat uniform matte-black powered-off display surface with zero emitted light, the darkest black in the whole frame; the panel frame, position and geometry stay exactly as in Image 1 while only the emissive content is gone. These OFF panels are the sole exception to the volumetric shadow — pure black with zero glow and no screen spill or color bounce onto any surrounding surface."`
+- 발광 콘텐츠만 제거하고 **프레임·패널 기하·위치는 유지**한다고 분리해서 쓴다(패널 자체를 뭉개지 않게).
+- `dimmed`·`barely legible`·`faint content`는 쓰지 않는다 — 의미기반 모델이 그 잔상을 렌더한다.
+- **★ img2img로는 켠 LED가 확실히 안 꺼질 수 있다.** 형태 100% 보존 레이어 경로에서는 프롬프트가 아니라 **LED 영역을 마스크로 잡아 검정으로 채우는 수동/세그 단계**가 확실하다(아래 형태 보존 블록 B1 참조).
+- SD 대체 경로 NEGATIVE에는 잔상 억제 토큰을 넣는다: `glowing LED screen, visible screen content, residual screen glow, faint screen text, legible logo on screen`.
+
 **④ 색온도 (앞서 분석한 모드 그대로 적용 — 빔뿐 아니라 그 빛이 표면에 묻는 색까지 물듦)**
 - Cool Blue: `"Cool blue and cold white spotlight beams cutting through the darkness, their blue light pooling and spilling onto the surfaces they touch."`
 - Warm Amber: `"Warm amber and gold spotlight beams cutting through the darkness, their warm light pooling and spilling onto the surfaces they touch."`
@@ -590,9 +649,18 @@ bright ambient lighting, evenly lit room, colorful evenly-lit surfaces, flat day
 ```
 (`bright backgrounds`는 넣지 않는다 — 빔이 뒷벽을 때리는 밝은 표면까지 억제한다.)
 
-### Magnific 설정값 (0~1 스케일 — 2프리셋)
+### Magnific 설정값 (0~1 스케일 — 3프리셋)
 
-**기본(물체·구조 유지 우선 — 권장):** 빛-물체 상호작용을 살리려면 물체가 유지돼야 한다.
+> **★ 대전제(3중 검수 MAJOR M1): Magnific은 어둡게 만드는 도구가 아니다.** 보존·업스케일 중심이라 낮은 Creativity에서 전역 노출을 거의 안 낮춘다. **다크닝은 Magnific 투입 전에 완성한다** — 원본을 포토샵 Curves/노출 다운으로 먼저 어둡게 만든 뒤 Magnific에 넣거나, 형태 100% 보존 레이어 경로를 쓴다. 아래 값은 "어둡게"가 아니라 "형태·조명 보존"용이다. 값은 실측 튜닝 시작 범위지 보증값이 아니다.
+
+**★ 조명 보존 모드(B) — 이미 조명 입힌 입력 (권장 기본, ASURA 워크플로우):** 조명·형태 재발명 여지를 최소화해 ① 결과물의 빔을 그대로 유지한다.
+```
+Creativity: 0.2 ~ 0.35
+Resemblance: 0.8 ~ 0.95
+```
+(조명 생성 모드보다 Creativity를 낮추고 Resemblance를 높인다 — 기존 조명·구도를 충실히 유지. **어둠이 부족하면 Creativity를 올리지 말고**(구조 재해석 위험) 선행 다크닝을 강화하거나 Curves/Multiply 레이어 합성으로 어둠을 만든다. 최소 3장 샘플에서 형태 diff·LED 잔상으로 검증.)
+
+**조명 생성 모드(A) 기본(물체·구조 유지 우선):** 빛-물체 상호작용을 살리려면 물체가 유지돼야 한다.
 ```
 Creativity: 0.5
 Resemblance: 0.55
@@ -619,3 +687,28 @@ MAGNIFIC SETTINGS
 Creativity: 0.5
 Resemblance: 0.55
 ```
+
+### 익스트림 다크 예시 — 조명 보존 모드(B) / 컨퍼런스홀 (★기본, 켜진 LED OFF 처리 포함, 2026-07-13 검증 사례)
+
+메인 변환(①)으로 조명을 입힌 결과물을 Image 1으로 올린다. 빔을 새로 그리지 않고 보존하며, 원본의 켜진 보라 LED 스크린은 완전 OFF 블랙으로 끈다.
+
+```
+EXTREME DARK PROMPT
+Preserve the existing spotlight beams exactly as they already appear in Image 1 — their positions, directions, angles, colors, spread and wide symmetrical fan pattern remain as visible, byte-for-byte the same lighting. Beam geometry and hue stay unchanged; beam brightness may soften only through the global exposure reduction. The single change is a global reduction of ambient and shadow exposure around those beams: everything outside the beams — the ceiling void above the baffles, the back of the hall, the far rows, the deep corners — settles into rich clean near-black while keeping faint volumetric form and depth. Every surface the beams already illuminate keeps its existing light: the elliptical spotlight pools on the matte stage deck, the cool beam light pooling on the navy contour-patterned carpet catching the pale contour lines and pile sheen, the beam light on the dark charcoal fabric chair covers as matte diffuse glow with brighter rim highlights on the rows already lit, and the warm amber side light on the dark walnut wall paneling — all staying as in Image 1 with only the surrounding non-beam area darkened. The wide central LED screen and the two vertical LED banner screens are a single flat uniform matte-black powered-off display surface with zero emitted light, the darkest black in the whole frame; the panel frames, positions and geometry stay exactly as in Image 1 while only the emissive content is gone, and these OFF panels are the sole exception to the volumetric shadow with zero glow and no screen spill onto surrounding surfaces. Preserve the exact same camera position, wide-angle central-aisle framing, composition, and every element's placement as Image 1. High dynamic range with the existing beam cores kept, natural falloff, deep noise-free shadows with no grey wash, stronger contrast between the already-lit beam pools and the deepened surroundings. Photorealistic dramatic concert-grade stage lighting on a real built hall, true photograph quality — a believable real-world interior photograph.
+
+EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에는 입력하지 않음)
+new light beams, added spotlights, re-patterned beams, moved beams, changed beam directions, changed beam colors, different lighting layout, relit scene, reinvented lighting, extra beams, fan pattern changed, glowing LED screen, bright emissive screen, screen casting light, visible screen content, purple screen imagery, faint screen text, residual screen glow, legible logo on screen, bright ambient lighting, evenly lit room, flat daylight color, daylight, studio lighting, flat fill lighting, grey washed shadows, noise in dark areas, neon effects, overexposed bloom, blown highlights, fake lens flares, illustration, cartoon, CGI render look, changed camera angle, changed framing, text, watermark, logo
+
+MAGNIFIC SETTINGS  (형태·조명 보존용 — 어둠은 투입 전 Curves로 선행 완성)
+Creativity: 0.2 ~ 0.35
+Resemblance: 0.8 ~ 0.95
+```
+
+> ★ 이 컨퍼런스홀은 의자 줄·카펫 웨이브·패널이 반복 구조 = 형태 크리티컬이므로, 위 EXTREME DARK와 함께 **형태 100% 보존 LIGHT LAYER SET(원본 픽셀 무손상 + LED 영역 마스크 검정 fill)** 을 반드시 병행 출력한다. i2i 결과는 원본 50% 오버레이로 의자 행·카펫 경계를 대조 후 채택.
+
+**★ 익스트림 다크 성공 기준 체크리스트 (3중 검수 반영 — 결과를 이걸로 검증):**
+- [ ] LED 패널 내부에 텍스트·로고·보라 잔광이 전혀 없음(순수 검정)
+- [ ] 빔 개수·주요 방향·부채꼴 패턴이 기준 이미지(①)와 일치
+- [ ] 화면 프레임·객석 행·카펫 경계의 위치가 원본과 동일(오버레이 대조)
+- [ ] 카메라 크롭·종횡비가 원본과 동일
+- [ ] 위 중 하나라도 실패 시 원샷 i2i를 버리고 레이어 합성 경로로 전환
