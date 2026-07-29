@@ -137,6 +137,35 @@
 11. `other`는 관찰 가능한 재료·형상만 묘사하고 시스템 공법명을 쓰지 않는다.
 12. `undetermined`는 `preserve the exact visible structure and boundaries of this source region without inferring a booth construction system or adding joints, profiles, beams or hidden supports`만 쓰며 공법 고유 앵커를 방출하지 않는다.
 
+### 맥시마 → 옥타늄 오변환 회귀 차단
+
+사용자가 특정 부재를 맥시마 빔으로 선언했거나 해당 구역이 `maxima | high`로 확정되면 다음을 모두 적용한다.
+
+1. 선언된 맥시마 부재 각각을 원본 위치의 독립 `maxima` 구역으로 고정하고, 같은 픽셀 범위에 `octanorm`, `block`, `carpentry` 앵커를 넣지 않는다.
+2. 별도 옥타늄 구역이 `high`로 확정되지 않은 이미지에서는 최종 Magnific 프롬프트에 `Octanorm`, `octaclassic`, `post-and-infill`, `system groove`, `base rail` 어휘를 넣지 않는다. 억제 문구로도 호명하지 않는다.
+3. 원본에서 맥시마 부재가 깊고 넓은 박스형으로 보이면 `broad deep rectangular Maxima box-section members with single uninterrupted smooth planar faces, preserving the exact observed beam depth, face width, silhouette and beam-to-beam junctions`를 사용한다. 이 문장은 슬림 포스트, 다중 홈, 리브, T-slot 형상을 호명하지 않고 원하는 단면만 긍정형으로 고정한다.
+4. 이전 생성본이 맥시마를 가는 홈파인 프로파일로 바꿨다면 그 생성본을 다음 입력으로 사용하지 않는다. 구조 원본 Image 1로 돌아가며, 보존 업스케일 또는 맥시마 제외 ZONE B 마스크 경로만 허용한다.
+5. 이 사용자의 전시 작업에서 `맥시마 빔`은 항상 내부발광 구조 부재다. 발광 여부를 다시 추정하거나 비발광 압출재로 강등하지 않는다. 각 맥시마 빔은 `불투명 딥코발트 저광택 알루미늄 케이싱 + 원본에서 보이는 폭 그대로 케이싱에 플러시 삽입된 단일 반투명 오팔 디퓨저 발광 코어`의 두 재료로만 표현한다. 케이싱과 코어의 화면상 폭·두께·위치·비율은 Image 1과 동일하며, 코어는 기존 빔 실루엣 안에 머문다. 발광 코어의 휘도와 스필은 원본 수준을 유지하고, 스필은 원본에서 이미 영향을 받는 인접 현수막 가장자리와 바로 아래 바닥 범위까지만 유지한다.
+6. Magnific 프롬프트에는 맥시마 빔을 새 구조로 재설명하지 않고 다음 재질 앵커를 우선 사용한다: `each source-visible Maxima beam remains the exact original luminous structural member, consisting only of its opaque deep-cobalt low-sheen aluminum casing and the single narrow flush opal diffuser core already visible in Image 1; preserve the exact source casing-to-core ratio, luminous-pixel footprint, beam silhouette and junctions while materializing only the casing roughness, diffuser translucency, highlight roll-off and localized light response`.
+
+### 사용자 실사 시공사진 전수판독 계약 — 맥시마 발광빔 + PVC 현수막
+
+2026-07-29에 사용자가 지정한 `2026 국방 정보화 컨퍼런스` 실행사진 폴더의 JPG 373장과 MP4 1개를 전수 확인했다. 이 세트는 **재질·발광·시공 관계의 참조**이며, 그 부스의 치수·배치·프레임 수·카운터·모니터·스포트라이트·레드카펫·그래픽을 다른 Image 1에 이식하는 디자인 참조가 아니다.
+
+전수사진에서 확인된 시공 관계:
+
+1. 맥시마는 화면에 그려진 네온선이 아니라 실제 깊이와 측면을 가진 직선 구조빔이다. 사용자가 맥시마로 선언한 원본 부재의 폭·깊이·개구부·모서리·교차점·연결 순서를 그대로 유지한다.
+2. 이 사용자의 맥시마 빔은 항상 내부발광한다. 원본에서 보이는 불투명 청색 케이싱 또는 측면 리턴과, 같은 빔 실루엣 안에 들어간 청록-청색 연속 확산 발광면을 별도 재료로 읽는다. 발광면은 오팔 아크릴·폴리카보네이트 디퓨저처럼 부드럽게 이어지고 반복 LED 점은 보이지 않는다. 실사 노출에서 보이는 완만한 밝기 편차와 접합부의 약한 핫스폿은 허용하지만, 빔 전체를 투명 라이트박스나 두꺼운 네온 튜브로 만들지 않는다.
+3. 청록-청색 스필은 발광면에 바로 붙은 현수막 가장자리, 인접 프로파일 측면, 카운터 전면 가장자리와 바로 아래 바닥에서만 짧게 읽힌다. 홀 천장·벽·카펫 전역을 파란 분위기광으로 물들이지 않는다.
+4. 맥시마 프레임의 열린 창과 통로는 실제 빈 개구부다. 발광을 강화해도 개구부를 유리, 아크릴판, 발광 패널, 라이트박스 면으로 채우지 않는다.
+5. 그래픽은 발광빔과 별도의 불투명 인쇄 PVC 플렉스 현수막이다. 현수막은 빔 안쪽 또는 뒤쪽의 원본 위치에서 상·하단 숨은 바미싱 장력으로 팽팽하고 거의 평면인 인쇄면을 이룬다. 실사에서 확인되는 재질감은 저광택 비닐 스크림과 균일한 사광 반응뿐이며, 원본에 보이는 분할선만 유지한다. 새 봉제선·패널 조인트·처짐·대각선 당김·주름·레일을 만들지 않는다.
+6. 상부의 집게형 백색 스포트라이트는 맥시마 발광과 별도인 외부 조명이다. Image 1에 이미 있는 경우에만 정확한 위치와 수량으로 유지하고, 실사 참조사진에서 보았다는 이유로 추가하지 않는다.
+7. 측면에서 보이는 은색 슬림 프로파일·시스템 홈·카운터 상판 레일은 별도 옥타늄 또는 보조 프로파일 증거다. Image 1의 맥시마 구역으로 가져오지 않으며 맥시마 빔을 은색 홈파인 포스트-앤-레일로 바꾸지 않는다.
+
+이 전수사진 세트에 기반한 우선 재질 앵커:
+
+`materialize only the source-visible Maxima members as real internally illuminated structural beams with their exact original dimensions, casing-to-diffuser ratio, open spans and junctions; retain the source-matched opaque deep-blue casing and side returns, and the continuous cyan-blue opal diffusing face already contained within each beam silhouette, with smooth internal diffusion, mild real-world luminance variation and short-range spill only on immediately adjacent banner edges and floor; keep every graphic face as a separate opaque PVC flex banner whose visible print plane remains smooth, near-planar and uniformly taut at the exact source silhouette, with fine low-sheen vinyl-scrim microtexture and soft even grazing-light response only, preserving the original artwork and every source-visible division exactly`
+
 ## 6. 재질·그래픽·바닥 분리 게이트
 
 공법 판정은 골격의 판정일 뿐, 그래픽면·조명·바닥을 새로 설계할 권한이 아니다.

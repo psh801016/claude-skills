@@ -514,7 +514,7 @@ replaced architecture from the second image, structural transfer from reference 
 **모드 A2 — 맥시마 또는 맥시마/옥타늄 혼합부스 (사용자가 맥시마 시공을 선언하거나 원본에서 개구부·파시아를 잇는 압출 골격과 접합 증거가 보일 때):**
 - 맥시마 구조 앵커: `the target-visible zone retains its source-confirmed Maxima extrusion structure at the exact source openings, fascia or portal, preserving only the observed exposed, panel-clad, or fabric-clad condition and the observed beam depth, spacing and joints`
 - 옥타늄 혼합이 함께 확정된 경우에만: `a neutral matte-silver Octanorm base shell with thicker Maxima box-section beams only at the exact front-facade positions already visible in target Image 1`
-- 기존 파란 맥시마 빔: target Image 1에서 실제 발광할 때만 `the target-visible blue Maxima members retain their exact geometry and read as internally illuminated architectural blue channel members matching Image 1, with a controlled electric-blue core and short-range diffuse spill limited to the immediately adjoining banner edge, upright edge and floor directly below`
+- 이 사용자의 맥시마 빔: `each source-visible Maxima beam remains the exact original internally illuminated structural member, consisting only of its opaque deep-cobalt low-sheen aluminum casing and the single narrow flush translucent opal diffuser core already visible in Image 1; preserve the exact source casing-to-core ratio, luminous-pixel footprint, beam silhouette and junctions while materializing only the casing roughness, diffuser translucency, highlight roll-off and localized light response`
 - 나머지 골조: target Image 1 또는 사용자의 실제 시공 선언이 해당 측·후면 구역을 옥타늄으로 확인할 때만 기본값 `side and rear Octanorm posts, rails and base members remain neutral silver, matte and non-emissive`를 적용한다. 다른 구조이거나 불명확하면 이 문구를 적용하지 않고 원본에서 보이는 상태를 보존한다. 사용자가 해당 구역의 발광 시공을 별도로 선언한 경우에만 그 구역을 독립적으로 예외 처리한다.
 - 그래픽: 백색 또는 컬러 인쇄면은 원본 시공 선언에 따라 `continuous opaque tensioned PVC flex banner graphic with subtle tarpaulin microtexture and exact source artwork preserved`
 - ★대조 앵커: `"…a physically assembled hybrid exhibition system with facade-only Maxima treatment, not an all-blue glowing frame and not a seamless built wall."`
@@ -541,7 +541,7 @@ replaced architecture from the second image, structural transfer from reference 
 
 **★ 그래픽·마감 실재료 서브블록 (★원본에 실제 보이는 재료 1~2종만 골라 주입 — 6종 나열 금지(material soup). 없는 텍스트/로고 생성 금지):**
 - 현수막(플렉스): `continuous opaque PVC flex banner graphic, exact original artwork preserved, only the original level of surface flatness and sheen, no added holes, grommets, screws, rivets, stitching, folds, or wrinkles`
-- 바미싱 플렉스 현수막(사용자 선언 또는 원본 확인 시): `a continuous full-bleed opaque PVC flex banner face held by a concealed top-and-bottom bar-missing tension system, with no visible top bar, bottom bar, side rail, silver perimeter frame, exposed post, base rail, panel joint or border around the graphic face; exact original artwork preserved`
+- 바미싱 플렉스 현수막(사용자 선언 또는 원본 확인 시): `a continuous full-bleed opaque PVC flex banner face tensioned by concealed sewn pole pockets at the top and bottom, with the internal rods fully hidden inside the rod-pocket sleeves; the visible face remains flat and uninterrupted at the source-defined silhouette, with exact original artwork preserved`
 - 켈지(점착 실사출력): `matte (or gloss) self-adhesive vinyl film, tightly wrapped flat to the wall, crisp saturated color`; 백켈지=`opaque solid backing` / 투명켈지=`translucent vinyl on glass`
 - 커팅시트: `cut vinyl lettering and solid-color film logos, sharp die-cut edges`
 - SEG 텐션패브릭: `SEG silicone-edge tension fabric graphic, taut smooth flat matte fabric, edge sitting flush in a slim aluminum channel`
