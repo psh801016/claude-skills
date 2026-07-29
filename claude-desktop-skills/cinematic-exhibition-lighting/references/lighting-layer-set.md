@@ -105,14 +105,14 @@ colored smoke, fog machine look, dry ice effect, unrealistic physics
 
 > **오픈소스 대안 — IC-Light**: 베이스 조명(전역 조명감·색광·방향)은 IC-Light(무료·MIT, SD 기반 relight)로 재조명 보정하고, 포토샵 레이어(L1~L4)는 빔·하이라이트 **미세보정만** 맡기면 레이어 수를 크게 줄일 수 있다. 이 스킬의 조명 레이어 분리 합성과 **같은 광원 중첩(독립성) 물리 직관에서 출발하지만 구현은 다르다** — IC-Light는 신경망 추론이라 결과가 편집 가능한 조명 레이어가 아니라 **구워진 재조명 이미지**로 나온다. 디테일 그림자 마스킹도 불완전하므로 베이스 조명 전용 — 완전 대체가 아니다.
 
-각 레이어는 위 "LIGHT LAYER PROMPT 작성 순서"의 블록 ①(블랙 배경)·②(비율=생성 파라미터)·④·⑤·⑥ 규칙을 그대로 상속하고, **③(빔 묘사) 자리만 아래 성분별 묘사로 바꾼다.** 색온도는 판단표의 모드를 4장 모두 동일하게 적용(혼합 모드면 빔=주색, 워시=보조색 배분 가능).
+각 레이어는 위 "LIGHT LAYER PROMPT 작성 순서"의 블록 ①(블랙 배경)·②(비율=생성 파라미터)·⑥(기술 선언)만 공통으로 상속하고, 그 사이에는 아래 **성분별 전용 묘사만** 넣는다. 블록 ④(입자·헤이즈)와 ⑤(스파클·글린트)는 4장에 공통 상속하지 않는다. L2의 헤이즈·미세 입자는 L2 전용 묘사 안에서만 정의하고, 스파클이 별도로 필요하면 L2의 선택 옵션으로만 명시한다. 이렇게 해야 L1의 빔, L2의 헤이즈, L3의 스팟 풀, L4의 컬러 워시가 서로 오염되지 않는다. 색온도는 판단표의 모드를 4장 모두 동일하게 적용한다(혼합 모드면 빔=주색, 워시=보조색 배분 가능).
 
 ### 4분리 성분 (각각 별도 생성 = 별도 프롬프트 출력)
 
-| # | 레이어 | ③ 자리 묘사 | 블렌드/불투명도 시작값 |
+| # | 레이어 | 성분별 전용 묘사 | 블렌드/불투명도 시작값 |
 |---|---|---|---|
 | L1 | **빔 (BEAM)** | `"only sharp well-defined volumetric light beams with natural falloff and non-clipping brightness, crisp edges, minimal ambient glow around them"` (빔 코어를 순백으로 만들지 않는다) | Screen 또는 Linear Dodge(Add), **40~70%** — 하이라이트가 날아가면 하향 |
-| L2 | **헤이즈 (HAZE)** | `"only soft atmospheric haze glow filling the beam paths and upper air, with light haze / medium haze / heavy haze density, without any defined beam edges"` (농도 1개 선택) | Screen, 30~60% |
+| L2 | **헤이즈 (HAZE)** | `"only soft atmospheric haze glow and subtle suspended dust filling the beam paths and upper air, with light haze / medium haze / heavy haze density, without any defined beam edges or solid light pools"` (농도 1개 선택, 스파클은 요청 시에만 이 문장 끝에 추가) | Screen, 30~60% |
 | L3 | **스팟 풀 (SPOT POOL)** | `"only soft elliptical light pools on the floor and subject positions where the spotlights land, gentle hotspot centers with natural falloff, without visible beams in the air"` | Screen, 50~80% |
 | L4 | **컬러 워시 (COLOR WASH)** | `"only a broad smooth color wash gradient as if colored stage light washing across walls and surfaces, soft and even, without beams, pools, or particles"` | **블랙 배경 규격이면 Screen 20~40%.** Soft Light/Color는 레이어를 50% 그레이 기반으로 만들었을 때만 20~50% (블랙 배경에 Soft Light를 걸면 검정 영역이 화면을 어둡게 만든다) |
 
@@ -154,4 +154,3 @@ room, architecture, walls, ceiling, floor, furniture, objects, people, faces, ba
 ```
 
 ---
-
