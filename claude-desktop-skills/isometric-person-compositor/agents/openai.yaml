@@ -1,0 +1,4 @@
+interface:
+  display_name: "아이소뷰 실사 인물 합성"
+  short_description: "원본 구조와 투명 배경을 보존하는 아이소뷰 실사 인물 합성"
+  default_prompt: "아이소 사람: 원본 구조와 알파를 유지한 채 옥타 2500mm 기준으로 실사 인물을 합성해 주세요."

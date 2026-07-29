@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adaptive Model & Effort Advisor"
+  short_description: "Route current Codex, Gemini, and Claude models by task shape"
+  default_prompt: "Use $adaptive-model-effort-advisor to choose the cheapest reliable model and escalation path for this task."
