@@ -7,6 +7,34 @@ description: "이미 실사화된 공간 사진(전시부스·행사장·인테�
 
 **목표 = 수정 가능한 실사 인물 합성.** 인물을 장면 안에 한 번에 생성하면(통짜 인페인트) 위치·인원·포즈를 못 고치고, 한 명이 깨져도 전체를 재생성해야 한다. 그래서 이 스킬은 **사람을 장면과 분리해 생성하고, 배경에서 사람만 떼어 레이어로 얹는다** — 그림자·반사·색보정도 각각 분리 레이어. 마음에 안 드는 인물만 교체하고, 위치·크기는 자유 변형으로 조정한다.
 
+## 최우선 출력 계약 — 프롬프트만 먼저
+
+이 절은 아래의 모든 상세 경로·합성 절보다 우선한다.
+
+1. 사용자가 **"이미지 생성해"·"이미지 만들어"처럼 생성 자체를 명시**하기 전에는 이미지 생성 도구, Higgsfield 웹 UI, 이미지 편집 도구를 절대 실행하지 않는다. 이미지 첨부·"사람스킬"·"새로 만들어"·"다시 해"는 **새 프롬프트 요청**으로 해석한다.
+2. 기본 응답은 설명·표·워크플로·레이어 가이드 없이 **복사 가능한 영문 프롬프트 1개만** 낸다. 사용자가 설명, 레이어, 포토샵, diff, QC를 요청할 때만 해당 절을 덧붙인다.
+3. 원본 빈 공간에 사람을 새로 넣는 요청은 이전 생성본을 수정하지 않는다. **원본 빈 이미지 하나만 베이스**로 하여, 모든 사람을 한 프롬프트에서 새로 구성한다. 단, 사용자가 포토샵으로 위치·스케일·방향을 잡은 합성본을 정답 예시로 주면 그 합성본이 **배치 마스터**다. 이때 빈 원본과 합성본을 함께 넣어 모델이 어느 쪽을 베이스로 고르게 하지 말고, 깨끗하게 내보낸 합성본 한 장만 사용해 인물 실루엣 영역을 국소 교체한다.
+4. 사람이 한 명만 이상하면 전체 이미지를 다시 편집하지 않는다. 해당 인물과 접지 그림자에 필요한 최소 영역만 마스크 편집한다. 다른 인물의 보존을 장황한 다중 이미지 지시로 해결하지 않는다. 위치·스케일·방향이 이미 맞는 포토샵 합성본은 인물 기하를 다시 생성하지 않고 색·조명·접지만 보정한다.
+5. 프롬프트는 AI가 바로 실행할 수 있게 `base image → exact people and zones → lighting/perspective → immutable elements` 순서로 쓴다. 인원·성별·역할·위치를 짧고 명확하게 지정하며, 성별 표현이 필요한 경우 `clearly Korean woman/man`과 헤어·의상·포즈를 함께 쓴다.
+
+### 기본 영문 프롬프트 뼈대
+
+```text
+Using the original empty [scene] image as the only base, add exactly [N] realistic Korean [event] attendees. Return the exact original pixel dimensions, aspect ratio and crop. Do not redraw, resample, blur, denoise or soften the existing background. Preserve every original background pixel outside the new people and their immediate physically required shadows/reflections. Do not change any existing architecture, text, logos, screens, graphics, lighting or camera angle.
+
+Place: [one concise numbered list of people, role, gender, outfit and physical zone]. Keep people away from all signage and screen content.
+
+Match correct perspective, scale, grounded feet, scene lighting, contact shadows, and only the floor reflections supported by the floor material. Render the people with crisp high-resolution facial, hand, hair and fabric detail at their final placed size. Natural candid business-event posture, no direct eye contact, no readable text on clothing or props. Change only the people and their immediate shadows/reflections.
+```
+
+## 해상도·원본 픽셀 보존 (포토존 포함 전 경로 필수)
+
+- **최종 캔버스는 입력 원본과 픽셀 치수·종횡비·크롭이 완전히 같아야 한다.** 축소본, 임의 업스케일본, 리사이즈·재크롭본은 결과 후보로도 통과시키지 않는다.
+- AI 전체 화면 편집 결과는 사람·접지 그림자·인접 반사 추출용 소스일 뿐이다. **최종본의 사람 마스크 밖 모든 배경 픽셀은 손대지 않은 원본에서 복원**한다. 건축, 옥타판, 글자, 로고, 그래픽, 천장, 바닥은 생성 결과의 재렌더 픽셀을 남기지 않는다.
+- 전체 화면을 반복 생성·업스케일·디노이즈하지 않는다. 한 번의 전체 화면 후보에서 방향·위치·해상도가 틀리면 즉시 인물 전용 국소 마스크 또는 별도 인물 레이어로 전환한다. 반복 편집으로 생긴 글자 번짐·벽면 뭉개짐·바닥 질감 손실은 보정 대상이 아니라 반려 사유다.
+- 인물 디테일이 부족하면 전체 장면을 확대하지 않는다. **인물 영역만 최종 배치 크기보다 충분히 큰 고해상도 소스로 다시 생성**한 뒤 한 번만 축소해 합성한다. 얼굴·손·머리카락·의상 가장자리를 100% 확대에서 확인한다.
+- 최종 QC에서 원본과 결과를 100% 확대 Difference 비교한다. 허용 차이는 `인물 실루엣 + 접지 그림자 + 물리적으로 필요한 인접 반사/스필` 안쪽뿐이다. 그 밖의 차이는 모두 원본 픽셀로 되돌린다.
+
 ## 0순위 원칙
 
 1. **장면 전체에 인물을 직접 구운(bake) 이미지를 최종본으로 내지 않는다.** 단 bake 결과를 **'소스'로 쓰는 것은 허용** — 경로 C는 장면에 직접 배치 생성한 뒤 원본과의 차분으로 사람·빛·그림자만 레이어로 떼어 수정 컨트롤을 회수한다. bake 결과를 그대로 최종본으로 쓰는 건 사용자가 명시적으로 요구할 때만("수정 불가" 경고 1줄과 함께).
@@ -28,14 +56,17 @@ description: "이미 실사화된 공간 사진(전시부스·행사장·인테�
 
 ## 빠른 흐름
 
-1. **경로 판정**: "배경에 맞게/어울리게 넣어줘" 또는 배경 정합 우선 → **경로 C**. 위치·인원 사후 자유 조정이 명시 요구 → 경로 A.
-2. **장면 분석**: SCENE MATCH 8항목 추출. 이미지가 없으면 합성 대상 장면을 먼저 요청한다.
-3. **기존 인물 분기**: 베이스에 이미 사람이 있으면 — 유지(기존 인물의 조명·색을 신규 인물의 **매칭 앵커**로 사용) / 제거(인페인트로 지우고 바닥 재구성 후 진행) 중 확인.
-4. **인물 구성 확인**: 몇 명, 역할, 근/중/원경, **포즈 분류(서기/앉기/기대기)** — 미지정이면 장면에 맞는 기본 구성을 제안하고 확인.
-5. **프롬프트 출력**: 경로 C = SCENE PLACEMENT PROMPT 1개 / 경로 A = GROUP PROMPT(상호작용 무리·거리대별로 나눠 2~3개까지). NB Pro는 의미기반 — NEGATIVE 없음, 긍정형만.
-6. **추출/합성 가이드 출력**: 경로 C = DIFF EXTRACT STEPS / 경로 A = PHOTOSHOP STEPS. + SCALE ANCHOR + 품질 게이트.
+1. **출력 계약 판정**: 생성 명시가 없으면 영문 단일 프롬프트만 출력한다. 생성 명시가 있을 때만 해당 경로의 실행 절차를 사용한다.
+2. **경로 판정**: "배경에 맞게/어울리게 넣어줘" 또는 배경 정합 우선 → **경로 C**. 위치·인원 사후 자유 조정이 명시 요구 → 경로 A.
+3. **장면 분석**: SCENE MATCH 8항목 추출. 이미지가 없으면 합성 대상 장면을 먼저 요청한다.
+4. **기존 인물 분기**: 베이스에 이미 사람이 있으면 — 유지(기존 인물의 조명·색을 신규 인물의 **매칭 앵커**로 사용) / 제거(인페인트로 지우고 바닥 재구성 후 진행) 중 확인.
+5. **인물 구성 확인**: 몇 명, 역할, 근/중/원경, **포즈 분류(서기/앉기/기대기)** — 미지정이면 장면에 맞는 기본 구성을 제안하고 확인.
+6. **프롬프트 출력**: 경로 C = SCENE PLACEMENT PROMPT 1개 / 경로 A = GROUP PROMPT(상호작용 무리·거리대별로 나눠 2~3개까지). NB Pro는 의미기반 — NEGATIVE 없음, 긍정형만.
+7. **추출/합성 가이드 출력**: 경로 C = DIFF EXTRACT STEPS / 경로 A = PHOTOSHOP STEPS. + SCALE ANCHOR + 품질 게이트.
 
 ## 출력 형식 (판정된 경로 것만 출력 — 두 경로를 다 내밀지 않는다)
+
+생성 명시가 없으면 이 형식을 사용하지 말고, 위의 **기본 영문 프롬프트 뼈대에 맞춘 프롬프트 1개만** 출력한다.
 
 ```
 [SCENE MATCH] — 8항목 분석 요약 + 기존 인물 분기 + 경로 판정(C/A/B와 근거 1줄)
@@ -57,12 +88,32 @@ QUALITY GATE — 재생성 판정 기준
 
 ### C-1. SCENE PLACEMENT PROMPT 골격 (NB Pro Edit — 베이스 이미지 첨부)
 
-> `"Add realistic [인종/국적] people into this existing [장면 유형] photograph. Protected and unchanged: the camera, composition, framing, resolution, aspect ratio and crop (return the image at the identical resolution, pixel-aligned with the input), and every existing structure, surface, color and text — [장면 고유 요소 나열]. Allowed changes only: the newly added people themselves, their contact shadows on the floor and furniture, and subtle light spill on surfaces immediately adjacent to them. Place them naturally into the real depth of the scene: [구역별 배치 명세 — 구역마다 '위치 + 인원 + 역할·복장 + 포즈·시선 + 앞뒤 관계(예: partially occluded behind the front counter)' 한 줄]. Match every person to the scene: correct perspective and size for their exact floor position and distance, feet and hips properly contacting the floor and chairs, lit by the scene's key light from [SCENE MATCH에서 읽은 광원 방향·경도·색온도], color temperature matching the surrounding light[, with 장면 고유 컬러 스필 문구], realistic soft contact shadows beneath each person on the [바닥 재질], all shadows falling in the same direction as existing shadows in the scene. Natural candid postures, distinct faces and outfits, realistic skin and hair, unbranded clothing with no text, no one looking at the camera. Photorealistic documentary photograph, people fully integrated into the space, not pasted on top."`
+> `"Add realistic [인종/국적] people into this existing [장면 유형] photograph. Protected and unchanged: the camera, composition, framing, resolution, aspect ratio and crop (return the image at the identical resolution, pixel-aligned with the input), and every existing structure, surface, color and text — [장면 고유 요소 나열]. Allowed changes only: the newly added people themselves, their contact shadows on the floor and furniture, and subtle light spill on surfaces immediately adjacent to them. Place them naturally into the real depth of the scene: [구역별 배치 명세 — 구역마다 '위치 + 인원 + 역할·복장 + 포즈·시선 + 앞뒤 관계(예: partially occluded behind the front counter)' 한 줄]. Match every person to the scene: correct perspective and size for their exact floor position and distance, feet and hips properly contacting the floor and chairs, lit by the scene's key light from [SCENE MATCH에서 읽은 광원 방향·경도·색온도], color temperature matching the surrounding light[, with 장면 고유 컬러 스필 문구], realistic soft contact shadows beneath each person on the [바닥 재질], all shadows falling in the same direction as existing shadows in the scene. Natural candid postures, distinct faces and outfits, realistic skin and hair, unbranded clothing with no text, [photo-zone or scene-matched eye-direction instruction]. Photorealistic documentary photograph, people fully integrated into the space, not pasted on top."`
 
 - **보호/허용 분리가 잠금의 핵심**: "아무것도 바꾸지 마 + 그림자는 그려"는 자기모순이라 모델이 잠금을 느슨히 해석하며 전역 드리프트로 샌다. 위처럼 **Protected(구조·색·해상도) / Allowed(신규 인물·접지 그림자·인접 스필)** 를 명시 분리한다.
 - **해상도·픽셀 그리드 락 필수**: diff 공정 전체가 두 이미지의 동일 픽셀 그리드를 전제한다 — 락 문구가 없으면 NB Pro가 크롭·리사이즈해 공정이 시작부터 무너진다.
 - **오클루전 명시**: 전경 구조물 뒤에 설 인물은 반드시 `partially occluded behind [구조물]`로 앞뒤 관계를 지정 — 틀린 오클루전은 레이어로도 수정 불가(부분 재생성이 유일한 출구).
 - 구역별 배치는 **장면의 실제 구조물 이름으로** 지정(`on the green grass carpet at the round wooden café tables` 식), 원경은 `smaller and softer as they are farther away`. 텍스트 소품 금지·시선 규칙은 공통 원칙 그대로.
+
+### 포토존·옥타판 구역 및 포즈 판정 (필수)
+
+- **대상 옥타판을 먼저 특정한다.** 판의 색은 기준이 아니다. 긴 옥타 구조가 여러 칸이면 전체 벽을 포토존으로 취급하지 않는다. 사용자가 지정한 옥타판 1칸 또는 행사명·키비주얼이 크게 배치된 히어로 판 1칸만 대상 포토존이다. 일정표·이슈 목록·안내 화면이 있는 다른 판은 제외한다.
+- **화면 좌표보다 실제 판의 3D 면을 먼저 읽는다.** 대상 판의 두 세로 프레임, 하단 베이스라인, 상단선의 원근으로 판 평면 `P`를 잡는다. 그래픽이 인쇄된 표시 앞면에서 관람객이 설 수 있는 열린 공간으로 나오는 수직 방향을 `n_front`로 정의한다. 카메라, 화면 중앙, 화면 좌우·상하, 판의 색, 카펫 색·화살표·그래픽 방향으로 `n_front`를 정하지 않는다.
+- **판의 앞뒤가 불명확하면 추측하지 않는다.** 앞면과 열린 공간을 이미지에서 확정할 수 없으면 사용자 표시 또는 배치 마스터를 요청한다. 카메라를 향하는 쪽을 임의로 판 앞면으로 간주하지 않는다.
+- 포토존의 좌우 경계는 대상 판 1칸을 감싸는 **두 개의 세로 프레임/기둥**이다. 두 프레임의 바닥 접점 중점을 `C_floor`로 정의한다. 주인공 2명의 위치는 화면 중앙이 아니라 이 프레임 사이의 **실제 3D 바닥 중심 `C_floor`**다.
+- 두 사람을 하나의 그룹으로 보고 **두 사람 발 접지점의 그룹 중점이 `C_floor`와 일치**하게 한다. 두 사람 사이의 빈 간격 중심도 판의 세로 중앙선에 맞춘다. 판 중앙, 카펫 중앙, 화면 중앙이 서로 다르면 항상 **대상 판의 `C_floor`**가 우선이다.
+- 두 발의 베이스라인은 판 하단 베이스라인과 평행하고 바로 앞에 있어야 한다. 사람을 카펫 앞쪽·대리석 쪽·카메라 쪽으로 당기거나 포토존 칸 바깥으로 옮기지 않는다.
+- 포토존 주인공은 **정확히 2명 전신**이다. 두 사람은 판과 평행한 같은 베이스라인에 서며, 발뒤꿈치와 등이 판에 거의 닿아 보일 정도로 가깝게 배치한다.
+- **사용자 수정본이 배치 정본이다.** 사용자가 포토샵으로 사람 위치·스케일·방향을 잡은 이미지를 주면 그 픽셀 배치를 다시 추정하거나 계산하지 않는다. 머리·어깨·골반·무릎·발 접지점과 몸 방향을 그대로 보존한다.
+- **방향은 하나의 3D 관계로만 판정한다.** 공간 관계는 `대상 옥타판 P → 사람의 등 → 사람의 가슴·얼굴·시선 → n_front 방향의 열린 공간`이다. 판은 두 사람의 등 뒤에 있어야 한다. 얼굴·코·가슴·골반·무릎·발끝·시선은 판 앞쪽 열린 반공간을 향해야 한다. 사람은 판을 바라보지 않으며, 머리나 눈만 다른 방향으로 돌면 불합격이다.
+- **화면 투영은 결과 확인용일 뿐 지시 기준이 아니다.** 프롬프트에 `lower-left/right of the frame`, `screen left/right`, `toward the camera/viewer`, `front-facing`, `outward`를 방향 지시로 쓰지 않는다. 같은 3D 방향도 카메라 위치에 따라 화면에서 정면·측면·3/4로 보일 수 있으므로, 판 평면에서 유도한 `n_front`만 유지한다.
+- 프롬프트에는 다음 관계를 한 덩어리로 쓴다: `standing immediately in front of the target Octanorm panel with the panel directly behind their backs; their chests, feet, faces and gaze all extend perpendicularly away from the panel into the open space in front of that panel; derive this direction from the physical panel plane, never from the render camera or screen coordinates`.
+- **정확한 방향이 중요한 경우 텍스트 단독 생성을 금지한다.** 포토샵 수정본 또는 포즈 가이드가 있으면 그것을 한 장의 배치 마스터로 사용하고 주인공 2명 실루엣만 국소 교체한다. 가이드 없이 빈 원본에 텍스트만 써서 방향을 재현한 결과는 후보일 뿐 최종본으로 통과시키지 않는다.
+- 두 사람은 하나의 포즈 그룹이다. 서로를 바라보거나 대화·이동·관람하는 장면이 아니라 같은 `n_front` 방향으로 나란히 선다. 짝다리·가벼운 몸 틀기·편안한 표정·비대칭 손 자세는 허용하되, 가슴·골반·발끝의 주방향이 판 앞쪽 열린 반공간을 벗어나면 안 된다.
+- 사용자가 참조 이미지처럼 붐비는 행사 분위기를 요구하면, 주인공 2명과 별도로 주변 참석자를 포토존 핵심 구역 밖에 자연스럽게 배치한다. 주변 참석자는 소그룹 대화·대기·이동이 가능하지만 주인공 2명이나 대상 옥타판을 가리지 않는다.
+- 빈 원본에 모든 인물을 새로 구성할 때는 주변 참석자까지 같은 프롬프트에 명시한다. 빈 원본에 `preserve existing people`라고 쓰지 않는다. 기존 사람이 있는 배치 마스터를 수정할 때만 보존 문구를 사용한다.
+- **반복 실패 차단:** 방향, `C_floor` 중심, 판과의 거리, 입력 해상도 중 하나라도 한 번 틀리면 문구만 바꿔 전체 화면을 다시 생성하지 않는다. 원본 구조·그래픽·배경 픽셀을 잠그고, 배치 마스터+인물 전용 국소 마스크 또는 별도 고해상도 인물 레이어 합성으로 즉시 전환한다.
+- 이 절은 일반 전시·부스의 시선 규칙, 화면 중앙, 카펫 장축, 카메라 정면 기반 추정보다 우선한다.
 
 ### C-2. DIFF EXTRACT STEPS (포토샵 — 인물/효과 분리, 기본 2레이어)
 
@@ -84,6 +135,7 @@ QUALITY GATE — 재생성 판정 기준
 ### C-3. 경로 C QUALITY GATE
 
 - **분해 무손실 자가검증**: `C_인물`+`C_효과`+베이스 합성 결과 위에 R을 Difference로 올려 인물·그림자 영역이 검게 나오는지 확인 — 어긋난 곳 = 마스크가 놓친 픽셀.
+- **해상도·배경 선명도 게이트**: 결과의 픽셀 치수·종횡비가 원본과 정확히 같은지 확인한다. 인물·효과 마스크 밖에서 원본과 결과의 Difference가 뜨거나 글자·로고·판 그래픽·바닥 질감이 조금이라도 부드러워졌으면 결과를 반려하고 해당 구역을 원본 픽셀로 복원한다.
 - **드리프트 판정은 면적%가 아니라 구역 기준**: 인물을 배치하지 않은 배경 구역의 diff 잔량으로 판정(다인물 장면은 정상 배치도 화면 대부분을 덮을 수 있다 — 절대 면적 임계 금지). 부스 로고·글자·구조물 변형은 면적과 무관하게 즉시 재생성 사유.
 - 특정 인물만 불합격(얼굴·손 붕괴) → 그 인물 영역만 크롭해 REPLACE 부분 재생성(경로 B 절차) 후 diff 재추출.
 - 접지·스케일은 장면 생성이라 대체로 자동 합격 — 그래도 발 접점·그림자 방향(기존 그림자와 동일 방향)·인물 윤곽 halo는 100% 확대 QC.
@@ -133,7 +185,7 @@ QUALITY GATE — 재생성 판정 기준
 
 **다인물 일관성**: 일괄 생성(같은 컷)이면 조명·색·스타일 일관성이 **자동으로 확보**된다 — 이것이 기본 모드인 이유. 개별 재생성(교체·추가)할 때만 일괄 생성분을 **레퍼런스 이미지로 재투입**하고, 완성 후 그 인물의 색온도·그림자 방향이 나머지와 맞는지 확인한다. 레퍼런스 재투입도 얼굴·체형·의상이 어긋날(drift) 수 있다 — 같은 인물 유지가 필요하면 의상·체형을 프롬프트에 고정 명시하고 결과를 비교해 고른다.
 
-**시선·포즈 규칙**: 카메라 정면 응시 금지(긍정형 `looking toward the booth display / toward each other`). 근경 1명 이상은 뒷모습·측면이 합성 티가 덜 난다.
+**시선·포즈 규칙**: 일반 전시·부스 장면은 카메라 정면 응시를 피하고 `looking toward the booth display / toward each other`처럼 장면 안의 목적지를 지정한다. 단, **포토존·옥타판은 위 ‘포토존·옥타판 구역 및 포즈 판정’이 우선**한다. 포토존 주인공 2명은 사용자 수정본 또는 대상 판의 실제 3D 평면에서 유도한 `n_front`를 따른다. 화면 좌우나 카메라 방향으로 환산하지 않는다. 머리·눈만 돌리고 몸통·골반·발이 다른 방향에 남으면 불합격이다. 주변 참석자만 일반 전시 장면의 시선·대화·보행 규칙을 따른다.
 
 ## PHOTOSHOP STEPS (전부 분리 레이어 — 이 순서로 쌓는다)
 
@@ -174,8 +226,9 @@ QUALITY GATE — 재생성 판정 기준
 - 광각 가장자리 배치에서 주변 수직선과 인물 축이 안 맞음 → 중앙 쪽으로 재배치 또는 경로 B로 전환.
 - 전신 세로 프레이밍은 얼굴·손 디테일이 약해질 수 있다 → 생성 직후와 업스케일 후 **얼굴·손 QC 필수**(일괄 생성 컷은 인물마다 확인).
 - **2단계 게이트**: ① 배치 게이트(컷 단위) — 인물이 겹치거나 간격이 없거나 라인업이 부자연스러우면 컷 재생성(간격 문구 강조), 반복 실패 시 인원을 줄여(2명) 재시도. ② 인물 게이트(분할 후 개별) — **1~2명만 불합격이면 컷을 버리지 말고 REPLACE PROMPT로 그 인물만 교체**, 절반 이상 불합격이거나 간격 붕괴면 컷 전체 재생성.
+- **포토존 구역·방향 게이트**: ①선택된 대상이 사용자가 지정한 옥타판 1칸인가 ②두 세로 프레임·하단 베이스라인으로 실제 판 평면 `P`, 판 앞쪽 열린 방향 `n_front`, 두 프레임 바닥 접점의 중점 `C_floor`를 잡았는가 ③두 사람 발 접지점의 그룹 중점과 두 사람 사이 간격 중심이 `C_floor`에 일치하는가 ④두 발이 지정 바닥 안쪽이고 판 하단 바로 앞에 접지하며 등과 판 사이가 거의 붙어 보이는가 ⑤사용자 수정본이 있으면 머리·어깨·골반·무릎·발 접지점·스케일이 오버레이에서 일치하는가 ⑥판이 사람 등 뒤에 있고 얼굴·코·가슴·골반·무릎·발끝·시선이 모두 `n_front` 쪽 열린 반공간을 향하는가 ⑦카메라·화면 좌우·화면 정면이 방향 기준으로 쓰이지 않았는가 ⑧두 사람이 하나의 포즈 그룹으로 같은 물리 방향을 향하는가 ⑨주변 참석자가 주인공이나 대상 판을 가리지 않는가 ⑩최종 캔버스가 원본과 동일한 픽셀 치수이며 인물·효과 마스크 밖 배경이 원본 픽셀과 일치하는가를 확인한다. 하나라도 어기면 전체 화면 재생성을 반복하지 말고 배치 마스터+국소 마스크 또는 별도 고해상도 인물 레이어 합성으로 전환한다.
 
-**최종 100% 확대 QC 체크리스트 (내보내기 전):** ①헤어 에지 프린지 ②발/엉덩이 접지 ③그림자 방향=몸 음영 ④인물 대비가 베이스와 동일 ⑤피부 채도 ⑥그레인 크기 균일 ⑦조명 레이어가 인물·벽·바닥을 잘못 덮는 곳 없음.
+**최종 100% 확대 QC 체크리스트 (내보내기 전):** ①원본과 동일한 픽셀 치수·종횡비·크롭 ②인물·효과 마스크 밖 배경 픽셀 원본 일치 ③글자·로고·판 그래픽·바닥 질감 선명도 유지 ④헤어 에지 프린지 ⑤얼굴·손 디테일 ⑥발/엉덩이 접지 ⑦그림자 방향=몸 음영 ⑧인물 대비가 베이스와 동일 ⑨피부 채도 ⑩그레인 크기 균일 ⑪조명 레이어가 인물·벽·바닥을 잘못 덮는 곳 없음.
 
 ## Higgsfield · Magnific 운용 규칙
 

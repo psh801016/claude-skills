@@ -1,6 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼런스 이미지(Image 2)의 시네마틱 전시 조명을 이식하는 전문 스킬. 구조·카메라·재료·가구·오브젝트는 Image 1 기준으로 4중 완전 잠금, 조명·색온도·분위기·볼류메트릭 효과만 Image 2에서 추출하여 적용한다. 이 스킬은 아래 상황에서 반드시 사용한다: - '조명 바꿔줘', '이 조명으로 바꿔줘', '레퍼런스 조명 적용해줘', '조명 이식' - '분위기 바꿔줘', '드라마틱하게', '시네마틱 조명', '전시 느낌으로' - '갤러리 분위기로', '뮤지엄 조명', '공연장 느낌', '행사장 조명' - 'CGI 렌더에 조명 입혀줘', '이미지에 이 조명 써줘' - 'lighting transfer', 'exhibition lighting', 'stage lighting apply' - 이미지 2장과 함께 조명·분위기 변환 요청이 들어오는 모든 경우 지원 공간: 거실·침실·주방·오피스·카페·호텔 로비·컨퍼런스홀·이벤트홀· 전시관·갤러리·공연장·행사장·의료공간·상업공간 — 모든 실내외 공간. 입력: Image 1 (원본 공간) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) 출력 — 메인 변환: PROMPT + NEGATIVE 조명 레이어: LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE (txt2img, 포토샵 합성용) 조명 레이어 세트('레이어 세트', '조명 나눠서', '따로 컨트롤'): 빔/헤이즈/스팟 풀/컬러 워시 4분리 프롬프트 + 블렌드 가이드 익스트림 다크: EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS (Magnific img2img 전용) 둘 다 요청 시: 두 세트 순서대로 출력 사람을 별도 레이어로 합성하려면 person-layer-maker 사용(조명 레이어는 조명 샌드위치 규칙 — 공기빛 L1·L2는 인물 위, 바닥빛 L3·L4는 인물 아래) 건물 외관 실사화는 arch-prompt-maker, 조명 변환 없는 일반 실사화는 interior-prompt-maker 사용. 이 스킬은 레퍼런스 조명(Image 2)이나 '조명·분위기만' 바꾸는 요청 전용 — 단순 야간/황금시간대/날씨 전환은 외관이면 arch, 재료·가구·마감까지 바꾸는 스타일 리모델링은 interior 2장 모드가 담당한다."
+description: "Image 1의 구조·카메라·재질·그래픽을 잠그고 Image 2에서 실제로 보이는 빔 개수·광원 위치·진행 방향·팬 형태·원근 확장·색·헤이즈를 그대로 분석해 이식한다. 조명 이식, 공연장·행사장 조명, 분위기 변경, lighting transfer, exhibition lighting에 사용한다. 고보는 사용자가 현재 요청에서 명시할 때만 포함한다. 빛 전용 플레이트 요청 시 LED·구조·그래픽을 완전히 제외하고 순수 검정 위에 빔·헤이즈·고보 투사광과 빛이 실제 표면에 만든 조명 성분만 출력한다."
 ---
 
 # 시네마틱 전시 조명 마스터
@@ -14,28 +14,87 @@ description: "인테리어·건축·행사 공간 이미지(Image 1)에 레퍼�
 
 1. **★ 실행 전 원본을 대상 엔진이 지원하는 비율로 사전 크롭** — 엔진의 출력 비율 제약을 먼저 확인한다: **gpt-image-1 계열은 1:1 / 3:2 / 2:3 고정**이므로 원본을 미리 그 비율로 크롭해 넣고, **gpt-image-2는 제약 내 임의 해상도를 지원**하므로 원본 비율을 그대로 유지한다(불필요한 크롭 금지). 크롭으로 잘리는 면적이 15%를 넘으면 사용자에게 경고 후 진행하고(비율 맞춤 크롭에만 적용), 크롭은 목표 비율·방향을 1~2줄로 안내하거나 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다. 모델이 엣지에서 공간을 발명할 여지를 없애는 유일한 구조적 해결책이다.
 2. **절대 초점거리 숫자 금지** — PROMPT에 mm 숫자를 쓰지 않는다(이 스킬은 이미 미사용). "원본과 동일한 화각" 긍정형만 쓴다.
-3. **GPT image 경로에서는 NEGATIVE를 넣지 않고, 본문·예시의 모든 부정문을 긍정형으로 바꾼다 (2·3·6·9·10단계 포함)** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 카메라/기하학 잠금의 부정문(`No camera change`, `no reframing` 등)은 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로, 6단계의 `No fantasy or illustration style`·9단계의 `not a CGI render`·10단계의 부정문 나열은 긍정형 대체문(`"a professionally photographed real-world cinematic event space, with the material fidelity and lighting physics of documentary stage photography, every material, structure, furniture piece, and screen exactly as in Image 1"`)으로 바꿔 쓴다. PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로 전용. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
-4. **엔진 선택·검증** — 구도 보존 최우선이면 ControlNet 기반 SD i2i 또는 Magnific 업스케일러(0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게 — 익스트림 다크 모드의 0.5/0.55와 스케일 동일, 용도만 다름)를 쓰고, 결과 위에 원본 50% 오버레이로 소실점·모서리 일치를 확인한다.
+3. **Gemini·Nano Banana·Magnific 경로에서는 NEGATIVE를 넣지 않고, 본문·예시의 모든 부정문을 긍정형으로 바꾼다 (2·3·6·9·10단계 포함)** — 의미기반 모델은 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. 카메라/기하학 잠금의 부정문(`No camera change`, `no reframing` 등)은 긍정형(`preserve the exact same camera position, framing, field of view, and aspect ratio as Image 1, with every element occupying the same fraction of the frame, all four frame edges aligning with Image 1, and the vanishing points in the same screen positions`)으로, 6단계의 `No fantasy or illustration style`·9단계의 `not a CGI render`·10단계의 부정문 나열은 긍정형 대체문(`"a professionally photographed real-world cinematic event space, with the material fidelity and lighting physics of documentary stage photography, every material, structure, furniture piece, and screen exactly as in Image 1"`)으로 바꿔 쓴다. 이 엔진들은 PROMPT만 사용하고, 부정문 잠금·NEGATIVE는 SD/ComfyUI 디퓨전 경로 전용이다. (긍정형 변환 대상은 **이미지 생성 PROMPT 텍스트 안의 부정 표현뿐** — 이 스킬 문서의 절차·규칙 문장은 변환 대상이 아니다.)
+4. **엔진 선택·검증** — 사용자가 엔진을 지정하지 않으면 Magnific / Gemini·Nano Banana / SD·ComfyUI 중 실행 엔진을 확인한다. Magnific가 지정되면 Magnific 블록만 출력한다. 조명 이식의 Magnific 기본은 Creativity 0.50 / Resemblance 0.55이며, 조명 변화가 약할 때만 Creativity를 0.05 올려 최대 0.60까지 한 번씩 시험한다. 그래픽·구조가 흔들리면 전체 프레임 값을 더 올리지 않고 조명 대상 ZONE B 크롭/마스크로 전환한다. 결과 위에 원본 50% 오버레이로 소실점·모서리 일치를 확인한다.
 
 ## 출력 모드
 
 | 모드 | 트리거 | 출력 |
 |---|---|---|
-| **메인 변환** | 기본 (조명 변환 요청) | PROMPT + NEGATIVE |
-| **조명 레이어** | "레이어만", "빛만", "포토샵 합성용", "블랙 배경 조명", "조명 레이어" | LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE |
-| **조명 레이어 세트** ★ | "레이어 세트", "조명 나눠서", "레이어 분리", "따로따로 컨트롤" | 4분리 레이어 프롬프트 (빔/헤이즈/스팟 풀/컬러 워시) + 블렌드 가이드 |
+| **메인 변환** | 기본 (조명 변환 요청) | 선택 엔진 전용 완성 장면 PROMPT. Magnific는 입력 원본을 보존하는 경로이므로 완성 장면만 출력한다. 빛 분리 플레이트는 검정 빈 캔버스를 직접 입력할 수 있는 별도 생성 경로에서만 출력 |
+| **빛 전용 플레이트** | "빛만", "빛줄기만", "빛 따로", "조명 패스", "light-only" | 순수 검정 바탕 위에 빔·헤이즈·입자·조사된 표면 광량만 남긴 독립 PROMPT. LED·스크린·글자·로고·기본 구조는 0. 고보는 현재 요청에 명시됐을 때 투사 콘과 투사광까지 포함 |
+| **조명 레이어 세트(4분리)** | "레이어 세트", "조명 나눠서", "따로 컨트롤", "L1", "L2", "L3", "L4" | `references/lighting-layer-set.md` 규격으로 L1 빔 / L2 헤이즈 / L3 스팟 풀 / L4 컬러 워시를 각각 별도 PROMPT로 출력 + 블렌드 가이드. `person-layer-maker`의 조명 샌드위치가 이 L1~L4를 참조한다 |
 | **익스트림 다크** | "극단적으로 어둡게", "실루엣만", "빛만 살려", "나머지 다 블랙", "어둡게 눌러", "다크 실루엣", "Magnific 다크" | EXTREME DARK PROMPT + NEGATIVE + MAGNIFIC SETTINGS |
-| **둘 다** | "둘 다", "레이어도", "합성도 같이" | 두 세트 모두 출력 |
+
+**출력 범위:** 기본 산출물은 빛이 무대·바닥·객석·벽·테이블에 맺히는 반사·굴곡·스팟 풀·림라이트·색광 스필을 포함한 완성 장면이다. 빛 전용 플레이트는 별도의 독립 출력이며 Image 1을 위치·원근·표면 수광 마스크로만 사용한다. 프레임 전체의 기본값은 순수 검정이고 조명 에너지에 해당하는 픽셀만 남긴다. 엔진이 원본 구조나 LED 콘텐츠를 남기면 실패로 판정하고 검정 캔버스·원본 마스크·레이어 합성 경로로 다시 만든다. 결과는 후처리에서 Screen 또는 Linear Dodge(Add)로 합성한다.
+
+## ★ 빛 전용 플레이트 절대 출력 계약
+
+이 절은 빛 전용 요청에서 메인 변환·LED 보존·재질 보존 문장보다 우선한다.
+
+1. **검정 기본값:** 프레임 전체를 균일한 순수 검정 RGB 0,0,0으로 만든다.
+2. **LED 완전 제외:** 중앙·측면 LED 패널, 화면 콘텐츠, 행사명, 한글·영문 글자, 로고, 그래픽, 패널 발광, 화면 잔광과 화면 반사를 모두 출력 성분에서 제거한다. LED 위치는 빔 정렬을 위한 내부 좌표로만 사용하고 결과 픽셀에는 나타내지 않는다.
+3. **공중 조명 성분:** Image 2에서 읽은 빔 전체 경로, 발광 코어, 헤이즈, 미세 입자, 자연스러운 감쇠를 원래 위치와 원근으로 남긴다.
+4. **표면 조명 성분:** 빔이 실제로 때린 부분의 광량만 남긴다. 의자 상단·외곽의 림라이트, 패브릭에 흡수된 색광, 테이블보의 국소 반사, 중앙 통로·카펫·바닥·무대 데크의 스필·스팟 풀·길게 늘어진 반사, 벽면의 조사광을 포함한다. 빛이 닿지 않은 물체의 기본색·윤곽·재질·그림자는 순수 검정으로 사라진다.
+5. **연결성:** 각 공중 빔과 그 아래 실제 수광 흔적을 하나의 물리적으로 연결된 조명 사건으로 표현한다. 빔만 공중에 떠 있고 의자·바닥의 조사광이 없는 결과는 실패다.
+6. **고보 옵트인:** 사용자가 현재 요청에서 고보를 명시하면 고보 투사광뿐 아니라 실제 프로파일 광원에서 벽까지 이어지는 희미한 체적 투사 콘도 남긴다. 고보 필드·문자·문양은 반투명 광량으로만 보이고 그 밖의 벽은 순수 검정이다. 고보가 명시되지 않으면 관련 광량은 0이다.
+7. **합성 안전:** 기본 공간, 사람, 가구, 천장, 벽, 스크린을 재현하는 미용 이미지를 만들지 않는다. 오직 가산 합성 가능한 조명 성분만 출력한다.
+
+빛 전용 의미기반 모델용 핵심 문장:
+> `"Create a pure additive lighting pass on uniform RGB 0,0,0 black. The only visible pixels are the complete volumetric beams, illuminated haze and particles, optional requested gobo projection cones and projected gobo light, plus the physically aligned light contribution deposited on chair edges, fabric table covers, carpet, aisle, floor, stage deck and wall surfaces. The central and side LED screens, screen artwork, event title, typography, logos, panel glow and screen reflections contribute zero visible pixels."`
+
+**★ 고보 완전 옵트인:** 고보 조명은 이 스킬의 기본 조명 구성에 포함하지 않는다. 사용자가 **현재 요청에서** `고보`, `gobo`, `문양 투사`, `행사명 투사`처럼 고보 사용을 명시한 경우에만 추가한다. 이전 요청이나 이전 결과에 고보가 있었더라도 다음 요청으로 자동 승계하지 않고 매 요청마다 고보 상태를 OFF로 초기화한다. 사용자가 고보를 명시하지 않은 기본 조명 프롬프트와 빛 전용 플레이트에는 원형 고보, 패턴 고보, 텍스트 고보, 로고 고보를 모두 넣지 않는다.
+
+## ★ Image 2 빔 형태 충실 이식 (최우선 규칙)
+
+이 절은 아래의 범용 빔 예시·색온도 예시보다 우선한다. Image 2가 있으면 임의의 `3~5개 수직빔`, 중앙 하향빔, 교차빔, 사이드 워시를 기본값으로 섞지 않는다. **Image 2에서 실제로 관찰되는 빔 서명만 이식한다.**
+
+1. **역할 고정:** Image 1은 최종 장면의 유일한 카메라·구조·재질·가구·그래픽·고보 정본이다. Image 2는 빔 조명 전용 레퍼런스이며 구조·스크린·텍스트·로고·가구를 가져오지 않는다.
+2. **빔 서명 추출:** 프롬프트를 쓰기 전에 Image 2에서 다음을 하나의 세트로 읽는다: `빔 개수`, `실제 광원/트러스 위치`, `카메라 기준 진행 방향`, `도착점 또는 프레임 이탈점`, `팬·교차·수직·사이드 배열`, `좌우 대칭`, `색 분포`, `코어 밝기`, `가장자리 부드러움`, `헤이즈 밀도`, `원근에 따른 폭 변화`.
+3. **방향을 화면상 모양으로 명시:**
+   - **전방 방사형 / 카메라 방향:** 무대 뒤·상부 트러스에서 좁게 시작하고 객석·카메라 쪽으로 진행하면서 넓어지며, 화면의 상단 또는 좌우 바깥으로 이어진다. 빔 끝을 무대 바닥·LED·백월에 닫지 않는다.
+   - **하향형:** 천장 광원에서 무대·바닥의 실제 스팟 풀까지 이어진다.
+   - **교차형·사이드형:** Image 2의 실제 시작점과 교차점 또는 벽면 도착점을 그대로 기술한다.
+4. **형태 우선:** 사용자가 밝기·어둠·색 강도를 조정해도 빔 개수·출발점·진행 방향·팬 형태·원근 확장은 Image 2와 동일하게 유지한다. 밝기 조정 때문에 빔 전체가 사라지지 않도록 `"keep every complete beam path visible from its source to its frame exit or physical landing point"`를 함께 쓴다.
+5. **물리 광원 매핑:** Image 1에 실제로 보이는 기존 무빙헤드·프로파일 조명·트러스 위치 중 Image 2의 빔 서명을 가장 자연스럽게 재현하는 위치에 매핑한다. 사용자가 장비 추가를 요구하지 않은 상태에서는 새 바닥 조명기구·새 트러스·새 스피커 타워를 발명하지 않는다.
+6. **참조 우선 문장:** Image 2가 있을 때 메인 프롬프트에 아래 의미를 짧고 강하게 넣는다.
+   > `"Use Image 2 solely as the beam-lighting reference. Transfer its complete beam signature onto Image 1: the observed beam count, source positions, camera-relative travel direction, fan geometry, frame exits or landing points, colors, perspective expansion, luminous intensity, haze density and edge softness."`
+7. **실패 방지:** `preserve the beams`처럼 추상적으로만 쓰지 않는다. Image 2가 전방 방사형인데 `aim toward the stage/backwall`처럼 반대 방향을 쓰지 않는다. 여러 조명 레이아웃을 동시에 제안하지 않는다.
+
+## ★ 사용자가 승인한 광학 품질 기준
+
+- `assets/forward-beam-quality-reference.png`는 사용자가 승인한 **광학적 완성도 참고**다. 조명 배치 템플릿이 아니다.
+- 전방 방사형 빔이 포함된 작업에서는 `references/forward-beam-quality-reference.md`를 읽어 빔 깊이감, 원근 확장, 헤이즈 질감, 시인성 및 홀 노출 균형을 맞춘다.
+- 매 작업의 빔 개수·광원 위치·방향·팬 형태·색·끝점은 승인 이미지가 아니라 **현재 Image 2**에서 새로 추출한다.
+- Image 2가 다른 빛 형태를 보여주면 그 형태를 유지하며 승인 이미지 수준의 물리적 빛 표현만 적용한다.
+- 고보는 승인 이미지나 참고 문서에 보이더라도 자동 포함하지 않는다. 사용자가 현재 요청에서 명시한 경우에만 아래 고보 분기를 활성화한다.
+
+## ★ 고보 요청 시 처리
+
+고보가 현재 요청에서 명시된 경우에만 아래 분기를 사용한다.
+
+- **Image 1의 기존 고보 유지 요청:** Image 1을 고보의 유일한 정본으로 사용한다. 위치·크기·원형/타원형 필드·색·밝기·내용·부드러움·벽 질감 반응을 그대로 잠근다. 원본 고보 글자가 이미 보이면 프롬프트에 행사명을 다시 타이핑하지 않는다. 행사명을 재기입하면 모델이 고보 대신 대형 벽면 사인·슬로건을 만들 수 있다.
+- **새 고보 생성 요청:** 기존 천장 프로파일 조명에서 벽으로 이어지는 희미한 투사 콘, 내부가 채워진 낮은 대비의 원형/타원형 광 필드, 반투명 글자, 장거리 초점 흐림, 불균일한 광량, 벽 타공·이음·질감이 글자를 통과해 보이는 상태를 기술한다. 모든 글자는 투사 필드 내부에만 배치한다.
+- **고보가 Image 2에만 보이는 경우:** 사용자가 현재 요청에서 고보를 명시하지 않았다면 이식하지 않는다.
+- **고보와 빔 분리:** 고보의 밝기·초점·내용을 조정해도 Image 2 빔 서명은 바꾸지 않는다. 빔과 고보를 각각 독립 잠금한다.
+
+## ★ 프롬프트 간결성 및 복사 형식
+
+- 한 번의 프롬프트에는 사용자가 요청한 변화와 필요한 잠금만 넣는다. 같은 텍스트·로고·실패 금지어를 반복해 모델의 재생성 주의를 높이지 않는다.
+- 프롬프트는 의미상 하나의 영어 지시문으로 유지하되, 사용자가 내용을 읽고 복사할 수 있도록 문장 단위 줄바꿈을 허용한다.
+- 완성 장면과 빛 전용 플레이트를 함께 요청하면 **서로 분리된 두 개의 코드 블록**으로 출력한다. 각 블록은 독립적으로 복사해 사용할 수 있어야 한다.
+- 빛 전용 플레이트는 완성 장면 프롬프트와 한 블록에 섞지 않는다. Image 1은 위치·원근·수광 마스크로만 참조하고 출력은 순수 검정 위 조명 성분으로 제한한다.
+- 사용자가 UI에 존재한다고 확인하지 않은 Creativity·Resemblance 같은 설정값은 출력하지 않는다.
 
 ## 빠른 흐름
 
 1. **출력 모드 판단** (위 표 참조)
-2. **입력 확인**: Image 1 (원본) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) — **메인 변환·익스트림 다크에서 Image 1이 없으면 프롬프트를 지어내지 말고 원본 이미지를 요청한다** (조명 레이어 모드만 이미지 없이 가능)
+2. **입력 확인**: Image 1 (원본) + Image 2 (조명 레퍼런스, 선택) + 색온도 키워드 (선택) — Image 1이 없으면 프롬프트를 지어내지 말고 원본 이미지를 요청한다.
 2-1. **(구도 보존 중요 시) 사전 크롭 안내**: 대상 엔진 비율 확인 후 크롭 안내 또는 직접 크롭 — 위 "구도 보존 최우선 원칙" 1
-3. **Image 2 조명 분석** (아래 "조명 추출 가이드" 참조) — **Image 2가 없으면** 조명 분석을 생략하고 색온도 판단표의 기본값(Neutral Cinematic)으로 진행하며, 1단계·6단계 문장에서 Image 2 참조를 제거한 대체 문장을 쓴다(아래 각 단계 참조)
-4. **색온도 판단** (아래 색온도 판단표 참조)
-5. **메인 변환** → 4중 잠금 + PROMPT + NEGATIVE
-6. **조명 레이어** → LIGHT LAYER PROMPT + LIGHT LAYER NEGATIVE
+3. **실행 엔진 확인**: 엔진 미지정 시 먼저 묻는다. Magnific 지정 시 Magnific 블록만, Gemini·Nano Banana 지정 시 PROMPT만, SD·ComfyUI 지정 시 PROMPT+NEGATIVE만 만든다.
+4. **Image 2 조명 분석** (아래 "조명 추출 가이드" 참조) — **Image 2가 없으면** 조명 분석을 생략하고 색온도 판단표의 기본값(Neutral Cinematic)으로 진행하며, 1단계·6단계 문장에서 Image 2 참조를 제거한 대체 문장을 쓴다(아래 각 단계 참조)
+5. **색온도 판단** (아래 색온도 판단표 참조)
+6. **메인 변환** → 엔진 전용 완성 장면 조명 PROMPT 작성. 빛 전용 요청이면 별도 `LIGHT-ONLY PLATE PROMPT`를 작성하며 위 절대 출력 계약을 적용한다.
 7. **익스트림 다크** → EXTREME DARK PROMPT + NEGATIVE + Magnific 설정값
 
 카메라 브랜드(Sony, Canon, Hasselblad 등) 절대 명시하지 않는다.
@@ -45,9 +104,25 @@ MJ 파라미터(`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 
 설명·분석·주석·이미지 생성 없음. 프롬프트 섹션만 출력.
 단, 예외 2가지: (a) 사전 크롭이 필요한 경우 크롭 안내(목표 비율·방향) 1~2줄 허용, (b) 필수 입력(Image 1)이 없으면 프롬프트를 지어내지 말고 이미지를 요청.
-모든 PROMPT·LIGHT LAYER PROMPT는 **하나의 연속된 영어 단락**.
+모든 PROMPT는 의미상 **하나의 연속된 영어 지시문**으로 작성한다. 사용자가 읽고 복사하기 쉽도록 문장 단위 줄바꿈을 허용하며, 서로 다른 프롬프트는 반드시 별도 코드 블록으로 분리한다.
 
-**메인 변환 출력 형식 — PROMPT·NEGATIVE 항상 함께 출력(조건부 생략 금지). GPT image 경로에서는 NEGATIVE를 출력은 하되 입력에 사용하지 않는다(부정 억제는 긍정형 잠금 문장이 대신):**
+**Magnific 메인 변환 출력 형식 — 이 블록만 출력:**
+```
+MAGNIFIC PROMPT
+[영어 프롬프트, 긍정형만 사용, 문장 단위 줄바꿈 허용]
+```
+사용자가 빛 전용 플레이트도 요청했으면 `LIGHT-ONLY PLATE PROMPT`를 두 번째 코드 블록으로 분리한다. 이 블록은 LED·스크린·글자·로고·기본 공간을 0으로 만들고 빔·헤이즈·조사된 표면 광량만 남긴다.
+
+**Gemini/Nano Banana 메인 변환 출력 형식 — 이 블록만 출력:**
+```
+PROMPT
+[영어 프롬프트, 긍정형만 사용, 문장 단위 줄바꿈 허용]
+
+LIGHT-ONLY PLATE PROMPT
+[영어 프롬프트. 순수 검정 위에 동일 빔·헤이즈·입자와 빔이 의자·테이블보·카펫·통로·바닥·무대·벽에 만든 수광 성분만 묘사. LED·화면 콘텐츠·글자·로고·화면 발광·기본 구조는 0. 사용자가 현재 요청에서 고보를 명시한 경우 실제 투사 콘과 고보 투사광을 모두 포함. 알파를 약속하지 않음]
+```
+
+**SD/ComfyUI 메인 변환 출력 형식:**
 ```
 PROMPT
 [연속 영어 단락]
@@ -56,31 +131,24 @@ NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력�
 [연속 영어 단락]
 ```
 
-**조명 레이어 출력 형식:**
-```
-LIGHT LAYER PROMPT
-[연속 영어 단락]
-
-LIGHT LAYER NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)
-[연속 영어 단락]
-```
-
-**둘 다 출력 시:** 메인 변환 세트 → 빈 줄 → 조명 레이어 세트 순서로.
-
 ---
 
 ## Image 2 조명 추출 가이드
 
-Image 2에서 아래 5가지 요소만 읽는다. 구조·재료·가구·텍스트·로고는 무시한다.
+Image 2에서 아래 조명 요소만 읽는다. 구조·재료·가구·텍스트·로고는 무시한다.
 Image 2에 워터마크나 텍스트가 있어도 조명 특성 추출에만 집중하고 NEGATIVE에서 텍스트 억제.
 
 | 추출 요소 | 읽는 내용 |
 |---|---|
-| **빔 패턴** | 방사형·교차형·수직형·사이드형 등 빛줄기 방향과 배열 |
-| **광원 위치** | 천장 트러스·사이드·무대 앞·측면 등 주 광원 위치 |
+| **빔 개수** | 화면에 실제로 보이는 주요 빔의 수와 좌우 분포 |
+| **빔 패턴** | 방사형·교차형·수직형·사이드형 등 빛줄기 배열 |
+| **광원 위치** | 천장 트러스·사이드·무대 뒤·무대 앞 등 실제 시작점 |
+| **진행 방향** | 무대→카메라 전방형, 천장→바닥 하향형, 좌우 교차형 등 카메라 기준 방향 |
+| **도착/이탈점** | 바닥·벽·무대에 닿는지, 상단·좌우 프레임 밖으로 이어지는지 |
+| **원근 확장** | 광원에서 좁게 시작해 카메라 쪽으로 넓어지는지 등 폭 변화 |
 | **색온도 비율** | 쿨/웜 비율, 주조명 색 vs 보조 색 |
 | **대비 레벨** | 주변 암부 깊이, 빛/어둠 대비 강도 |
-| **분위기 밀도** | 헤이즈/먼지 밀도, 볼류메트릭 강도 |
+| **분위기 밀도** | 헤이즈·먼지 밀도, 코어 밝기, 가장자리 부드러움 |
 
 ---
 
@@ -100,7 +168,13 @@ Image 2에 워터마크나 텍스트가 있어도 조명 특성 추출에만 집
 
 ### 1. 이미지 역할 선언 (첫 문장)
 
-> `"Use Image 1 as the immutable architectural structure, room geometry, camera position, composition, original materials, surface finishes, furniture layout, and all spatial elements. Extract ONLY the lighting direction, beam pattern, color temperature, contrast ratio, volumetric quality, and atmospheric mood from Image 2 — do not transfer any structural, material, spatial, stylistic, or textual content from Image 2."`
+> `"Use Image 1 as the immutable architectural structure, room geometry, camera position, composition, original materials, surface finishes, furniture layout, and all spatial elements. Image 2 serves solely as the lighting reference: its beam direction, beam pattern, color temperature, contrast ratio, volumetric quality, and atmospheric mood are applied to the complete source identity of Image 1."`
+
+**재질·시공 사실 잠금 (모든 조명 이식에 필수):** 조명 이식은 빛의 방향·색온도·명암·볼류메트릭만 바꾸는 작업이다. Image 1의 재질 종류, 목재결의 강도와 방향, 표면 광택, 패널 이음, 그래픽면, 제작 방식, 고정 하드웨어는 원본 그대로여야 한다. 약한 무늬목을 강한 원목 무늬로 바꾸거나, 원본에 없는 아일렛·타공·피스·리벳·봉제선·프레임·주름·소품·마모를 "현실감" 목적으로 추가하면 BLOCKER다.
+
+> `"Treat Image 1 as material-and-fabrication ground truth: preserve every visible material's grain scale, pattern strength, base color, sheen, seams, joints, and construction method while rendering the existing surfaces with physically believable photographic light response. Keep every banner and graphic face continuous and intact with its exact source artwork, typography, logo placement, flatness and observed construction identity. Existing accessories and fabrication details remain the observed set."`
+
+전시 그래픽·현수막은 AI가 다시 그리는 재질이 아니라 원본 아트워크를 최상단 마스크/오버레이로 복원하는 대상이다. 원본에 타공 또는 고정 하드웨어가 명백히 보일 때에만 그 위치·개수·크기를 동일하게 유지한다.
 
 **Image 2 없는 경우 대체 문장 (존재하지 않는 이미지를 참조하지 않는다):**
 > `"Use Image 1 as the immutable architectural structure, room geometry, camera position, composition, original materials, surface finishes, furniture layout, and all spatial elements. Transform only the lighting, color temperature, and atmospheric mood."`
@@ -141,10 +215,13 @@ Preserve all side panel positions and branded display panel placements.
 
 ### 4. 재료 + 가구 + 오브젝트 잠금 (핵심)
 
-> `"Preserve the original materials, surface finishes, textures, and color palette of all architectural and decorative elements exactly as they appear in Image 1. Preserve the original furniture layout, furniture design, seating arrangement, object placement, and all fixtures. Do not substitute, replace, upgrade, recolor, or alter any material, finish, furniture piece, seating unit, or object. The lighting transformation must reveal and enhance the existing surfaces — not change them."`
+> `"Preserve the original materials, surface finishes, textures, intrinsic color palette, furniture layout, furniture design, seating arrangement, object placement, and observed fixture set exactly as they appear in Image 1. The lighting transformation reveals those existing surfaces through physically believable light absorption, highlight roll-off, reflection falloff, localized indirect bounce and grounded contact shadows."`
 
 **LED 스크린·디지털 디스플레이가 있는 경우 추가:**
-> `"Preserve the LED screen and display panel structures, frame positions, placement, and scale. The existing screen content may receive only brightness and color-temperature grading to match the new lighting mood — keep the same imagery, no semantic replacement of screen content."`
+> `"Preserve the LED screen and display panel structures, frame positions, placement, scale, source artwork, typography and logos. Render each active source screen as an emissive display surface whose existing colors create controlled local illumination on only the immediately adjacent source surfaces, with natural luminance falloff and no change to the source content."`
+
+**평면 LED월 + 무대 데크(원본에 둘 다 있을 때 필수):** LED가 단순 인쇄 그래픽처럼 남지 않게, 아래 문장을 메인 조명 PROMPT에 반드시 추가한다.
+> `"The active central flat LED wall casts a controlled [source screen color] horizontal specular reflection band across the existing [source-confirmed semi-gloss or polished] stage deck directly below it, brightest at the screen base and naturally fading toward the audience. A faint localized colored bounce reaches only the stage edge and immediately adjacent first-row surfaces while the rest of the hall retains its intrinsic material colors."`
 
 **색 보존과 조명 색온도의 관계 (문자 충돌 방지):** 색온도 조명은 표면의 '보이는 색'을 바꾼다. 잠금의 의미는 **재료의 고유 색(intrinsic base color)** 보존이며, 조명에 의한 지각 색 변화는 허용이다. 필요 시 PROMPT에 `"preserve the intrinsic material base colors; only the perceived illumination color may shift due to the new lighting"`을 덧붙인다.
 
@@ -172,11 +249,11 @@ Preserve all side panel positions and branded display panel placements.
 
 ### 6. 볼류메트릭 전시 조명 (항상 포함)
 
-Image 2에서 추출한 빔 패턴·광원 위치를 반영하여 작성:
+Image 2가 있으면 위 `Image 2 빔 형태 충실 이식`에서 추출한 **전체 빔 서명**을 반영하여 작성한다. `dramatic`, `strong`, `multiple` 같은 추상어만으로 대체하지 않는다.
 
-> `"Apply dramatic exhibition-grade lighting with strong volumetric light beams visible in the air, using directional spotlights from ceiling and side angles referencing the [빔 패턴 묘사] lighting composition of Image 2. Include subtle haze and dust particles floating within the light rays to enhance depth and atmospheric realism. Add refined sparkling highlights on reflective surfaces and secondary light elements, generating soft shimmering glints without overexposure or neon effects. Ensure controlled glossy reflections and premium stage-grade lighting quality. Maintain high contrast between deep surrounding darkness and focused light pools. No fantasy or illustration style — cinematic professional event hall mood only."`
+> `"Use Image 2 solely as the beam-lighting reference and transfer its complete observed beam signature onto Image 1: [실제 빔 개수와 좌우 분포], originating from [실제 광원 위치], travelling [카메라 기준 진행 방향], reaching [실제 도착점 또는 프레임 이탈점], arranged as [실제 팬·교차·수직·사이드 형태], with [실제 색 분포], [실제 원근 폭 변화], [실제 코어 밝기와 가장자리 부드러움], and [실제 헤이즈 밀도]. Keep every complete beam path visible from its source to its frame exit or physical landing point while preserving the complete source identity of Image 1."`
 
-**Image 2 없는 경우:** `referencing the [빔 패턴 묘사] lighting composition of Image 2` 부분을 빼고, 조명 레이어 섹션의 기본값처럼 빔을 직접 묘사한다 — `"using three to five vertical downlight beams from the ceiling center and soft crossing secondary beams from the sides"`. (GPT 경로에서는 마지막 문장 `No fantasy...`를 긍정형 `cinematic professional event hall mood, grounded in real stage-lighting physics`로 바꾼다.)
+**Image 2 없는 경우:** 사용자가 구체적인 빔 형태를 말했으면 그 형태만 사용한다. 사용자가 형태를 지정하지 않았으면 공간에 실제로 보이는 기존 조명기구를 기준으로 절제된 Neutral Cinematic 조명을 작성하고, 임의의 전방 방사형·중앙 수직빔·다수 교차빔을 자동 추가하지 않는다.
 
 빔 패턴 묘사 예시:
 - 방사형: `"fan-radiating beam pattern from overhead ceiling truss"`
@@ -188,7 +265,7 @@ Image 2에서 추출한 빔 패턴·광원 위치를 반영하여 작성:
 - 빔/워시/스팟 구분: `sharp defined beam` (빔) / `broad soft color wash across the wall` (워시) / `focused light pool on the floor or subject` (스팟)
 - 백라이트·림: `strong backlight from behind the stage creating rim highlights on subject edges`
 - LED 월 글로우: `soft screen-glow spill from the LED wall onto nearby floor and subjects` (스크린 콘텐츠 자체는 잠금 유지)
-- 고보 패턴(레퍼런스에 있을 때만): `patterned gobo light texture projected on the floor`
+- 고보 패턴(현재 사용자 요청에서 명시했을 때만): `patterned gobo light texture projected on the floor` — Image 2에 고보가 보여도 사용자가 현재 요청에서 고보를 요구하지 않았으면 추출·이식하지 않는다.
 - 객석 스필: `dim warm light spill over the audience area, far dimmer than the stage`
 - 헤이즈 농도 3단계: `light haze` (빔 윤곽만) / `medium haze` (기본) / `heavy haze` (공기 자체가 발광, 대비 저하 감수)
 - 무빙헤드 등 조명 기구 자체는 원본(Image 1)에 있을 때만 유지 — 새 기구를 만들어 넣지 않는다 (physically mounted fixtures 원칙)
@@ -339,140 +416,9 @@ stage layout from reference image, ceiling structure from reference image
 
 ---
 
-## 조명 레이어 프롬프트 (포토샵 합성용)
-
-### 개념
-
-순수 블랙 배경 위에 **빛 효과만** 렌더링한 이미지를 생성한다.
-포토샵에서 원본 이미지 위에 올리고 블렌딩 모드를 적용하면 조명을 독립적으로 제어할 수 있다.
-
-```
-포토샵 합성 방법:
-레이어 순서: [조명 레이어] → 블렌딩 모드: Screen 또는 Linear Dodge(Add)
-             [원본 이미지]
-→ 불투명도로 조명 강도 조절
-→ 레이어 마스크로 원하는 영역만 적용
-→ 색조/채도로 조명 색상 독립 보정
-```
-
-### LIGHT LAYER PROMPT 작성 원칙
-
-조명 레이어는 메인 변환 프롬프트와 달리 **공간 구조를 묘사하지 않는다.**
-오직 아래 5가지 빛 요소만 묘사한다:
-
-1. **볼류메트릭 빔** — 천장/측면에서 내려오는 빛줄기 형태와 방향
-2. **헤이즈·먼지 입자** — 빔 안에 떠다니는 미세 입자
-3. **스파클·글린트** — 공중에 흩어진 빛 반짝임
-4. **앰비언트 글로우** — 빔 주변의 부드러운 후광
-5. **색온도** — 빔과 글로우의 색상
-
-공간·재료·가구·텍스트·사람 묘사는 일절 하지 않는다.
-
-### LIGHT LAYER PROMPT 작성 순서
-
-아래 6개 블록을 순서대로 이어 붙여 하나의 연속된 영어 단락을 만든다.
-괄호 설명은 작성 가이드이며 출력에 포함하지 않는다.
-
-**① 블랙 배경 선언 (항상 고정)**
-> `"Pure solid black background. Complete darkness as the base. No room, no architecture, no surfaces, no objects, no floor, no ceiling, no walls — only pure black void."`
-
-**② 비율 — 생성 설정으로 지정 (프롬프트 문장이 아니라 파라미터로)**
-조명 레이어는 txt2img라 Image 1이 엔진에 첨부되지 않는다 — 프롬프트로 "Image 1과 같은 비율"을 요구해도 수행 불가. **생성 파라미터(사이즈/종횡비)를 합성 대상 원본과 동일하게 설정하라고 사용자에게 1줄 안내**하고, 프롬프트에는 Image 1 참조를 넣지 않는다. Image 1 자체가 없는 실행(조명 레이어 단독 요청)이면 사용자가 원하는 출력 크기(Width/Height)를 직접 지정하도록 안내한다. (합성 시 정렬은 포토샵에서 캔버스 크기로 맞춘다.)
-
-**③ 빔 묘사 — Image 2 패턴 반영**
-Image 2의 빔 패턴·광원 위치 읽은 뒤 묘사. 아래 색온도별 템플릿 참조.
-
-**④ 입자·헤이즈 (항상 고정)**
-> `"Subtle floating dust particles and atmospheric haze suspended within and around the light beams, creating depth and three-dimensional volumetric presence."`
-
-**⑤ 스파클·글린트 (항상 고정)**
-> `"Refined sparkling light particles and soft glinting highlights scattered within the illuminated beam zones, delicate and organic without overexposure or neon quality."`
-
-**⑥ 기술 선언 (항상 고정)**
-> `"Pure light art, photorealistic light physics, high dynamic range, deep pure black surrounding areas with no grey or noise, bright luminous beams with natural falloff and soft edge gradients. No room, no architecture, no objects, no text, no watermark, no people. Compositing-ready light layer on pure black background."`
-
-### 색온도별 빔·글로우 묘사
-
-**Cool Blue 레이어:**
-> `"Multiple dramatic volumetric light beams in deep cool blue and crisp cold white, radiating downward and crossing from upper positions. Icy blue atmospheric glow surrounding the beam edges. Silver-white beam cores with blue-tinted penumbra and cool cyan ambient scatter."`
-
-**Warm Amber 레이어:**
-> `"Multiple dramatic volumetric light beams in rich warm amber and deep gold, radiating downward and crossing from upper positions. Golden atmospheric glow surrounding the beam edges. Bright warm white beam cores with amber-tinted penumbra and golden ambient scatter."`
-
-**Mixed 레이어:**
-> `"Multiple dramatic volumetric light beams — dominant cool blue and cold white primary beams from upper center, with warm amber and gold secondary accent beams from side angles. Blue-silver atmospheric glow on primary beams, warm golden glow on accent beams, creating layered mixed-temperature light atmosphere."`
-
-**Neutral Cinematic 레이어:**
-> `"Multiple dramatic volumetric light beams in neutral cool white with subtle silver undertones, radiating from upper positions. Refined neutral atmospheric glow surrounding beam edges. Clean white beam cores with slightly cool-toned penumbra and minimal ambient scatter."`
-
-### LIGHT LAYER NEGATIVE (항상 동일)
-
-```
-LIGHT LAYER NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)
-room, architecture, walls, ceiling, floor, furniture, objects, people, faces,
-background elements, interior space, outdoor scene, any solid surface,
-grey background, white background, colored background, gradient background,
-noise in dark areas, grain in shadows, visible texture in black areas,
-text, watermark, logo, signage, labels, readable letters,
-neon lights, LED strips, lens flares, chromatic aberration, lens artifacts,
-overexposed blown areas, clipped highlights, flat even glow, studio light look,
-illustration, cartoon, painted look, digital art style, fantasy glow, magical sparkles,
-colored smoke, fog machine look, dry ice effect, unrealistic physics
-```
-
-**Image 2 없는 경우 (레퍼런스 없이 조명 레이어만 요청):**
-빔 패턴은 Neutral Cinematic 기본값으로 — 천장 중앙 3-5개 수직 다운라이트 빔,
-좌우 사이드에서 약한 교차 보조 빔, 전체 Neutral Cool White 색온도.
-프롬프트에 "the reference image" 같은 참조 문구를 넣지 않는다(txt2img에는 레퍼런스가 첨부되지 않음 — 유령 참조 금지). 빔 형태를 직접 묘사한다.
-
-**GPT image 경로 분기:** LIGHT LAYER NEGATIVE를 출력은 하되 입력에 사용하지 않고, 블록 ①·⑥의 부정문(`No room, no architecture...`)을 긍정형으로 바꾼다 —
-- ① 대체: `"The entire frame is a pure black void in which volumetric light beams are the only visible content."`
-- ⑥ 대체: `"Pure light art on a pure black background, photorealistic light physics, high dynamic range, deep pure black surroundings, bright luminous beams with natural falloff and soft edge gradients — a compositing-ready light layer."`
-
----
-
-## 조명 레이어 세트 (LAYER SET — 포토샵 개별 컨트롤용 4분리) ★
-
-### 개념
-조명 레이어 1장은 빔·헤이즈·스팟·워시가 한 덩어리라 "빔만 줄이고 헤이즈만 키우기"가 불가능하다. **레이어 세트 모드는 조명을 4개 성분으로 분리 생성**해 포토샵에서 각각 불투명도·색조·마스크로 따로 컨트롤한다 — 한 번에 나온 결과를 수정 못 해 버리는 일을 없앤다.
-
-> **오픈소스 대안 — IC-Light**: 베이스 조명(전역 조명감·색광·방향)은 IC-Light(무료·MIT, SD 기반 relight)로 재조명 보정하고, 포토샵 레이어(L1~L4)는 빔·하이라이트 **미세보정만** 맡기면 레이어 수를 크게 줄일 수 있다. 이 스킬의 조명 레이어 분리 합성과 **같은 광원 중첩(독립성) 물리 직관에서 출발하지만 구현은 다르다** — IC-Light는 신경망 추론이라 결과가 편집 가능한 조명 레이어가 아니라 **구워진 재조명 이미지**로 나온다. 디테일 그림자 마스킹도 불완전하므로 베이스 조명 전용 — 완전 대체가 아니다.
-
-각 레이어는 위 "LIGHT LAYER PROMPT 작성 순서"의 블록 ①(블랙 배경)·②(비율=생성 파라미터)·④·⑤·⑥ 규칙을 그대로 상속하고, **③(빔 묘사) 자리만 아래 성분별 묘사로 바꾼다.** 색온도는 판단표의 모드를 4장 모두 동일하게 적용(혼합 모드면 빔=주색, 워시=보조색 배분 가능).
-
-### 4분리 성분 (각각 별도 생성 = 별도 프롬프트 출력)
-
-| # | 레이어 | ③ 자리 묘사 | 블렌드/불투명도 시작값 |
-|---|---|---|---|
-| L1 | **빔 (BEAM)** | `"only sharp well-defined volumetric light beams with natural falloff and non-clipping brightness, crisp edges, minimal ambient glow around them"` (빔 코어를 순백으로 만들지 않는다) | Screen 또는 Linear Dodge(Add), **40~70%** — 하이라이트가 날아가면 하향 |
-| L2 | **헤이즈 (HAZE)** | `"only soft atmospheric haze glow filling the beam paths and upper air, with light haze / medium haze / heavy haze density, without any defined beam edges"` (농도 1개 선택) | Screen, 30~60% |
-| L3 | **스팟 풀 (SPOT POOL)** | `"only soft elliptical light pools on the floor and subject positions where the spotlights land, gentle hotspot centers with natural falloff, without visible beams in the air"` | Screen, 50~80% |
-| L4 | **컬러 워시 (COLOR WASH)** | `"only a broad smooth color wash gradient as if colored stage light washing across walls and surfaces, soft and even, without beams, pools, or particles"` | **블랙 배경 규격이면 Screen 20~40%.** Soft Light/Color는 레이어를 50% 그레이 기반으로 만들었을 때만 20~50% (블랙 배경에 Soft Light를 걸면 검정 영역이 화면을 어둡게 만든다) |
-
-> 모든 블렌드 값은 **시작값**이다 — 결과를 보고 레이어별 불투명도로 조정하는 것이 이 모드의 존재 이유다.
-
-### 출력 형식 (레이어 세트 요청 시)
-```
-LIGHT LAYER SET — 생성 파라미터: 사이즈/종횡비를 합성 대상 원본과 동일하게 설정
-L1 BEAM PROMPT
-[연속 영어 단락]
-L2 HAZE PROMPT
-[연속 영어 단락]
-L3 SPOT POOL PROMPT
-[연속 영어 단락]
-L4 COLOR WASH PROMPT
-[연속 영어 단락]
-블렌드 가이드(시작값): L1 Screen/Linear Dodge 40~70% · L2 Screen 30~60% · L3 Screen 50~80% · L4 Screen 20~40%(50% 그레이 기반 제작 시 Soft Light 20~50%) — 각 레이어 불투명도로 조절
-```
-- LIGHT LAYER NEGATIVE는 4장 공통으로 1회만 출력(기존 "항상 동일" 블록). GPT 경로면 생략+긍정형 전환(위 분기 규칙 동일).
-- 필요 없는 성분은 생성하지 않아도 된다(예: 워시 없는 조명이면 L4 생략) — 어떤 성분을 쓸지는 Image 2 분석으로 판단해 명시한다.
-
-### 인물·레이어 합성 파이프라인 연계 (조명 샌드위치)
-사람을 넣으려면 **person-layer-maker** 스킬로 인물을 별도 레이어로 생성하고, 조명은 인물을 사이에 두고 나눠 얹는다 — **바닥·벽에 깔리는 빛(L3 스팟 풀·L4 워시)은 인물 아래, 공기 중의 빛(L1 빔·L2 헤이즈)은 인물 위**. 인물이 빔을 자연스럽게 가로막아 입체감이 생기고 인물 발광을 막는다. 표준 레이어 순서: 베이스 → 반사 → L3·L4 → 인물 그림자 → 인물(+클리핑 색보정) → L1 빔 → L2 헤이즈 → 통합 그레인(맨 위 1회).
-
----
-
 ## 예시
+
+아래 예시는 문장 구조와 잠금 범위만 참고한다. 예시 안의 `multiple directional crossing spotlights`, 색온도, 빔 개수·방향을 새 작업에 복사하지 않는다. 새 작업의 빔 형태는 항상 사용자의 현재 지시와 `Image 2 빔 형태 충실 이식` 절에서 새로 추출한다.
 
 > **※ 아래 메인 변환 예시들은 SD/디퓨전 경로용(부정문 카메라 잠금·NEGATIVE 포함). GPT image 경로에서는 NEGATIVE를 빼고 PROMPT만 쓰며, 본문의 부정문 카메라/기하학 잠금(`No camera change`, `no reframing` 등)을 긍정형으로 바꾼다 — 위 "구도 보존 최우선 원칙" 3 참조.**
 
@@ -508,21 +454,6 @@ cartoon, anime, illustration, sketch, watercolor, concept art, matte painting, s
 
 ---
 
-### 조명 레이어 예시 — Mixed (Cool Blue + Warm Amber) / 컨퍼런스홀 기준
-
-포토샵 합성용. 이 이미지를 원본 위에 올리고 **Screen** 또는 **Linear Dodge(Add)** 모드 적용.
-생성 시 **사이즈/종횡비 파라미터를 Image 1과 동일하게 설정**한다 (프롬프트가 아니라 생성 설정에서).
-
-```
-LIGHT LAYER PROMPT
-Pure solid black background. Complete darkness as the base. No room, no architecture, no surfaces, no objects, no floor, no ceiling, no walls — only pure black void. Multiple dramatic volumetric light beams radiating downward and crossing in a wide symmetrical fan pattern from upper center positions. Primary beams descend from the top-center area spreading outward in a symmetrical fan formation, with secondary crossing diagonal beams from upper-left and upper-right angles meeting near the center-lower zone. Subtle floating dust particles and atmospheric haze suspended within and around the light beams, creating depth and three-dimensional volumetric presence. Refined sparkling light particles and soft glinting highlights scattered within the illuminated beam zones, delicate and organic without overexposure or neon quality. Dominant cool blue and cold white primary beams from upper center, with warm amber and deep gold secondary accent beams from side angles. Blue-silver atmospheric glow surrounding the primary beam edges, warm golden glow around accent beams, creating layered mixed-temperature light atmosphere. Pure light art, photorealistic light physics, high dynamic range, deep pure black surrounding areas with no grey or noise, bright luminous beams with natural falloff and soft edge gradients. No room, no architecture, no objects, no text, no watermark, no people. Compositing-ready light layer on pure black background.
-
-LIGHT LAYER NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)
-room, architecture, walls, ceiling, floor, furniture, objects, people, faces, background elements, interior space, outdoor scene, any solid surface, grey background, white background, colored background, gradient background, noise in dark areas, grain in shadows, visible texture in black areas, text, watermark, logo, signage, labels, readable letters, neon lights, LED strips, lens flares, chromatic aberration, lens artifacts, overexposed blown areas, clipped highlights, flat even glow, studio light look, illustration, cartoon, painted look, digital art style, fantasy glow, magical sparkles, colored smoke, fog machine look, dry ice effect, unrealistic physics
-```
-
----
-
 ## 익스트림 다크 모드 (Magnific img2img 전용)
 
 ### 개념
@@ -530,7 +461,7 @@ room, architecture, walls, ceiling, floor, furniture, objects, people, faces, ba
 **빛이 닿는 곳은 살리고, 빛이 안 닿는 곳만 어둠에 잠기는 모드.** 스포트라이트 빔이 압도적 주인공이지만 — **빔이 무대 데크·의자·벽·바닥에 만드는 빛효과(스팟풀·표면 반사·림라이트·색광 스필)는 반드시 살아있어야 한다.** Magnific nanobanana / Nano Banana Pro img2img에 최적화.
 
 > **★★ 가장 흔한 실패 = "빛만 남기고 다 블랙"을 완전 실루엣 blackout으로 오해하는 것 (2026-07-13 ASURA 반복 질책).** "빛만 남긴다"의 진짜 의미: **빛 안 닿는 곳만 어둠, 빛이 물체에 묻는 효과는 살린다.** 아래 2가지 모두 반려된 실패다 —
-> - ❌ 순수 블랙 배경에 빔만 떠있는 txt2img 조명 레이어 → 물체 상호작용이 없어 "죽은 그림". (그건 "조명 레이어 모드"이지 익스트림 다크가 아니다.)
+> - ❌ 순수 블랙 배경에 빔만 떠있는 결과 → 물체 상호작용이 없어 "죽은 그림".
 > - ❌ 공간을 완전 실루엣으로 눌러 `no surface detail, no color, no texture` → 빛 묻음까지 죽여 반려.
 > - ✅ **원본을 넣는 img2img** — 빔 + 빛이 닿는 표면의 스팟풀·반사·림·색광 스필은 재질별로 살아있고, 빛 안 닿는 곳만 딥 섀도(faint form 유지, 완전 컷아웃 금지).
 
@@ -562,7 +493,7 @@ Image 2 레퍼런스 없음. 단독 img2img 변환.
 - 색온도는 **새로 지정하지 않는다** — 이미 입혀진 색을 보존한다(④ 생략).
 - **★ 어둠은 Magnific 프롬프트가 만들지 못한다(3중 검수 MAJOR M1).** Magnific/nanobanana는 보존·업스케일 중심이라 낮은 Creativity에서 전역 노출을 거의 안 낮춘다. **다크닝은 투입 전 선행 단계에서 완성**한다 — 원본(① 결과물)을 포토샵 Curves/노출 다운으로 먼저 어둡게 만든 뒤 Magnific에 넣거나, 아예 형태 100% 보존 레이어 경로(아래)를 쓴다. Magnific 값은 **조명 보존 프리셋**(아래 설정값)으로 형태·조명 재발명 여지를 최소화하는 용도지, 어둡게 만드는 용도가 아니다.
 
-**출력 형식 (★ 다크는 항상 이 2세트를 한 번에 함께 출력 — 한 방 i2i + 형태 100% 보존 레이어 대안):**
+**출력 형식:**
 ```
 EXTREME DARK PROMPT
 [연속 영어 단락]
@@ -573,30 +504,9 @@ EXTREME DARK NEGATIVE (SD 계열 대체 경로 전용 — Magnific/nanobanana에
 MAGNIFIC SETTINGS
 Creativity: [값]
 Resemblance: [값]
-
-──────────────────────────────
-◆ 형태 100% 보존 대안 (원본 안 틀어지게 — 포토샵 Screen 합성)
-LIGHT LAYER SET — 생성 파라미터: 사이즈/종횡비를 원본과 동일하게 설정
-L1 BEAM PROMPT
-[연속 영어 단락]
-L2 HAZE PROMPT
-[연속 영어 단락]
-L3 SPOT POOL PROMPT
-[연속 영어 단락]
-L4 COLOR WASH PROMPT
-[연속 영어 단락]
-LIGHT LAYER NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)
-[연속 영어 단락 · 4장 공통 1회]
-블렌드 가이드(시작값): L1 Screen/Linear Dodge 40~70% · L2 Screen 30~60% · L3 Screen 50~80% · L4 Screen 20~40%
-어둠 처리: 원본 레이어 자체에 Curves/노출 다운 또는 검은 레이어 Multiply로 눌러 다크 무드를 만들고, 그 위에 L1~L4를 Screen으로 얹는다 (원본 픽셀은 그대로 → 형태 절대 유지).
-켜진 LED OFF: Curves/Multiply로는 켠 화면이 안 꺼진다(잔상 남음) → LED 패널 영역을 마스크로 잡아 순수 검정(#000)으로 fill하는 별도 레이어를 추가한다. LED를 켠 채 둘 거면 생략.
-레이어 품질: L1~L4는 무압축 PNG·순수 검정(#000) 배경으로 생성(압축 fringe·회색 배경은 Screen 합성 시 사각 halo 유발).
 ```
-- Magnific/nanobanana에 입력하는 것은 EXTREME DARK의 PROMPT와 SETTINGS 뿐이다. LIGHT LAYER SET은 별도 txt2img 생성 후 포토샵 합성용.
-- 조명 레이어 세트의 색온도·빔 패턴은 다크에 적용한 색온도 모드(Cool Blue/Warm Amber/Mixed)와 동일하게 맞춘다. 작성 규칙은 아래 "조명 레이어 세트" 모드를 그대로 따른다.
 
-**★ 병행 게이트(3중 검수 절충 — ASURA "항상" + 검수 "조건부"):** 결과물에 **반복 구조(의자 줄·객석·카펫 웨이브·패널 격자·글자)가 있거나 상업 납품용**이면 = 형태 크리티컬 → **위 2세트를 항상 함께 출력**한다. ASURA의 행사장·컨퍼런스홀 작업은 사실상 항상 이 조건이다. 반복 구조 없는 단순 무드 테스트만 원샷 i2i 하나로 생략 가능.
-**★ i2i 성공 기준(BLOCKER):** "형태 100% 보존"은 EXTREME DARK(i2i) 경로의 보장이 아니다 — 결과 위에 원본 50% 오버레이로 의자 행·카펫 경계·패널 위치를 대조하고, 틀어졌으면 레이어 경로(형태 100% primary)로 전환한다.
+**★ i2i 성공 기준(BLOCKER):** 결과 위에 원본 50% 오버레이로 의자 행·카펫 경계·패널 위치를 대조한다. 틀어졌거나 원본에 없던 재질 무늬·타공·아일렛·피스·봉제선·주름·소품이 생기면 즉시 반려하고 다시 생성한다.
 
 ### EXTREME DARK PROMPT 내용 (항상 이 구조로)
 
@@ -704,7 +614,6 @@ Creativity: 0.2 ~ 0.35
 Resemblance: 0.8 ~ 0.95
 ```
 
-> ★ 이 컨퍼런스홀은 의자 줄·카펫 웨이브·패널이 반복 구조 = 형태 크리티컬이므로, 위 EXTREME DARK와 함께 **형태 100% 보존 LIGHT LAYER SET(원본 픽셀 무손상 + LED 영역 마스크 검정 fill)** 을 반드시 병행 출력한다. i2i 결과는 원본 50% 오버레이로 의자 행·카펫 경계를 대조 후 채택.
 
 **★ 익스트림 다크 성공 기준 체크리스트 (3중 검수 반영 — 결과를 이걸로 검증):**
 - [ ] LED 패널 내부에 텍스트·로고·보라 잔광이 전혀 없음(순수 검정)

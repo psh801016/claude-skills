@@ -1,6 +1,6 @@
 ---
 name: interior-prompt-maker
-description: "인테리어 · 실내 공간 CGI · 렌더 이미지를 Stable Diffusion / Midjourney / ComfyUI image-to-image용 사실적 실내 사진 프롬프트로 변환하는 전문 스킬. 이미지 1장(원본 실사화)과 2장(구조 보존 + 스타일 리모델링) 두 가지 모드를 자동 판단한다. 사용자가 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '리모델링 프롬프트 써줘', 'i2i 프롬프트 뽑아줘', 'SD/MJ 프롬프트', '사진처럼 만들어줘', 'CGI 느낌 없애줘', '인테리어 프롬프트' 같은 말을 하면 반드시 이 스킬을 사용한다. 입력 유형: SketchUp · Rhino · Revit · Lumion · Enscape · D5 실내 렌더, 화이트 모델, 클레이 모델 — 모든 실내 CGI. 지원 공간: 거실 · 주방 · 침실 · 욕실 · 오피스 · 카페 · 레스토랑 · 호텔 로비 · 병원 · 교육 공간 · 공공 서비스홀. 건물 외관 프롬프트는 arch-prompt-maker, 재질·텍스처 추출은 texture-prompt-maker, 포토샵 합성용 업스케일 전처리는 magnific-compositing-prep, 구조·재료는 그대로 두고 조명·분위기만 이식할 때는 cinematic-exhibition-lighting을 사용한다. 주 피사체 기준: 파사드·매스·외부 공간이 화면 주체면 arch, 실내 공간(전시부스 실내 포함)이 주체면 이 스킬 — 둘 다 크게 보이면 사용자에게 확인. 사람을 별도 레이어로 합성해 넣는 요청은 person-layer-maker가 담당한다(원본 렌더에 이미 있는 인물의 실사 변환은 이 스킬 8단계). 이미지가 없으면 원본 이미지 첨부와 실내/외 여부를 먼저 확인한다."
+description: "실내 CGI·렌더를 Magnific, Gemini/Nano Banana, SD·ComfyUI image-to-image용 사실적 사진 프롬프트로 변환한다. 이미지 1장 실사화와 2장 구조보존 리모델링을 구분하고, 한국 전시부스의 목공·블럭·옥타늄·맥시마 시공을 구조 증거로 구역별 판별한다. 사용자가 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '실사화 스킬', '리모델링 프롬프트', 'i2i 프롬프트', '사진처럼', 'CGI 느낌 제거'라고 하면 사용한다. 프롬프트·스킬 요청은 이미지 생성 권한이 아니며 사용자가 생성·제작을 명시한 경우에만 생성 도구를 호출한다. 엔진 미지정 시 Magnific / Gemini / SD·ComfyUI 중 하나를 확인하고 엔진별 출력을 섞지 않는다. 건물 외관은 arch-prompt-maker, 재질 추출은 texture-prompt-maker, 조명만 이식할 때는 cinematic-exhibition-lighting, 사람 별도 합성은 person-layer-maker를 사용한다."
 ---
 
 # 인테리어 Image-to-Image 프롬프트 메이커
@@ -11,6 +11,10 @@ description: "인테리어 · 실내 공간 CGI · 렌더 이미지를 Stable Di
 
 **임무 = CGI 표면 퀄리티 → 사진 퀄리티 변환. 색상·재료·공간 재설계가 아니다.**
 
+**프롬프트 요청 = 프롬프트 텍스트만 출력.** 매 사용자 턴마다 산출물 의도를 새로 판정한다. 해당 턴이 `프롬프트 만들어`, `프롬프트 줘`, `프롬프트 작성`, `prompt for an image`, `실사화 스킬`처럼 프롬프트 텍스트 작성만 요구하고 `이미지 생성해`, `이미지 만들어`, `렌더링해`, `그려줘`, `generate an image` 같은 명시적 시각 결과물 지시를 포함하지 않으면 PROMPT_ONLY다. 한 턴에 프롬프트 작성과 명시적 이미지 생성 지시가 모두 있으면 이미지 생성이 허용된 복합 요청으로 처리하고 사용한 프롬프트도 함께 제공한다. `만들어줘`, `보여줘`, `적용해줘`처럼 산출물 종류가 모호하면 이미지 도구를 호출하지 않고 텍스트 프롬프트와 이미지 생성 중 무엇인지 확인한다. PROMPT_ONLY에서는 생성·편집·렌더링·마스킹·생성용 업로드·크레딧 소비 도구를 호출하지 않는다.
+
+**규칙 우선순위:** ① 도구 권한·PROMPT_ONLY ② 사용자가 선언한 실제 시공 사실과 구조 원본의 카메라·형상·배치 ③ 구역별 시공 분류 ④ 유형별 재료·디테일 규칙 ⑤ 레퍼런스에서 추출한 일반 시공감. 같은 단계에서 충돌하면 원본에서 보이는 상태를 보존하고 불명확한 디테일을 추가하지 않는다.
+
 ## ★ 구도 보존 최우선 원칙 (실패 1순위 방지)
 
 i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) 틀어짐**. 근본 원인은 문구가 아니라 **종횡비 불일치**다 — 16:9 원본을 모델이 다른 비율로 강제하면, 모자란 부분을 "프레임 밖 공간을 발명"해 채우며 줌아웃·측벽 추가가 생긴다. 따라서 문구보다 1·2가 먼저다.
@@ -20,24 +24,54 @@ i2i 변환의 가장 흔한 실패 = **구도(화각·줌·시점·종횡비) �
 3. **절대 초점거리 숫자 금지** — 프롬프트에 `24mm`·`35mm` 등 숫자 초점거리를 절대 쓰지 않는다. 모델이 원본 화각을 무시하고 그 렌즈로 재해석해 광각화·줌아웃을 일으킨다. 오직 "원본과 동일한 화각·시점·프레이밍" **긍정형** 상대 표현만 쓴다.
 4. **부정문("do not widen / zoom out") 금지** — 의미기반 모델에선 "분홍 코끼리" 효과로 오히려 그 변형을 유발한다. 항상 "원본과 동일하게 / 프레임 점유율 동일 / 네 모서리 정렬 / 소실점 동일 위치" 같은 **긍정 대응**으로 쓴다.
 5. **GPT image 경로에서는 NEGATIVE를 넣지 않는다** — gpt-image는 부정 단락을 장면 묘사로 읽어 억제어를 오히려 그린다. PROMPT(긍정형)만 사용한다. NEGATIVE는 SD/MJ/ComfyUI 디퓨전 경로에서만 쓴다.
-6. **엔진 선택 규칙** — 구도 픽셀 보존이 최우선이면 **GPT 엔진을 쓰지 않는다.** ControlNet(depth+lineart) 기반 SD i2i, 또는 Magnific 업스케일러(**0~1 스케일 기준 Creativity 0.1~0.3 낮게 / Resemblance 0.85~1.0 높게** 에서 시작, 이미지별 튜닝)를 쓴다. **FLUX 파이프라인이면 FLUX-native 컨트롤 모델(FLUX.1 Depth-dev 또는 Canny-dev 중 택일, 동시 사용은 ComfyUI 스태킹으로 별도 검증)** 을 쓴다 — SD/SDXL 계열 ControlNet·LoRA는 구조가 달라 **로드 자체가 불가**하니 FLUX 전용으로 교체. 주의: dev 계열은 비상업 라이선스(상업 프로젝트는 라이선스 확인), BFL API 신규 통합에서는 deprecated 표시(로컬 ComfyUI open-weight 경로는 사용 가능, 2026-07 기준).
-7. **검증** — 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리가 일치하는지 확인하고, 어긋나면 크롭으로 정렬한다.
+6. **엔진 선택 규칙** — 사용자가 엔진을 지정하지 않으면 추측해 SD 기본값을 고르지 말고 **Magnific / Gemini·Nano Banana / SD·ComfyUI 중 하나를 확인**한다. 서로 다른 엔진의 PROMPT·NEGATIVE를 한 답변에 섞지 않는다. 구도 픽셀 보존이 최우선이면 **GPT 엔진을 쓰지 않는다.** ControlNet(depth+lineart) 기반 SD i2i 또는 Magnific를 쓴다. Magnific는 두 모드를 분리한다: 원본과 이미 완성된 조명을 거의 그대로 키우는 **보존 업스케일**은 Creativity 0.1~0.3 / Resemblance 0.85~1.0에서 시작하고, CGI 표면을 실제 재질·빛 반응으로 바꾸는 **실사화(Materialization)** 는 Creativity 0.50 / Resemblance 0.55에서 시작한다. 실사화 샘플에서 ZONE B 변화가 약할 때만 Creativity를 0.05씩 올려 최대 0.60까지 시험하며, 그래픽·구조가 흔들리면 전체 프레임 값을 더 올리지 않고 ZONE B 크롭/마스크 경로로 전환한다. **FLUX 파이프라인이면 FLUX-native 컨트롤 모델(FLUX.1 Depth-dev 또는 Canny-dev 중 택일, 동시 사용은 ComfyUI 스태킹으로 별도 검증)** 을 쓴다 — SD/SDXL 계열 ControlNet·LoRA는 구조가 달라 **로드 자체가 불가**하니 FLUX 전용으로 교체. 주의: dev 계열은 비상업 라이선스(상업 프로젝트는 라이선스 확인), BFL API 신규 통합에서는 deprecated 표시(로컬 ComfyUI open-weight 경로는 사용 가능, 2026-07 기준).
+7. **이중 검증** — (A) 결과 위에 원본을 50% 투명도로 겹쳐 수평선·소실점·네 모서리·그래픽·직선 프레임·카펫 외곽이 일치하는지 확인한다. (B) 벽·천장·바닥·금속·유리·조명·접촉 그림자는 실제 사진의 표면 반응과 빛 감쇠로 분명히 바뀌었는지 확인한다. A가 틀리거나 B가 원본 렌더와 거의 같으면 모두 실패다.
+
+## ★ 재질·시공 사실 잠금 (단일 실사화의 최상위 규칙)
+
+**실사화는 원본에 보이는 재질을 더 현실적으로 읽히게 할 뿐, 재질의 종류·무늬·마감 등급·시공 방식을 새로 설계하거나 강화하는 작업이 아니다.** 이 잠금은 **단일 실사화 모드의 최상위 규칙**이다. 리모델링 모드에서는 사용자가 명시한 Image 2 기반 재질 교체 범위만 예외이며, 카메라·건축 구조·대상 경계·비지정 요소는 계속 잠근다.
+
+1. **재질 원본성:** 목재결의 방향·대비·반복·절·색 농도, 석재 맥·타일 패턴·줄눈, 금속 광택, 벽체의 미세 텍스처, 바닥 반사 강도는 원본에서 보이는 수준과 분포를 유지한다. 매끈하거나 약한 무늬목을 진한 월넛·러프 쏜우드·강한 절무늬로 재해석하지 않는다.
+2. **제조·시공 사실:** 원본에 실제로 보이지 않는 아일렛/타공/펀칭 홀, 피스·볼트·리벳, 봉제선, 프레임, 몰딩, 패널 줄눈, 고정 브래킷, 케이블, 장식, 소품은 추가하지 않는다. 원본에 없는 결함·마모·먼지·지문·주름·스크래치도 "현실감"을 이유로 발명하지 않는다.
+3. **현수막·그래픽면:** 원본에서 구멍이나 고정 하드웨어가 확인되지 않으면, 현수막은 **연속된 불투명 PVC 플렉스 그래픽면**으로 유지한다. 원본 그래픽·텍스트·로고는 픽셀 아트워크를 최상단 오버레이로 복원하며, AI가 새 글자·구멍·봉제선·주름·접힘·광택 패턴을 만들게 두지 않는다.
+4. **원본 우선:** "ultra detail", "authentic grain", "construction tolerances", "imperfections", "realistic accessories" 같은 일반 묘사는 원본에서 확인되는 대상에만 제한적으로 쓴다. 확신할 수 없으면 해당 디테일을 추가하지 않는다.
+
+**가구·인물 권한:** 가구 교체는 사용자가 명시적으로 요청한 리모델링 모드에서만 허용한다. 인물 추가는 사용자가 명시적으로 요청했을 때 `person-layer-maker`의 별도 레이어 절차로 처리하며, 이 실사화 프롬프트가 임의로 사람을 굽지 않는다.
+
+## ★ 2영역 실사화 균형 (보존이 실사화를 죽이지 않게)
+
+전시·행사 이미지에는 반드시 영역을 두 가지로 나누어 프롬프트를 작성한다. **전체 이미지를 픽셀 고정하지 않는다.**
+
+- **ZONE A — 픽셀 고정:** 카메라·구도·건축 형상·객체 위치·그래픽 판넬 경계·텍스트·로고·아트워크·직선 프레임·카펫 외곽. 생성 모델이 ZONE A를 정확히 복원한다고 약속하지 않는다. 최종 상업 납품본에서는 원본 아트워크/선형 구조 마스크를 후보 이미지 위에 최상단으로 복원한다.
+- **ZONE B — 조건부 적극 실사화:** 입력에 실제 존재하는 벽·천장·바닥·금속·유리·기존 가구 표면, 기존 조명의 광학 반응, 반사 감쇠, 접촉 그림자, 간접광, 노출과 색 반응. 입력이 CGI/렌더이고 해당 표면에 합성 흔적이 보일 때만 적극 변환한다. 재료의 **종류·색·무늬 방향·무늬 강도·패널 구획은 유지**하되 균일한 CGI 셰이딩을 실제 촬영 표면 반응으로 바꾼다. 입력이 이미 실사이거나 해당 요소가 없으면 변화를 강제하지 않는다.
+
+**균형 원칙:** `preserve material identity`는 `preserve CGI pixels`가 아니다. 원본보다 과장된 나뭇결·새 타공·새 하드웨어는 실패다. CGI 흔적이 확인된 ZONE B에서 조명·접지감·미세 거칠기·반사·표면 흡수가 그대로 남는 것도 실패다. 이미 실사인 입력은 보존 통과가 가능하다.
+
+**마스크 소유권·합성 순서:** ① 원본에서 ZONE A 마스크를 만든다. ② ZONE A를 보호하거나 제외한 상태로 ZONE B 후보를 생성한다. ③ 원본 ZONE A를 후보 위 최상단에 100% 복원한다. ④ ZONE A 경계를 넘어 새 반사·그림자·광학 효과를 그리지 않는다. ⑤ 원본 50% 오버레이와 OCR/로고 육안 대조로 ZONE A를 확인한다. 마스크 합성이 불가능한 경로의 전체 이미지 생성 결과는 **재질·조명 후보**일 뿐, 텍스트·로고·그래픽이 있는 상업 최종본으로 승인하지 않는다.
+
+**Gemini/Nano Banana용 2영역 핵심 문장(첫 보존 문장 뒤에 반드시 삽입, 긍정형만 사용):**
+> `"Apply a strict two-zone transformation to the CGI characteristics visible in Image 1. ZONE A remains aligned one-to-one: the camera, geometry, object placement, graphic boundaries, typography, logos, source artwork, straight frame edges, carpet perimeter, and continuous opaque banner faces retain their exact source identity. ZONE B contains only the existing walls, ceiling, floor, metal, glass, furniture surfaces, lighting, reflections, indirect bounce, contact shadows and exposure response; actively convert their synthetic CGI shading into physically believable photographed material behavior. Preserve each material's identity, base color, grain direction, grain strength, pattern scale, visible seams, visible joints and construction method while expressing real-world micro-roughness, light absorption, highlight roll-off, reflection falloff and grounded shadows. Existing accessories and fabrication details remain exactly the observed set. The completed scene reads as an on-location architectural photograph while ZONE A stays registered to Image 1."`
+
+**Magnific용 2영역 핵심 문장(전체 프레임 실사화의 시작 문장, 긍정형만 사용):**
+> `"Materialize only the CGI-looking surfaces in Image 1 into a believable on-location architectural photograph. Keep the camera, room geometry, object placement, screen frames, straight edges, graphic boundaries, typography, logos and source artwork registered to the source. Actively re-render the existing ZONE B surfaces — walls, ceiling, floor, metal, glass, seating and stage surfaces — with physically specific material response: micro-roughness, fabric tension, light absorption, highlight roll-off, reflection falloff, localized indirect bounce and grounded contact shadows. Treat every active LED display as an emissive surface while retaining its source artwork: its existing screen colors cast controlled, localized light onto only the immediately adjacent source surfaces, with physically plausible falloff. The result must visibly change the synthetic shading in ZONE B; a mere sharpened or enlarged CGI render is insufficient."
 
 ## 빠른 흐름
 
 0. **(구도 보존 중요 시) 사전 크롭**: 실행 전 원본을 출력 엔진의 합법 비율로 사전 크롭한다(위 원칙 1). 사용자에게 목표 비율·크롭 방향을 1~2줄로 안내하거나, 이미지 파일 접근이 가능하면 직접 크롭 후 진행한다.
-1. **대상 엔진 판별**: 사용자가 명시하지 않으면 SD/MJ/ComfyUI 디퓨전 기본. GPT image 경로면 NEGATIVE 없이 긍정형 PROMPT만(원칙 5).
+1. **대상 엔진 판별**: 사용자가 명시하지 않으면 먼저 Magnific / Gemini·Nano Banana / SD·ComfyUI 중 실행 엔진을 묻는다. Magnific가 명시되면 Magnific 블록만, Gemini·Nano Banana가 명시되면 긍정형 Gemini 블록만, SD·ComfyUI가 명시되면 PROMPT+NEGATIVE만 만든다.
 2. **모드 판단**: 이미지 1장 → 단일 모드 / 이미지 2장 → 리모델링 모드 (아래 "모드 판단"의 엣지케이스 규칙 참조)
 3. **이미지 분석**: 공간 유형, 색상 팔레트, 주요 건축 요소 파악
-4. **9단계 PROMPT + NEGATIVE** 작성
-5. **PROMPT + NEGATIVE 두 섹션을 항상 함께** 출력 — NEGATIVE 제목에는 사용처 라벨(출력 원칙 참조). GPT image 경로에서는 NEGATIVE를 출력은 하되 입력에 사용하지 않는다(원칙 5)
+4. **엔진별 실행 PROMPT 작성**: Magnific는 실사화(Materialization) 또는 보존 업스케일 중 하나를 선택해 설정값까지 작성한다. Gemini·Nano Banana는 긍정형 PROMPT만, SD·ComfyUI는 PROMPT+NEGATIVE를 작성한다.
+5. **선택한 엔진 블록만 출력**: 사용자가 다른 엔진용 블록을 잘못 복사할 여지를 만들지 않는다.
 
 카메라 브랜드 (Sony, Canon, Hasselblad 등) 절대 명시하지 않는다.
 MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 
 ## 출력 원칙
 
-- **PROMPT와 NEGATIVE 두 섹션을 항상 함께** 출력(조건부 생략 금지). NEGATIVE 제목에는 사용처 라벨을 붙인다: `NEGATIVE (SD/MJ/ComfyUI 전용 — GPT image·Magnific/nanobanana에는 입력하지 않음)`. GPT image 경로에서는 이 섹션을 **출력은 하되 입력에 사용하지 않는다** — 부정 억제는 9단계 GPT 긍정형 대체 문장이 대신한다
+- **Magnific 지정 시** 정확히 두 섹션만 출력: `MAGNIFIC PROMPT`(연속 영어 단락)와 `MAGNIFIC SETTINGS`(Materialization 또는 Preservation, Creativity, Resemblance). NEGATIVE와 다른 엔진용 섹션을 절대 출력하지 않는다.
+- **Gemini/Nano Banana 지정 시** `PROMPT` 한 섹션만 출력한다. NEGATIVE와 SD·ComfyUI·Magnific용 섹션을 절대 출력하지 않는다.
+- **SD·ComfyUI 지정 시** `PROMPT`와 `NEGATIVE (SD/ComfyUI 전용)` 두 섹션을 출력한다. Midjourney는 별도 네거티브 필드를 공유하지 않으므로 SD·ComfyUI NEGATIVE를 Midjourney용으로 표기하거나 섞지 않는다.
 - 설명, 분석, 주석 없음 — 단, 사전 크롭이 필요한 경우 PROMPT 출력 전에 크롭 안내(목표 비율·방향) 1~2줄은 허용
 - PROMPT는 **하나의 연속된 영어 단락**
 - NEGATIVE는 **하나의 연속된 영어 단락**
@@ -47,8 +81,10 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 ## 모드 판단
 
 **이미지 1장 → 단일 모드:** 원본 공간을 실사 사진으로 변환
-**이미지 2장 → 리모델링 모드:** 이미지1 구조·색상 유지 + 이미지2 스타일만 적용
+**이미지 2장 → 리모델링 모드:** 이미지1 카메라·건축 구조·비지정 요소 유지 + 사용자가 지정한 Image 2 스타일/재질 범위만 적용
 **이미지 2장 + 부분 지정("소파만", "이 벽만", "콕 집어", "빨간 영역만") → 정밀 재료 교체(PICK) 모드** (아래 블록)
+
+**리모델링 권한 분리:** 기본은 `재질/스타일 교체`이며 기존 가구의 형상·수량·위치는 유지한다. 사용자가 가구 교체까지 명시한 경우에만 `가구 교체 리모델링`으로 전환하고, 대상 가구·수량·점유 영역·동선 간섭 범위를 별도로 잠근다.
 
 **엣지케이스:**
 - 이미지 0장 → 원본 이미지 첨부를 요청한다 (텍스트만으로 지어내지 않는다)
@@ -102,8 +138,11 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 - `"Ultra photorealistic architectural interior photography of a modern Korean public facility reception lobby converted from a CGI architectural render while preserving the exact original camera position, eye-level perspective, composition, room proportions, ceiling layout, circulation, counter placement, furniture arrangement, shelving geometry, and spatial hierarchy."`
 - `"Ultra photorealistic architectural interior photography of a contemporary Korean public library lounge transformed from a CGI render into a believable real built environment while preserving the exact original camera angle, eye-level viewpoint, lens perspective, composition, ceiling geometry, circulation layout, furniture placement, shelving arrangement, and architectural proportions."`
 
-**리모델링 모드:**
-> `"Use Image 1 as the immutable architectural structure, room geometry, camera, composition, and spatial reference, and use Image 2 only as the remodeling style, material, furniture, lighting, and atmosphere reference."`
+**리모델링 모드(기본: 가구 형상 유지):**
+> `"Use Image 1 as the immutable architectural structure, room geometry, camera, composition, furniture geometry and spatial reference. Apply from Image 2 only the user-specified remodeling style, surface materials, lighting and atmosphere within the declared target areas."`
+
+**가구 교체 리모델링(사용자가 명시한 경우만):**
+> `"Use Image 1 as the immutable architecture, camera and circulation reference. Replace only the explicitly named furniture using Image 2, while preserving the declared furniture count, occupied footprint, clearances and circulation paths."`
 
 **색상 적용 기준(리모델링 모드):** 구조·고정 요소(벽 골조, 천장 형태, 창호 프레임 등 Image 1의 건축 구조)의 색은 **Image 1을 보존**하고, 마감재·가구·스타일 요소의 색상은 **Image 2를 적용**한다. 아래 "컬러 팔레트 잠금"의 원본 색 보존 규칙은 **단일 모드에서는 이미지 전체에**, **리모델링 모드에서는 구조·고정 요소에만** 적용된다.
 
@@ -114,12 +153,12 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 이미지 역할 선언 직후. 두 가지 중 선택:
 
 **옵션 A — 전면 변환:**
-> `"Transform the space into a believable built interior with realistic materiality and architectural detailing."`
+> `"Transform the existing CGI surface and lighting response into a believable photographed built interior while retaining every observed material identity and architectural detail."`
 
 **옵션 B — 요소별 보존 (권장):**
-> `"Maintain the existing [천장/카운터/가구 등 핵심 요소] exactly as shown while upgrading all materials into realistic architectural finishes."`
+> `"Maintain the exact shape, placement, color, and material identity of the existing [천장/카운터/가구 등 핵심 요소], while actively replacing their CGI shading with physically believable photographed surface response, micro-roughness, highlight roll-off, reflection falloff, and grounded contact shadows."`
 
-예: `"Maintain the existing curved reception desk configuration and suspended wood slat ceiling exactly as shown while upgrading all materials into realistic architectural finishes."`
+예: `"Maintain the existing curved reception desk configuration and suspended wood slat ceiling exactly as shown while actively re-rendering their existing materials with real photographed surface response and physically grounded lighting."`
 
 ---
 
@@ -130,8 +169,8 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 먼저 선언 (단일 모드):
 > `"Preserve exactly the original design color palette without any change, reinterpretation, or color shift. The task is to convert CGI surface quality to photographic realism only — do NOT redesign, recolor, or replace any material or color."`
 
-**리모델링 모드 전용 잠금 문구 (위 문장 대신 사용 — 무스코프 잠금과 Image 2 재료 지정이 충돌하지 않도록):**
-> `"Preserve exactly the architectural structure and fixed-element colors from Image 1, while applying the material and furniture palette of Image 2. The task is to convert CGI surface quality to photographic realism — do NOT alter Image 1's architecture and do NOT invent elements absent from both images."`
+**리모델링 모드 전용 잠금 문구 (위 문장 대신 사용):**
+> `"Image 1 retains the complete architecture, fixed-element colors, camera, circulation and every non-target element. The declared target surfaces receive only the specified material palette from Image 2, expressed with photographed material behavior. Existing furniture geometry remains registered to Image 1 unless the user explicitly selected furniture-replacement remodeling."`
 
 그 다음 이미지에서 확인된 모든 색상을 요소별로 명시:
 
@@ -158,7 +197,7 @@ white matte — ceiling panels, gate frame, counter top
 > `"Preserve the [요소] exactly as shown, but render them with [현실적 물성]..."`
 
 예:
-- `"Preserve the suspended linear wood ceiling baffles exactly as shown, but render them with authentic walnut wood texture, natural variation, slight construction irregularities, and realistic recessed lighting trim depth."`
+- `"Preserve the suspended linear wood ceiling baffles exactly as shown, retaining their observed wood species, color, grain direction and grain strength while expressing real photographed low-sheen response and existing recessed-light trim depth."`
 - `"Preserve the U-shaped reception counter configuration exactly as shown, but render the front panels with realistic woven acoustic fabric tension, visible weave texture, and matte surface absorption."`
 
 **패턴 B — 색상+재료 묘사형 (전체 공간 재질화):**
@@ -168,7 +207,7 @@ white matte — ceiling panels, gate frame, counter top
 - `"The warm natural oak veneer slatted panels feature subtle edge wear, realistic wood grain variation, and believable construction tolerances."`
 - `"The blue upholstered chairs show detailed woven fabric texture, slight wrinkles, soft seat deformation, matte powder-coated metal legs, and naturally worn contact areas."`
 
-**재료별 핵심 물성 키워드:**
+**재료별 핵심 물성 키워드:** 아래 속성 중 **원본에서 확인되는 것만 선택**한다. `edge wear`, `scratches`, `seams`, `joints`, `mounting hardware`는 원본에 보일 때만 사용한다.
 
 **목재:**
 `natural wood grain variation, subtle pore texture, realistic plank/panel seams, low-sheen finish, directional wood reflection, organic tonal inconsistency, slight edge wear`
@@ -195,19 +234,19 @@ white matte — ceiling panels, gate frame, counter top
 
 ### 5. 표면 디테일 + 실생활 소품
 
-> `"Include subtle construction tolerances, realistic seams, edge conditions, material thickness, shadow gaps, cabinet joints, silicone lines, grout lines, baseboards, mullions, recessed lighting trims, curtain rails, door frames, ventilation diffusers, HVAC diffusers, electrical outlets, signage mounting details, reception accessories, slight clutter, and realistic interior imperfections. Add subtle dust, fingerprints, fabric wrinkles, edge wear, soft scratches, and believable surface aging."`
+> `"Preserve only the construction details, seams, edge conditions, material thickness, shadow gaps, joints, trims, fixtures, accessories, and surface age that are visibly present in Image 1. Render those existing details with physically believable scale and light response. Do not invent construction hardware, mounting details, clutter, dust, fingerprints, wrinkles, wear, scratches, seams, or surface aging that Image 1 does not show."`
 
-공공·업무 공간 추가:
-> `"Realistic institutional accessories: document trays, monitors with cable management, signage holders, pen holders, reception accessories at proper scale."`
+공공·업무 공간 추가(원본에 실제 보이는 항목만 선택):
+> `"Preserve the institutional accessories already visible in Image 1 at their exact positions and scale, and integrate them with realistic contact shadows and material response. Add no new accessories."`
 
-주거 공간 추가:
-> `"Realistic Korean residential objects: books, remote controls, tea cups, lifestyle clutter at believable scale."`
+주거 공간 추가(원본에 실제 보이는 항목만 선택):
+> `"Preserve only the residential objects already visible in Image 1 at their exact positions and scale, with realistic contact shadows and material response. Add no new lifestyle clutter."`
 
 ---
 
 ### 6. 가구 + 오브젝트 사실성
 
-> `"Physically believable furniture scale, realistic upholstery tension, natural fabric folds, proper cushion compression, believable object placement, and subtle everyday residential or institutional clutter."`
+> `"Preserve the exact furniture and objects already visible in Image 1, with physically believable scale, grounded contact shadows, realistic upholstery tension and material response. Introduce no new furniture, props, clutter, people, cables, or decorations."`
 
 ---
 
@@ -261,7 +300,7 @@ subtle warm-cool lighting contrast, subtle photographic sensor grain
 **세 부분을 이어서 작성:**
 
 **사진 리얼리즘:**
-> `"The final result must feel like a professionally photographed real built interior space, not a CGI render or architectural visualization. Ultra high detail, natural color science, realistic dynamic range, subtle photographic sensor grain, editorial architectural photography quality."`
+> `"Where CGI characteristics are visible in the existing environment surfaces and lighting, transform them into a professionally photographed real built interior through physically grounded junctions, material-specific micro-roughness and absorption, natural highlight roll-off, distance-based reflection falloff, localized illumination pools, believable indirect bounce, realistic dynamic range and documentary architectural color science. If those identified CGI characteristics remain nearly identical, reject the result as insufficient photorealization."`
 
 **카메라 선언 (마지막에 위치) — ★ 절대 초점거리(24mm/35mm 등)를 숫자로 박지 않는다. 부정문("do not …") 대신 원본 화각을 그대로 따르는 긍정형으로 쓴다:**
 > `"Captured with the exact same camera position, camera height, focal length, field of view, angle of view, and aspect ratio as the source image, so that every wall and ceiling element occupies the same fraction of the frame as in the original, all four frame edges align with the same points of the original scene, and the vanishing points land in the same screen positions. Match the original framing one-to-one, as a professional full-frame architectural interior photograph indistinguishable from a real built environment."`
@@ -441,21 +480,30 @@ replaced architecture from the second image, structural transfer from reference 
 조명: 카페=소프트 자연광 / 레스토랑=낮은 조도, 로컬 조명 풀
 카메라: 24–35mm
 
-### 전시부스 / 전시장 (3종: 목공 · 블럭 · 옥타놈 + 전시홀) ★
+### 전시부스 / 전시장 (목공 · 블럭 · 옥타놈 · 맥시마 혼합 + 전시홀) ★
 
 > **왜 별도 블록인가:** 전시부스는 규칙적인 알루미늄 직선 격자(포스트·빔·fascia)로 이뤄져 AI가 가장 잘 무너뜨리는 대상이다. 프레임을 "녹이거나" 벽을 매끈한 단일면으로 뭉개고, 간판 글자를 깨뜨린다. 아래 어휘·성공문장·엔진 규칙으로 이를 막는다. (검수 반영: NEGATIVE 증상토큰 배제·mm 숫자 배제·fascia 텍스트 생성 금지)
+>
+> **필수 분류 참조:** 전시부스가 한 구역이라도 보이면 프롬프트를 쓰기 전에 [`references/exhibition-booth-classification.md`](references/exhibition-booth-classification.md)를 **끝까지 읽고**, 그 문서의 판정 순서·공법별 표현 한계·그래픽/바닥 분리 게이트를 적용한다. 내부적으로 `zone_id | source_region | 부모 면 | 경계 근거 | Image 1 분류 증거 | 판정 | 허용 앵커 | 금지 앵커 | 확신도` 원장을 먼저 만든다. 사용자가 요구하지 않으면 원장은 출력하지 않고 최종 프롬프트에만 반영한다.
+> **바미싱 현수막 필수 참조:** 사용자가 `바미싱`, `상하단 바미싱`, `프레임 안 보이는 현수막`, `프레임 없는 플렉스`를 선언하거나 구조 원본에서 그래픽면 둘레의 상·하·측면 프레임이 보이지 않으면 [`references/bar-missing-flex-banners.md`](references/bar-missing-flex-banners.md)를 끝까지 읽는다. 이 그래픽면은 옥타 인필·블럭 패널·목공벽이 아니라 독립 `bar-missing PVC flex banner face`로 처리하며, 같은 면에 옥타 포스트·레일·베이스레일·은색 외곽 프레임을 넣지 않는다.
 
-**★★ 먼저 3종 중 무엇인지 판별 (한국 전시업계 실무 기준 — 셋은 외형이 다르다. 섞지 않는다):**
+**★★ 먼저 시공 유형을 판별 (한국 전시업계 실무 기준 — 외형과 시공 논리가 다르다):**
 | 유형 | 골조·시공 | 외형 식별자 |
 |---|---|---|
 | **목공부스** (독립/맞춤) | 각재+합판+퍼티+도장/시트 | **이음매 없는 매끈한 벽면(seamless), 날카롭고 깔끔한 모서리, 프레임 안 보임** |
-| **블럭부스** (렌탈 모듈) | 규격 박스 모듈 조립 | **규격 박스 모듈이 격자로 조립된 벽면, 모듈 사이 일정한 미세 접합선, 평평하고 균일한 패널면** (발광은 그래픽면 한정 옵션 — 아래 참조) |
+| **블럭부스** (렌탈 모듈) | 규격 블럭·탈착 패널 반복 조립 | **원본의 벽 또는 카운터에 실제 패널 두께와 좁지만 명확히 보이는 반복 조인트가 이어지는 구조**. 캐노피·곡면·체결점은 원본에 있을 때 분류를 보강할 뿐 필수 조건이 아님 |
 | **옥타놈/옥타늄** (기본/시스템) | 알루미늄 폴+바+패널 | **은색 알루미늄 프레임 격자가 노출, 그 사이 백색 인필 패널** |
-> 원본 이미지에서 위 셋 중 하나를 먼저 판정해 해당 모드만 적용한다. (업체마다 목공/블럭을 묶어 부르기도 하나, 실사화는 위 외형 식별자로 구분한다.)
+| **맥시마** (시스템 압출 골조) | 40/80/120 계열을 포함하는 알루미늄 압출 골격 | **개구부·포털·파시아·상부를 잇는 구조 스팬과 관찰 가능한 압출 접합**. 노출·패널 피복·패브릭 피복은 원본에 보이는 상태만 유지하며, 부재 굵기·색·발광만으로 판정하지 않음 |
+| **바미싱 플렉스 현수막** (그래픽면) | 상·하단 장력 방식이 숨겨진 연속 PVC 플렉스 면 | **그래픽면의 상·하·측면에 바·레일·외곽 프레임이 보이지 않는 넓고 평평한 현수막 면**. 보이는 세로 맥시마 빔은 별도 골격 구역으로만 판정 |
+> **분류 권한:** 사용자가 실제 시공 유형을 선언하면 원본 CGI의 애매한 표현보다 그 시공 사실을 최우선으로 사용한다. 사용자 선언은 해당 선언이 가리키는 구역에만 적용하며, 원본 CGI와 외형이 달라도 선언을 임의로 강등하지 않는다. 같은 구역에 서로 충돌하는 사용자 선언이 둘 이상 있으면 그 구역만 확인 전까지 `construction=undetermined`로 둔다. 사용자 선언이 없을 때만 구조 원본에서 판정하고 레퍼런스 이미지로 유형을 결정하지 않는다.
+> **구역별 판정:** 실제 부스가 혼합이면 전체를 하나로 덮지 않고 `주벽`, `상부/캐노피`, `카운터·독립 가구`, `전면 강조빔`, `측·후면 골조`를 각각 판정해 해당 영역에만 시공 문구를 적용한다.
+> **혼합의 정의:** `혼합`은 별도의 다섯 번째 재료가 아니라 서로 다른 구역이 서로 다른 공법으로 확정된 상태다. 같은 구역에 옥타·맥시마·블럭 표현을 섞지 않는다. 맥시마 전면 포털 + 옥타늄 측·후면처럼 각 구역을 따로 명명한다.
+> **불명확 폴백:** 가림·저해상도·상충 증거로 판정이 불충분한 영역은 `construction=undetermined`로 두고 보이는 구조만 보존한다. 블럭·옥타늄·목공에 해당하지 않는 텐션패브릭·트러스·맞춤 철제 등은 `construction=other`로 두고 유형 문구를 강제하지 않는다. 이 영역에 새 조인트·체결점·프레임 격자·캐노피 하부·지지대·내부조명을 추가하지 않는다.
+> **레퍼런스 격리:** 공법 판정이 확정되기 전에는 레퍼런스에서 어떤 시공 속성도 가져오지 않는다. `classification_evidence`에는 구조 원본 Image 1의 위치와 관찰만 기록한다. 공법이 확정된 뒤에만 **같은 공법의** 레퍼런스에서 패널 두께감, 조인트 성격, 일반 체결 방식, 표면 마감 범주(`matte / low-sheen / semi-gloss / gloss`)와 일반 재료 범주, 일반 조명 장착 방식을 `reference_finish_notes`로 별도 기록할 수 있다. 이 값은 원본에서 확인된 구조 범위 안의 사실감을 보정할 뿐 패널 치수·조인트 수·폭·깊이·반복·프레임 단면·배치를 새로 만들거나 공법 판정을 바꾸지 않는다. 레퍼런스의 특정 색·팔레트·브랜드 그래픽·평면·입면 구성·모듈 수·배치·곡선 위치·곡률·캐노피·카운터·진열대 형상·개구부·가구·사인·아트워크·조명 위치·수량·카메라를 원본에 복제하거나 변형 적용하지 않는다.
 > ★블럭부스 = "규격 모듈 조립"이 핵심 정의다. 내부 LED 발광은 일부 고급형의 옵션일 뿐 정의가 아니다 — 비발광 블럭부스가 오히려 다수다. 발광을 식별자로 강제하면 벽 전체가 라이트박스처럼 전면발광하는 실패가 난다(3중 검수 만장일치 BLOCKER).
 
-**★ 옥타놈 성공 문장 (옥타놈일 때 반드시 한 문장으로 고정 삽입):**
-> `"The booth must read as a modular shell-scheme system, not a seamless drywall room: every wall bay shows visible panel-to-panel seams, slim silver anodized aluminum vertical uprights standing proud of the flat white infill panels, horizontal top beams, and slightly raised aluminum base rails."`
+**★ 옥타놈 성공 문장 (옥타놈으로 확정된 구역에만 한 문장으로 고정 삽입):**
+> `"Each source-confirmed Octanorm zone must read as a modular shell-scheme system: every visible wall bay in that zone retains its slim anodized aluminum vertical uprights standing proud of the separate infill panels, its horizontal rails and its source-visible base rails."`
 
 **모드 A — 옥타놈 / 시스템 기본부스 (프레임 노출 격자형):**
 - 구조: `Octanorm-style modular exhibition shell scheme, slim silver anodized aluminum post-and-beam frame, narrow vertical posts proud of the flat white infill panels, crisp specular highlights along the post edges, standard 3x3m booth, eye-level wall height`
@@ -463,18 +511,37 @@ replaced architecture from the second image, structural transfer from reference 
 - 사인: `fascia header band above the booth, kept as a blank or simple placeholder signage area without legible text` (실제 상호는 후처리 합성 — 글자 생성은 깨짐 유발)
 - 조명/바닥: `clip-on spotlight arms mounted on the fascia, track spotlights washing the panels, physically mounted fixtures, grey needle-punch exhibition carpet, brushed aluminum base rails seating the booth on the floor`
 
+**모드 A2 — 맥시마 또는 맥시마/옥타늄 혼합부스 (사용자가 맥시마 시공을 선언하거나 원본에서 개구부·파시아를 잇는 압출 골격과 접합 증거가 보일 때):**
+- 맥시마 구조 앵커: `the target-visible zone retains its source-confirmed Maxima extrusion structure at the exact source openings, fascia or portal, preserving only the observed exposed, panel-clad, or fabric-clad condition and the observed beam depth, spacing and joints`
+- 옥타늄 혼합이 함께 확정된 경우에만: `a neutral matte-silver Octanorm base shell with thicker Maxima box-section beams only at the exact front-facade positions already visible in target Image 1`
+- 기존 파란 맥시마 빔: target Image 1에서 실제 발광할 때만 `the target-visible blue Maxima members retain their exact geometry and read as internally illuminated architectural blue channel members matching Image 1, with a controlled electric-blue core and short-range diffuse spill limited to the immediately adjoining banner edge, upright edge and floor directly below`
+- 나머지 골조: target Image 1 또는 사용자의 실제 시공 선언이 해당 측·후면 구역을 옥타늄으로 확인할 때만 기본값 `side and rear Octanorm posts, rails and base members remain neutral silver, matte and non-emissive`를 적용한다. 다른 구조이거나 불명확하면 이 문구를 적용하지 않고 원본에서 보이는 상태를 보존한다. 사용자가 해당 구역의 발광 시공을 별도로 선언한 경우에만 그 구역을 독립적으로 예외 처리한다.
+- 그래픽: 백색 또는 컬러 인쇄면은 원본 시공 선언에 따라 `continuous opaque tensioned PVC flex banner graphic with subtle tarpaulin microtexture and exact source artwork preserved`
+- ★대조 앵커: `"…a physically assembled hybrid exhibition system with facade-only Maxima treatment, not an all-blue glowing frame and not a seamless built wall."`
+
 **모드 B — 목공 독립부스 (매끈한 면 볼륨형):**
 - 구조: `custom-built exhibition booth with smooth continuous plastered and painted wall surfaces, sharp clean flush corners, solid built walls`
 - 재료/디테일: `matte painted walls or adhesive vinyl-wrapped walls, laminate finish, branded feature walls`; 로고 사인은 원본에 있을 때만 `edge-lit acrylic logo` (한 면에만)
 - ★대조 앵커(한 문장 삽입): `"…a solid custom-built wall, not a modular framed system and not an exposed aluminum grid."`
 
-**모드 C — 블럭부스 / 규격 박스 모듈 조립 (modular block assembly):**
-- 구조: `modular block-panel booth assembled from standardized rectangular box modules, fine consistent seams between modules, clean rectilinear module grid, flat even matte panel faces`
-- 발광은 옵션(국소 게이팅): 원본에 발광 그래픽 벽이 있을 때만 → `only the graphic panel is softly lit from behind, while the surrounding module structure, floor and ceiling are lit by ambient hall light` (벽 전체를 발광시키지 않는다)
-- ★대조 앵커(한 문장 삽입): `"…a modular box-panel assembly, not a seamless custom-built wall and not an exposed aluminum post-and-beam grid."`
+**모드 C — 블럭부스 / 규격 블럭·탈착 패널 조립 (modular block-panel assembly):**
+- **범위 게이트:** 아래 문구는 사용자 선언 또는 구조 원본 Image 1의 시각 판정으로 `construction=block`이 확정된 구역에만 적용한다. 목공·옥타늄·맥시마·기타·불명확 구역에는 블럭 조인트·패널 두께·체결점·곡면 세그먼트·캐노피·내부발광 문구를 적용하지 않는다.
+- **레퍼런스 사용법:** 실제 블럭부스 사진은 디자인 복제본이 아니다. 원본 렌더의 카메라·형상·높이·개구부·색·곡면 유무·캐노피 유무·가구·브랜드를 유지하고, 사진에서는 패널 두께감·반복 조인트·일반 체결 방식·표면 반사·일반 조명 장착 방식만 추출한다.
+- **식별:** 원본에 실제 패널 두께와 좁지만 카메라 거리에서 명확히 읽히는 반복 함몰 조인트가 이어지고, 연속 노출 옥타늄 포스트-인필 격자가 없을 때 블럭 영역으로 판정한다. 벽·캐노피·기둥·카운터는 서로 독립 판정하며 원본이 같은 시스템임을 보여줄 때만 같은 모듈 언어를 공유한다. 공식 모듈 수치는 판별 참고일 뿐 프롬프트에 절대·상대·비교 수치로 넣지 않고 원본에서 보이는 패널 비례와 조인트 간격만 보존한다.
+- 기본 구조 문장: `a reusable modular block-panel exhibition construction assembled from standardized rigid modules, preserving the target source silhouette, openings, proportions, visible panel-size pattern, narrow but clearly visible recessed joints and target-visible panel thickness`
+- 직선 영역에만 조건부 추가: `rectangular panel modules aligned consistently along the source-visible straight runs`
+- 곡면 영역에만 조건부 추가: 원본에서 곡면과 세그먼트 경계가 모두 보일 때 `discrete curved-profile modules following the target's apparent curved contour, arc span and only the visibly observable segment seams`; 매끈하거나 가려진 곡면에는 새 세그먼트 선을 추가하지 않는다.
+- 체결점 조건부 추가: 원본 해상도에서 독립 하드웨어로 식별되는 체결점의 **보이는 종류·수량·대략적 위치만** 묘사한다. 관찰된 단일 체결점 하나를 근거로 보이지 않는 위치까지 전체 부스에 외삽하지 않는다. 체결점이 없거나 불확실하면 관련 문구를 생략한다.
+- 캐노피 조건부 추가: 원본에 상부 캐노피·포털이 있을 때 원본과 같은 카메라에서 보이는 외곽·측면·하부 범위만 보존한다. 하부 조인트, 등기구, 브래킷, 현수부, 기둥, 벽체 캔틸레버는 각각 실제로 보이는 항목만 그 수량·위치에 맞춰 별도로 추가하며, 원본에서 가려진 하부·지지 구조는 계속 가려진 상태로 유지한다.
+- 표면: `rigid removable composite or laminate-skinned panel faces with source-matched low-sheen or semi-gloss response, crisp color-film or printed-graphic application, visible shallow edge reveals and no plaster-like continuity`
+- 카운터·진열대가 같은 시스템일 때만: `the source-visible counters and display plinths repeat the same observed modular panel-size pattern, recessed-joint cadence, thickness and finish language at their exact source positions`
+- 발광은 옵션(독립 게이트): 그래픽의 밝은 색·반사·홀 조명 핫스폿만으로 내부발광을 추정하지 않는다. 같은 주변광 아래 인접 불투명 패널보다 뚜렷한 자체 휘도 차이를 보이는 백라이트 그래픽, 경계가 분명한 발광 패널 면 또는 내부 광원이 원본에서 확인될 때만 `the observed panel bay is the sole self-luminous surface in that module; its illumination falls off rapidly as a faint soft reflection on only the immediately adjacent panel edges and floor, while neighboring modules remain opaque and non-self-luminous`
+- 원본에 발광 근거가 없거나 해상도가 불충분하면 모든 블럭은 `opaque, non-emissive, lit only by the observed hall and source-visible booth fixtures`
+- ★대조 앵커: `"Only the source-confirmed block zones read as reusable modular block-panel construction with clearly visible repeated recessed joints and real panel thickness; do not reinterpret those same block-zone surfaces as seamless carpentry, a slim exposed Octanorm post-and-infill grid, or an open Maxima box-beam frame."`
 
 **★ 그래픽·마감 실재료 서브블록 (★원본에 실제 보이는 재료 1~2종만 골라 주입 — 6종 나열 금지(material soup). 없는 텍스트/로고 생성 금지):**
-- 현수막(플렉스): `PVC flex banner graphic, slight surface undulation, satin sheen`
+- 현수막(플렉스): `continuous opaque PVC flex banner graphic, exact original artwork preserved, only the original level of surface flatness and sheen, no added holes, grommets, screws, rivets, stitching, folds, or wrinkles`
+- 바미싱 플렉스 현수막(사용자 선언 또는 원본 확인 시): `a continuous full-bleed opaque PVC flex banner face held by a concealed top-and-bottom bar-missing tension system, with no visible top bar, bottom bar, side rail, silver perimeter frame, exposed post, base rail, panel joint or border around the graphic face; exact original artwork preserved`
 - 켈지(점착 실사출력): `matte (or gloss) self-adhesive vinyl film, tightly wrapped flat to the wall, crisp saturated color`; 백켈지=`opaque solid backing` / 투명켈지=`translucent vinyl on glass`
 - 커팅시트: `cut vinyl lettering and solid-color film logos, sharp die-cut edges`
 - SEG 텐션패브릭: `SEG silicone-edge tension fabric graphic, taut smooth flat matte fabric, edge sitting flush in a slim aluminum channel`
@@ -505,6 +572,13 @@ replaced architecture from the second image, structural transfer from reference 
 - 광택 바닥이 원본에 있으면: `soft reflection of the media surface on the polished floor` 1줄(반사는 2차 발광이 아니므로 단일화 규칙과 충돌 없음).
 - 조명(7단계)과의 정합: 혼합 조명 문구에 `colored screen light from the media volume` 1회만 언급 — 발광 토큰 중복 금지.
 
+**★ 평면 LED월 + 무대 데크 발광 서브블록 (적용 조건: 원본에 켜진 평면 LED월과 바로 앞 무대 데크가 함께 보일 때만):**
+> 평면 LED월은 미디어아트 발광 볼륨이 아니다. 입체 매스·측면 구조를 발명하지 않으며, 그래픽·텍스트·로고는 최종 합성에서 원본 아트워크로 복원한다. Magnific에서는 이 블록을 생략하면 LED를 단순한 인쇄 그래픽으로 보존해 무대 반사와 스필이 빠질 수 있다.
+- 화면/광원 분리 문장: `the existing flat LED wall retains its exact frame, position and source artwork while reading as an active emissive display surface, with authentic luminance falloff rather than a printed backdrop`
+- 무대 반사 문장(원본 무대 데크가 반사 가능한 마감일 때만): `the existing [dark semi-gloss / polished — 원본 관찰값] stage deck directly below the LED wall carries a controlled [원본 화면 색] horizontal specular reflection band, brightest at the screen base and naturally fading toward the audience, while retaining the deck's exact geometry, edge profile and base material identity`
+- 국소 스필 문장: `a faint localized [원본 화면 색] bounce light reaches only the stage edge and the immediately adjacent original surfaces; the rest of the hall retains its original material colors and stays non-emissive`
+- **Magnific 필수 규칙:** 위 세 문장은 행사장·컨퍼런스홀 Magnific 실사화 PROMPT에서 원본 조건이 충족되면 반드시 포함한다. `soft screen glow`처럼 포괄적으로만 쓰지 않는다. 첫 샘플에서 반사 밴드·국소 스필·객석 패브릭의 빛 흡수가 동시에 보이지 않으면 단순 업스케일로 판정하고, Creativity를 0.05 올린 한 번의 재시도까지만 허용한다. 이후 그래픽·구조가 흔들리면 전체 프레임 재시도를 중단하고 무대/데크 ZONE B 크롭으로 전환한다.
+
 **전시장 배경 (부스가 홀 안에 놓인 광각 샷일 때만):**
 - 배경: `exposed high-ceiling truss grid, fire sprinkler pipes, suspended rigging banners overhead, rows of neighboring booths, trade-fair aisle, grey aisle carpet`
 - 오브젝트: `neighboring booth edges, brochure stands, cable covers, small product displays, aisle stanchions`
@@ -514,7 +588,7 @@ replaced architecture from the second image, structural transfer from reference 
 **★ 엔진 규칙 (전시부스는 반드시):** 규칙적 직선격자라 i2i 시 ControlNet 병행이 사실상 필수다. 우선순위 — **Lineart(또는 Lineart-realistic) 또는 Canny를 primary 구조 컨트롤**(포스트·패널·모서리 윤곽 보존), **MLSD는 긴 직선·소실점 보조로 optional**, **Depth는 부스 볼륨·통로 전후관계 보조로만** (특히 블럭부스는 Depth로 박스 모듈 입체감 보존). MLSD 단독은 짧은 포스트 두께·패널 seam·조명 암을 날려 부족하다. GPT 단독 경로보다 SD+ControlNet을 권장한다. **FLUX 파이프라인이면 FLUX-native 컨트롤(Canny-dev 또는 Depth-dev 택일, 동시 사용은 ComfyUI 스태킹 검증 필요)로 구성한다 — SD/SDXL 계열 CN은 로드 불가.** 참조용 커뮤니티 파이프라인: PH's Archviz x AI(civitai, SDXL→FLUX 단계식 — 2026-07 조회 기준, dev 계열 비상업 라이선스 주의).
 
 **★ GPT-image 경로 긍정형 잠금문 (NEGATIVE 대신 PROMPT에 이어붙임):**
-> `"straight rigid booth structure, crisp orthogonal module grid, clean panel seams, physically mounted spotlights, blank or deliberately simple signage, the booth reads as a real exhibition stand photographed on a trade-show floor."`
+> `"Keep the straight rigid booth structure, original panel boundaries, observed fixture set, printed artwork, typography, logos and carpet outline aligned one-to-one with Image 1. Actively transform only the existing wall, ceiling, floor, metal, glass, lighting, reflections and contact shadows into physically believable photographed surfaces. The completed installation reads as a real exhibition stand photographed on location, with intact continuous opaque graphic faces and exactly the observed frame and signage set."`
 
 ---
 

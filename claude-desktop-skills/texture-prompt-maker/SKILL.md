@@ -29,11 +29,12 @@ description: "마감재 · 표면 · 재질 사진을 3D 소프트웨어(3DS Max
 
 > 패널 크기가 제각각인 벽(불규칙 구성)은 **격자를 새로 규칙화하지 말고 원본 배치를 그대로 보존**한다 — 규칙화는 균일 그리드 재질에만.
 
-이 세 가지가 빠지면 3D에서 못 쓰는 텍스처가 된다. 그래서 프롬프트의 뼈대도 이 셋이다:
+이 네 가지가 빠지면 3D에서 못 쓰는 텍스처가 된다. 그래서 프롬프트의 뼈대도 이 넷이다:
 
 1. **Delighting(탈조명)** — 그림자·하이라이트·반사·방향성 조명을 0%로. 가상 라이트에만 반응하는 평평한 색 데이터만 남긴다.
 2. **Orthographic(정면 평탄화)** — 원근·렌즈 왜곡을 제거해 카메라를 표면 정면에 수직으로 둔 듯한 정사 투영 평면으로.
-3. **Seamless + Stochastic(무봉제 + 비반복)** — 상하좌우 가장자리가 완벽히 맞물리고, 타일링 티가 나는 "튀는 특징"(별 모양 자국, 고립된 얼룩, 눈에 띄는 한 점)은 분산·제거한다.
+3. **Seamless(무봉제)** — 상하좌우 가장자리가 완벽히 맞물린다(WALL_SECTION은 좌우만).
+4. **Anti-Repetition(반복 패턴 방지)** — **재질 불문 전 재질 공통 필수.** 목재·콘크리트·석재·패브릭·타일·금속·벽돌 어느 것이든, 큰 면에 반복 적용했을 때 주기성이 보이면 실패다. 아래 "다중 스케일 랜덤화" 절이 정본이며, 3·4번은 **별개 요구사항**이라 3번만 만족해도 통과가 아니다.
 
 > ⚠️ **비반복(stochastic)은 "표면 질감"에만 적용한다. "구조(그리드·줄눈·모듈)"에는 절대 적용하지 않는다.**
 > 패널·타일·벽돌처럼 **규칙적 모듈** 재질에서 stochastic을 구조에까지 걸면, 모델이 줄눈을 일부러 어긋나게 만들어 격자가 깨진다(실제 실패 사례 있음). 그래서 두 층을 분리해 지시한다:
@@ -41,11 +42,32 @@ description: "마감재 · 표면 · 재질 사진을 3D 소프트웨어(3DS Max
 > - **표면 층 = 미세 변화만:** `"apply subtle natural variation ONLY within the surface texture (fiber/grain/weave), never in the joint grid."`
 > 콘크리트·석재·흙처럼 **모듈이 없는 유기적 재질**일 때만 stochastic을 표면 전체에 자유롭게 적용한다.
 
+### ⭐ 반복 패턴 방지 = 다중 스케일 랜덤화 (이음매 맞추기와 별개 요구사항) ★★★
+
+**적용 범위 = 모든 재질, 예외 없음.** 유기적이든 모듈형이든, 어떤 마감재든 아래 문구를 반드시 프롬프트에 넣는다. "이 재질은 원래 균일하니까 생략"은 금지 — 균일한 재질일수록 반복이 더 잘 보인다.
+
+"가장자리가 맞물린다"와 "반복해도 티가 안 난다"는 **다른 문제**다. 이음매만 맞춘 타일은 큰 벽에 3×3로 깔면 같은 나뭇결·매듭·얼룩·하이라이트가 일정 간격으로 되돌아와 격자 리듬이 보인다. 그래서 프롬프트에 **아래 5축 변화를 명시적으로 요구**한다(하나라도 빠지면 주기성이 남는다):
+
+1. 색상·명도 미세 변화 (tonal / value drift)
+2. 결·무늬의 길이와 위치 변화 (grain run length, feature placement)
+3. 얼룩·매듭·스크래치의 위치와 강도 변화 (blemish position + intensity)
+4. 홈 깊이·표면 거칠기 변화 (groove depth, micro-roughness)
+5. 반사 하이라이트 분포 변화 (sheen distribution) — 단, 방향성 조명은 금지(2단계 delight 유지)
+
+추가로 **두 가지 금지**를 항상 넣는다:
+- **랜드마크 금지:** 큰 얼룩·독특한 매듭·진한 선·특정 색 패치 같은 "눈에 띄는 기준점"을 한 곳에 만들지 않는다 — 그게 반복의 눈금이 된다.
+- **대칭/미러 금지:** 가장자리를 접어 맞추는 mirror-tiling·좌우 대칭 배치·체커보드 교대·줄무늬 리듬 금지.
+
+영어 문구(4단계에 삽입):
+> `"Introduce natural irregular multi-scale variation across the whole tile — subtle drift in tone and value, varied grain run length and feature placement, blemishes/knots/scratches differing in position and intensity, varying groove depth and micro-roughness, uneven sheen distribution — so that at 3x3 or larger tiling no periodicity, checkerboard rhythm, banding, or mirrored symmetry is perceivable. Do NOT mirror or flip edges to achieve seamlessness, and do NOT place any single dominant landmark feature."`
+
+> ⚠️ 이 랜덤화는 **표면 층에만** 적용한다. 구조 층(그리드·줄눈·모듈 정렬)은 위 규칙대로 여전히 완벽 규칙 고정이다. 단 **목재·루버는 예외 처리** — 아래 전용 절 참조.
+
 ## 빠른 흐름
 
 1. **모드 판단**: 클로즈업 1장 → 모드 A / 장면 + 재질 지정 → 모드 B
 2. **재질 파악**: 종류(콘크리트·벽돌·목재·패브릭·석재·금속·타일 등), 색, 패턴 스케일
-3. **PROMPT + NEGATIVE 작성** (아래 순서)
+3. **PROMPT + NEGATIVE 작성** (아래 순서) — 재질이 무엇이든 **다중 스케일 랜덤화 문구를 반드시 포함**하고, 출력 전 3×3 게이트 체크리스트를 통과시킨다
 4. **PROMPT + NEGATIVE 두 섹션만** 출력 — 설명·분석·주석 없음 (단, 두 섹션이 끝난 **뒤에** 실행법 안내를 덧붙이는 것은 허용·필수)
 
 카메라 브랜드(Sony, Canon 등) 절대 명시하지 않는다 — 텍스처에는 카메라 자체가 없어야 한다.
@@ -120,6 +142,20 @@ MJ 파라미터(`--v`, `--ar` 등) 포함하지 않는다.
 **규칙적 모듈 재질(패널·타일·벽돌 등) — 구조/표면 분리 필수 ★:**
 > `"CRITICAL — keep the [panel/tile] grid perfectly regular and uniform: evenly sized modules with crisp, straight, continuous, consistently aligned joint lines and identical spacing across the entire texture; do NOT randomize, offset, stagger, break, shift, or distort the grid. Perfectly seamless and tileable across all four edges with no visible seam lines; apply subtle natural variation ONLY within the surface texture (fiber/grain/weave) so it does not look mechanically cloned, but NEVER vary, offset, or break the joint grid; remove any isolated stain, hardware fitting, or standout mark."`
 
+**공통 필수 — 두 경우 모두 위 "다중 스케일 랜덤화" 문구를 이어 붙인다:**
+> `"Introduce natural irregular multi-scale variation across the whole tile — subtle drift in tone and value, varied grain run length and feature placement, blemishes/knots/scratches differing in position and intensity, varying groove depth and micro-roughness, uneven sheen distribution — so that at 3x3 or larger tiling no periodicity, checkerboard rhythm, banding, or mirrored symmetry is perceivable. Do NOT mirror or flip edges to achieve seamlessness, and do NOT place any single dominant landmark feature."`
+
+### 4-W. 목재 · 루버 전용 규칙 ★ (구조 유지 + 판재 개체차)
+
+목재·우드 루버·플랭크·슬랫은 "모듈 재질"이면서 동시에 "판재마다 달라야 자연스러운" 재질이라 위 두 원칙이 충돌한다. 분기 기준:
+
+- **유지(구조):** 가로/세로 루버 진행 방향, 판재 정렬·직선성, 줄눈(홈) 연속성, 전체 리듬. 무너뜨리지 않는다.
+- **차등(개체):** 판재마다 나뭇결 패턴, 매듭 위치·개수, 톤(명도·채도), 홈 그림자 강도, 미세 음영을 **눈에 띄게 다르게** 한다. 모든 판재가 복제된 클론처럼 보이면 실패.
+- **폭:** 원본이 균일 폭이면 폭 자체는 유지하되 결·톤·매듭으로 차이를 만든다. 원본이 불규칙 폭이면 그 불규칙 리듬을 보존한다. 어느 쪽이든 **폭을 무작위로 흩뜨려 판재 구조를 무너뜨리지 않는다.**
+- 과도한 랜덤으로 지저분해지지 않게 — 실제 목재처럼 **정돈된 랜덤성**.
+
+> `"Keep the louver/plank direction, alignment, straightness, and groove continuity exactly as in the source. But make each individual board distinct — every plank must have its own wood grain pattern, knot placement and count, tonal value, groove shadow depth, and subtle shading, so no two boards look cloned or mirrored. Keep the randomness orderly and realistic like real timber; do not scatter plank widths or break the board structure."`
+
 ### 5. 재질 충실도 + 사양
 
 재질 고유의 색과 미세 디테일은 살린다.
@@ -151,7 +187,9 @@ foreshortening, warped structure, skewed pattern
 **타일링 실패 억제:**
 ```
 visible seams, seam lines, tiling seams, obvious repeating pattern, repetition artifacts,
-mirrored edges, distinct landmark features, isolated stains, standout marks, single eye-catching spot
+mirrored edges, distinct landmark features, isolated stains, standout marks, single eye-catching spot,
+mirrored symmetry, flipped edges, kaleidoscope symmetry, checkerboard rhythm, striped banding,
+periodic pattern, regularly spaced knots, identical cloned planks, uniform repeated grain
 ```
 
 **그리드 붕괴 억제 (모듈/패널/타일/벽돌 재질 필수 — 재질별 취사 규칙 준수):**
@@ -199,6 +237,22 @@ low resolution, blurry, soft focus, noise, jpeg artifacts, watermark, text, logo
 - **타일:** `ceramic surface, grout line grid, slight glaze variation, edge bevel, uniform module`
 
 ---
+
+## 출력 전후 검수 — 3×3 타일 게이트 ★ (건너뛰지 않는다)
+
+프롬프트를 내기 **전**과 결과 이미지를 받은 **후**, 두 번 다 "대형 3D 벽면에 반복 적용" 기준으로 판정한다.
+
+**프롬프트 검수(작성 직후, 출력 전):** 아래가 프롬프트에 전부 들어갔는지 확인 — 빠졌으면 보강 후 출력.
+- [ ] 4방향(또는 WALL_SECTION은 좌우) 심리스 명시
+- [ ] 다중 스케일 랜덤화 5축(톤·결 길이/위치·얼룩 위치/강도·홈 깊이/거칠기·하이라이트 분포)
+- [ ] 미러/플립/체커/줄무늬 리듬 금지, 단일 랜드마크 금지
+- [ ] 구조 층(그리드·줄눈) 고정 — 목재/루버면 4-W 개체차 규칙
+- [ ] delight · orthographic · 테두리/그림자/글자/워터마크 제거
+
+**결과 검수(이미지 수령 후):** 3×3 이상으로 깔아 본 기준으로 판정한다.
+- 타일 경계선이 보이는가 / 같은 매듭·얼룩·진한 선이 일정 간격으로 되돌아오는가 / 좌우·상하 대칭(미러)이 보이는가 / 체커보드·줄무늬 리듬이 생기는가
+- 하나라도 보이면 **통과시키지 않는다.** 랜덤화 문구를 더 강하게(변화 폭 확대 + 랜드마크 제거 명시) 고쳐 재생성한다.
+- 사용자에게 안내: 포토샵 `필터 > 기타 > 오프셋`(가로/세로 50% 이동)으로 이음매를 즉시 확인할 수 있고, 3D에서는 UV 타일링 3×3으로 미리보기.
 
 ## PBR 맵 확장 (옵션 — 요청 시에만)
 
