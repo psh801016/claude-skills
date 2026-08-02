@@ -21,14 +21,30 @@ Codex·Claude·Gemini 세 레그가 **동시에** 죽으면 모델 문제가 아
 
 ## 2. 레그별 복구
 
+### 2.0 자동 복구 (권장)
+
+2.1~2.3을 한 번에 처리한다. 관리자 PowerShell에서 실행한다.
+
+```powershell
+.\scripts\fix-chain.ps1 -WorkDir "C:\Users\PSH\MultiAgent"
+# claude setup-token 으로 토큰을 받은 뒤:
+.\scripts\fix-chain.ps1 -ClaudeToken "<토큰>" -GeminiApiKey "<키>"
+```
+
+소유권 회수 · 폴더 신뢰 기록 · 환경변수 등록까지 자동으로 하고, 끝에서 프리플라이트로 검증한다.
+브라우저 로그인이 필요한 `claude setup-token`만 사람이 해야 한다. 아래 2.1~2.3은 수동 절차와 원리다.
+
 ### 2.1 Codex — 샌드박스 셋업 실패
 
 관리자 PowerShell에서 작업 폴더 소유권을 실사용자로 되돌린다.
 
 ```powershell
 takeown /F "C:\Users\PSH\MultiAgent" /R /D Y
-icacls  "C:\Users\PSH\MultiAgent" /grant "$env:USERDOMAIN\$env:USERNAME:(OI)(CI)(F)" /T
+icacls  "C:\Users\PSH\MultiAgent" /grant "${env:USERDOMAIN}\${env:USERNAME}:(OI)(CI)(F)" /T
 ```
+
+> `"$env:USERNAME:(OI)..."` 처럼 쓰면 PowerShell이 콜론까지 변수 이름으로 먹어 사용자명이 빈 값이 되고
+> `매개 변수가 잘못되었습니다`로 실패한다(실측 2026-08-02). 반드시 `${env:USERNAME}`으로 경계를 닫는다.
 
 - 확인: `(Get-Acl "C:\Users\PSH\MultiAgent").Owner` 가 `PSH` 계정이면 정상. `CodexSandboxOnline`·`BUILTIN\Administrators`면 아직 원인이 남아 있다.
 - 샌드박스가 실패한 뒤 폴더 소유자가 샌드박스 계정으로 **바뀌어 있는 경우**가 있다 — 실패할 때마다 소유자를 다시 확인한다.
@@ -65,9 +81,12 @@ gemini
 2. **키는 프로젝트 밖에 둔다** — 프로젝트 `.env`는 신뢰·샌드박스 상태에 따라 무시된다. 사용자/머신 환경변수가 유일하게 안정적이다.
 3. **루틴 시작 전에 프리플라이트를 돌린다** — §4. 세 레그가 다 죽은 뒤 로그를 읽는 것보다 30초 먼저 아는 편이 싸다.
 
-## 4. 프리플라이트
+## 4. 스크립트
 
-루틴(지혜 승격·cross-review 등) 시작 직전에 실행한다. 종료 코드 = 실패한 레그 수.
+| 스크립트 | 용도 |
+|---|---|
+| `scripts/fix-chain.ps1` | 복구. 소유권·신뢰·환경변수를 자동 처리하고 끝에서 검증한다(§2.0) |
+| `scripts/preflight-chain.ps1` | 점검. 루틴 시작 직전에 실행한다. **종료 코드 = 실패한 레그 수** |
 
 ```powershell
 pwsh -File "<이 스킬>\scripts\preflight-chain.ps1" -WorkDir "C:\Users\PSH\MultiAgent"
