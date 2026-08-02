@@ -85,7 +85,7 @@ gemini
 > /permissions        # → Trust folder (또는 Trust parent folder)
 ```
 
-- 신뢰 상태는 `~/.gemini/trustedFolders.json`(경로 → `TRUST_FOLDER` | `TRUST_PARENT` | `DO_NOT_TRUST`)에 저장된다. 파일 직접 편집보다 `/permissions`를 쓴다 — 부모의 `TRUST_FOLDER`가 자식의 `DO_NOT_TRUST`를 덮는 알려진 버그가 있어 손으로 쓰면 의도와 다르게 굳는다.
+- 신뢰 상태는 `~/.gemini/trustedFolders.json`(경로 → `TRUST_FOLDER` | `TRUST_PARENT` | `DO_NOT_TRUST`)에 저장된다. **손으로 편집하지 않는다** — 부모의 `TRUST_FOLDER`가 자식의 `DO_NOT_TRUST`를 덮는 알려진 버그가 있어 의도와 다르게 굳는다. `/permissions` 또는 `fix-chain.ps1`(작업 폴더 경로에 정확히 `TRUST_FOLDER`만 병합하고 `.bak` 백업을 남긴다)을 쓴다.
 - **API 키를 프로젝트 `.env`에 두지 않는다.** 미신뢰 폴더에서는 `.env`가 통째로 무시되므로, 신뢰가 풀리는 순간 키까지 같이 사라져 인증 실패로 번진다. `GEMINI_API_KEY`는 사용자/머신 환경변수에 둔다.
 - 신뢰 프롬프트 자체를 무인 환경에서 없애려면 `~/.gemini/settings.json`에 `{"security":{"folderTrust":{"enabled":false}}}` — 안전장치를 끄는 선택이므로 개인 머신에 한정한다.
 
