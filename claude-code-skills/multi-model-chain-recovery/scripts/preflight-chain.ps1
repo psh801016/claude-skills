@@ -65,28 +65,49 @@ function Resolve-CliTarget {
       PowerShell 의 Get-Command 는 .ps1 을 먼저 집는데, Start-Process 는 .ps1 을 실행하지 못하고
       "%1은(는) 올바른 Win32 응용 프로그램이 아닙니다" 로 죽는다(실측 2026-08-02).
       실행 가능한 형태를 골라 필요한 인터프리터를 앞에 붙여서 돌려준다.
+      어떤 형태로도 못 풀면 Windows 에서는 cmd 에게 해석을 맡긴다(PATHEXT 로 .cmd/.exe 를 찾는다).
+      항상 File 이 채워진 결과만 돌려준다 — 빈 FilePath 로 Start-Process 를 부르면 크래시한다.
     #>
     param([string]$Exe)
 
     $all = @(Get-Command $Exe -All -ErrorAction SilentlyContinue)
-    if ($all.Count -eq 0) { return $null }
 
-    $exe = $all | Where-Object { $_.Source -match '\.exe$' } | Select-Object -First 1
-    if ($exe) { return @{ File = $exe.Source; Pre = @() } }
+    # 별칭이면 실제 명령으로 한 단계 푼다.
+    $resolved = foreach ($c in $all) {
+        if ($c.CommandType -eq 'Alias' -and $c.ResolvedCommand) { $c.ResolvedCommand } else { $c }
+    }
+    $paths = @($resolved | ForEach-Object { $_.Source } | Where-Object { $_ })
+    $diag = if ($all.Count -eq 0) { 'Get-Command 결과 없음' }
+            else { ($resolved | ForEach-Object { "$($_.CommandType):$($_.Source)" }) -join ', ' }
 
-    $shim = $all | Where-Object { $_.Source -match '\.(cmd|bat)$' } | Select-Object -First 1
-    if ($shim) { return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $shim.Source)) } }
+    $exe = $paths | Where-Object { $_ -match '\.exe$' } | Select-Object -First 1
+    if ($exe) { return @{ File = $exe; Pre = @(); Diag = $diag } }
 
-    $ps1 = $all | Where-Object { $_.Source -match '\.ps1$' } | Select-Object -First 1
-    if ($ps1) {
-        $psExe = try { (Get-Process -Id $PID).Path } catch { 'powershell.exe' }
-        return @{ File = $psExe
-                  Pre  = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Format-CliArg $ps1.Source)) }
+    $shim = $paths | Where-Object { $_ -match '\.(cmd|bat)$' } | Select-Object -First 1
+    if ($shim -and $env:ComSpec) {
+        return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $shim)); Diag = $diag }
     }
 
-    $any = $all | Where-Object { $_.Source } | Select-Object -First 1
-    if ($any) { return @{ File = $any.Source; Pre = @() } }
-    return $null
+    $ps1 = $paths | Where-Object { $_ -match '\.ps1$' } | Select-Object -First 1
+    if ($ps1) {
+        $psExe = try { (Get-Process -Id $PID).Path } catch { $null }
+        if (-not $psExe) { $psExe = (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source }
+        if ($psExe) {
+            return @{ File = $psExe
+                      Pre  = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Format-CliArg $ps1))
+                      Diag = $diag }
+        }
+    }
+
+    # 확장자 없는 실행 파일(비 Windows 등)
+    $plain = $paths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if ($plain) { return @{ File = $plain; Pre = @(); Diag = $diag } }
+
+    # 마지막 수단 — cmd 가 PATHEXT 로 직접 찾게 한다.
+    if ($env:ComSpec) {
+        return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $Exe)); Diag = "$diag (cmd 위임)" }
+    }
+    return @{ File = $null; Pre = @(); Diag = $diag }
 }
 
 function Invoke-Smoke {
@@ -98,8 +119,9 @@ function Invoke-Smoke {
     )
 
     $target = Resolve-CliTarget -Exe $Exe
-    if (-not $target) {
-        return [pscustomobject]@{ Found = $false; Code = -1; Output = ''; TimedOut = $false }
+    if (-not $target -or [string]::IsNullOrWhiteSpace($target.File)) {
+        $why = if ($target) { $target.Diag } else { '해석 실패' }
+        return [pscustomobject]@{ Found = $false; Code = -1; Output = ''; TimedOut = $false; Diag = $why }
     }
 
     # Start-Process 는 -ArgumentList 원소를 그대로 이어 붙인다 — 공백이 든 인자는 직접 감싸야
@@ -152,7 +174,7 @@ function Test-Leg {
 
     $smoke = Invoke-Smoke -Exe $Exe -CliArgs $CliArgs -TimeoutSeconds $TimeoutSec -Cwd $WorkDir
     if (-not $smoke.Found) {
-        return New-Result $Leg 'FAIL' "$Exe 을(를) PATH에서 찾을 수 없다" '설치 또는 PATH 확인'
+        return New-Result $Leg 'FAIL' "$Exe 실행 파일을 찾지 못했다 — $($smoke.Diag)" '설치 또는 PATH 확인'
     }
 
     $fp = Find-Fingerprint -Text $smoke.Output
