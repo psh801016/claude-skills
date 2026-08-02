@@ -54,63 +54,29 @@ function Find-Fingerprint {
     return $null
 }
 
-function Format-CliArg {
-    param([string]$Value)
-    if ($Value -match '[\s"]') { '"' + ($Value -replace '"', '\"') + '"' } else { $Value }
-}
-
-function Resolve-CliTarget {
+function Get-CliDiag {
     <#
-      npm 전역 설치는 같은 이름으로 .ps1 / .cmd / 확장자 없는 셸 스크립트를 함께 깐다.
-      PowerShell 의 Get-Command 는 .ps1 을 먼저 집는데, Start-Process 는 .ps1 을 실행하지 못하고
-      "%1은(는) 올바른 Win32 응용 프로그램이 아닙니다" 로 죽는다(실측 2026-08-02).
-      실행 가능한 형태를 골라 필요한 인터프리터를 앞에 붙여서 돌려준다.
-      어떤 형태로도 못 풀면 Windows 에서는 cmd 에게 해석을 맡긴다(PATHEXT 로 .cmd/.exe 를 찾는다).
-      항상 File 이 채워진 결과만 돌려준다 — 빈 FilePath 로 Start-Process 를 부르면 크래시한다.
+      Get-Command 가 이 이름으로 무엇을 찾았는지 사람이 읽을 수 있게 요약한다.
+      실행 자체는 Invoke-Smoke 가 호출 연산자로 하므로, 이 값은 진단용이다.
     #>
     param([string]$Exe)
 
     $all = @(Get-Command $Exe -All -ErrorAction SilentlyContinue)
-
-    # 별칭이면 실제 명령으로 한 단계 푼다.
+    if ($all.Count -eq 0) { return 'Get-Command 결과 없음' }
     $resolved = foreach ($c in $all) {
         if ($c.CommandType -eq 'Alias' -and $c.ResolvedCommand) { $c.ResolvedCommand } else { $c }
     }
-    $paths = @($resolved | ForEach-Object { $_.Source } | Where-Object { $_ })
-    $diag = if ($all.Count -eq 0) { 'Get-Command 결과 없음' }
-            else { ($resolved | ForEach-Object { "$($_.CommandType):$($_.Source)" }) -join ', ' }
-
-    $exe = $paths | Where-Object { $_ -match '\.exe$' } | Select-Object -First 1
-    if ($exe) { return @{ File = $exe; Pre = @(); Diag = $diag } }
-
-    $shim = $paths | Where-Object { $_ -match '\.(cmd|bat)$' } | Select-Object -First 1
-    if ($shim -and $env:ComSpec) {
-        return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $shim)); Diag = $diag }
-    }
-
-    $ps1 = $paths | Where-Object { $_ -match '\.ps1$' } | Select-Object -First 1
-    if ($ps1) {
-        $psExe = try { (Get-Process -Id $PID).Path } catch { $null }
-        if (-not $psExe) { $psExe = (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source }
-        if ($psExe) {
-            return @{ File = $psExe
-                      Pre  = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Format-CliArg $ps1))
-                      Diag = $diag }
-        }
-    }
-
-    # 확장자 없는 실행 파일(비 Windows 등)
-    $plain = $paths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-    if ($plain) { return @{ File = $plain; Pre = @(); Diag = $diag } }
-
-    # 마지막 수단 — cmd 가 PATHEXT 로 직접 찾게 한다.
-    if ($env:ComSpec) {
-        return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $Exe)); Diag = "$diag (cmd 위임)" }
-    }
-    return @{ File = $null; Pre = @(); Diag = $diag }
+    return (($resolved | ForEach-Object { "$($_.CommandType):$($_.Source)" }) -join ', ')
 }
 
 function Invoke-Smoke {
+    <#
+      CLI 를 호출 연산자(&)로 실행한다 — 사용자가 콘솔에 직접 치는 것과 같은 경로라
+      npm 이 깔아 놓은 .cmd / .ps1 / .exe 어느 형태든 PowerShell 이 알아서 해석한다.
+      (Start-Process 는 .ps1 을 실행하지 못해 "올바른 Win32 응용 프로그램이 아닙니다" 로 죽고,
+       빈 경로를 넘기면 FilePath 검증에서 크래시한다 — 실측 2026-08-02.)
+      타임아웃은 백그라운드 작업으로 감싸서 확보하고, stderr 는 2>&1 로 합쳐 지문 탐지에 쓴다.
+    #>
     param(
         [string]$Exe,
         [string[]]$CliArgs,
@@ -118,49 +84,37 @@ function Invoke-Smoke {
         [string]$Cwd
     )
 
-    $target = Resolve-CliTarget -Exe $Exe
-    if (-not $target -or [string]::IsNullOrWhiteSpace($target.File)) {
-        $why = if ($target) { $target.Diag } else { '해석 실패' }
-        return [pscustomobject]@{ Found = $false; Code = -1; Output = ''; TimedOut = $false; Diag = $why }
+    if (-not (Get-Command $Exe -ErrorAction SilentlyContinue)) {
+        return [pscustomobject]@{ Found = $false; Code = -1; Output = ''
+                                  TimedOut = $false; Diag = (Get-CliDiag $Exe) }
     }
 
-    # Start-Process 는 -ArgumentList 원소를 그대로 이어 붙인다 — 공백이 든 인자는 직접 감싸야
-    # 프롬프트가 여러 인자로 쪼개지지 않는다.
-    $file = $target.File
-    $argv = @($target.Pre) + @($CliArgs | ForEach-Object { Format-CliArg $_ })
+    $job = Start-Job -ScriptBlock {
+        param($Name, $JobArgs, $WorkingDir)
+        Set-Location -LiteralPath $WorkingDir
+        $ErrorActionPreference = 'Continue'
+        $text = (& $Name @JobArgs 2>&1 | Out-String)
+        [pscustomobject]@{ Text = $text; Code = $LASTEXITCODE }
+    } -ArgumentList $Exe, $CliArgs, $Cwd
 
-    $outFile = [System.IO.Path]::GetTempFileName()
-    $errFile = [System.IO.Path]::GetTempFileName()
-    $timedOut = $false
     try {
-        $proc = Start-Process -FilePath $file -ArgumentList $argv `
-            -WorkingDirectory $Cwd -NoNewWindow -PassThru `
-            -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        if (-not (Wait-Job -Job $job -Timeout $TimeoutSeconds)) {
+            Stop-Job -Job $job -ErrorAction SilentlyContinue
+            return [pscustomobject]@{ Found = $true; Code = -2; Output = ''
+                                      TimedOut = $true; Diag = '' }
+        }
 
-        if ($proc.WaitForExit($TimeoutSeconds * 1000)) {
-            # 타임아웃 있는 WaitForExit 는 리다이렉트 스트림 flush 를 기다리지 않는다.
-            # 인자 없는 WaitForExit 를 한 번 더 불러야 출력 파일이 완성된다.
-            $proc.WaitForExit()
-        }
-        else {
-            $timedOut = $true
-            try { $proc.Kill($true) } catch { try { $proc.Kill() } catch { } }
-            $proc.WaitForExit(5000) | Out-Null
-        }
-        $code = if ($timedOut) { -2 } else { $proc.ExitCode }
+        $payload = @(Receive-Job -Job $job -ErrorAction SilentlyContinue) |
+                   Where-Object { $_ -and $_.PSObject.Properties['Text'] } |
+                   Select-Object -First 1
 
-        # flush 가 늦는 경우가 있어 짧게 재확인한다(빈 출력을 오탐하지 않기 위해).
-        $text = ''
-        foreach ($attempt in 1..10) {
-            $text = ((Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) + "`n" +
-                     (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue))
-            if (-not [string]::IsNullOrWhiteSpace($text)) { break }
-            Start-Sleep -Milliseconds 100
-        }
-        return [pscustomobject]@{ Found = $true; Code = $code; Output = $text; TimedOut = $timedOut }
+        $text = if ($payload) { [string]$payload.Text } else { '' }
+        $code = if ($payload -and $null -ne $payload.Code) { [int]$payload.Code } else { 0 }
+        return [pscustomobject]@{ Found = $true; Code = $code; Output = $text
+                                  TimedOut = $false; Diag = '' }
     }
     finally {
-        Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
     }
 }
 
