@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Codex / Claude / Gemini 3중 체인 프리플라이트.
 

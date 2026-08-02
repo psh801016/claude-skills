@@ -102,6 +102,11 @@ gemini
 | `scripts/fix-chain.ps1` | 복구. 소유권·신뢰·환경변수를 자동 처리하고 끝에서 검증한다(§2.0) |
 | `scripts/preflight-chain.ps1` | 점검. 루틴 시작 직전에 실행한다. **종료 코드 = 실패한 레그 수** |
 
+> **두 스크립트는 UTF-8 BOM 으로 저장한다.** Windows PowerShell 5.1은 BOM 없는 파일을 시스템 코드페이지(cp949)로
+> 읽어 한글이 깨지고, 깨진 바이트 때문에 `"<토큰>"` 의 `<` 가 리다이렉션 연산자로 파싱돼 스크립트 전체가
+> `ParserError` 로 죽는다(실측 2026-08-02). 편집 도구가 BOM을 떼지 않는지 확인할 것.
+> 같은 이유로 `trustedFolders.json` 은 반대로 **BOM 없이** 써야 한다 — gemini-cli 가 `JSON.parse` 로 읽는다.
+
 ```powershell
 pwsh -File "<이 스킬>\scripts\preflight-chain.ps1" -WorkDir "C:\Users\PSH\MultiAgent"
 ```

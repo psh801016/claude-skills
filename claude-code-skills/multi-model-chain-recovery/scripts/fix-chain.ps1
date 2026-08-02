@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Codex / Claude / Gemini 3중 체인 자동 복구.
 
@@ -168,7 +168,11 @@ try {
 
     $before = $map[$WorkDir]
     $map[$WorkDir] = 'TRUST_FOLDER'
-    ($map | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $trustPath -Encoding utf8
+
+    # Windows PowerShell 5.1 의 `-Encoding utf8` 은 BOM 을 붙인다.
+    # gemini-cli 는 이 파일을 JSON.parse 로 읽으므로 BOM 이 있으면 파싱이 깨진다 — BOM 없이 쓴다.
+    $json = $map | ConvertTo-Json -Depth 5
+    [System.IO.File]::WriteAllText($trustPath, $json, (New-Object System.Text.UTF8Encoding($false)))
 
     $note = if ($before -eq 'TRUST_FOLDER') { '이미 신뢰됨(변경 없음)' } else { "$trustPath 기록" }
     Add-Step 'Gemini 신뢰' 'OK' $note
