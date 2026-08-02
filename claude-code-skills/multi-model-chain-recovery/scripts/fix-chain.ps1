@@ -26,7 +26,9 @@ param(
     [string]$ClaudeToken,
     [string]$GeminiApiKey,
     [switch]$SkipOwnership,
-    [switch]$SkipVerify
+    [switch]$SkipVerify,
+    [switch]$NonInteractive,
+    [switch]$NoElevate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,10 +50,52 @@ function Test-Admin {
 }
 
 $isWin = ($null -eq $IsWindows) -or $IsWindows
+$canPrompt = -not $NonInteractive -and [Environment]::UserInteractive
+
+# ── 0. 관리자 권한 자동 승격 ─────────────────────────────────────────────────
+# 소유권 회수에 관리자 권한이 필요하다. 일반 창에서 실행됐으면 스스로 승격 창을 띄운다.
+
+if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin)) {
+    $psExe = try { (Get-Process -Id $PID).Path } catch { 'powershell.exe' }
+    $fwd = @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-NoElevate')
+    foreach ($p in $PSBoundParameters.GetEnumerator()) {
+        if ($p.Key -eq 'NoElevate') { continue }
+        if ($p.Value -is [switch]) {
+            if ($p.Value.IsPresent) { $fwd += "-$($p.Key)" }
+        }
+        else { $fwd += @("-$($p.Key)", [string]$p.Value) }
+    }
+    if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $fwd += @('-WorkDir', $WorkDir) }
+
+    Write-Output '관리자 권한이 필요합니다. 승격 창을 띄웁니다 — UAC 창에서 [예]를 눌러 주세요.'
+    try {
+        Start-Process -FilePath $psExe -ArgumentList $fwd -Verb RunAs | Out-Null
+        Write-Output '새로 열린 관리자 창에서 계속 진행됩니다. 이 창은 닫으셔도 됩니다.'
+        exit 0
+    }
+    catch {
+        Write-Output "승격 실패($($_.Exception.Message)) — 관리자 권한 없이 가능한 단계만 진행합니다."
+    }
+}
+
+# ── 작업 폴더 확정 ───────────────────────────────────────────────────────────
 
 if (-not (Test-Path -LiteralPath $WorkDir)) {
-    Write-Error "작업 폴더가 없습니다: $WorkDir  (-WorkDir 로 자비스 실제 작업 폴더를 지정해 주세요)"
-    exit 99
+    $found = $null
+    foreach ($root in @($env:USERPROFILE, 'C:\', 'D:\')) {
+        if (-not $root -or -not (Test-Path -LiteralPath $root)) { continue }
+        $found = Get-ChildItem -LiteralPath $root -Directory -Filter 'MultiAgent' -Recurse -Depth 3 `
+            -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { break }
+    }
+    if ($found) {
+        Write-Output "지정된 작업 폴더가 없어 자동 탐색했습니다: $($found.FullName)"
+        $WorkDir = $found.FullName
+    }
+    else {
+        Write-Error "작업 폴더를 찾지 못했습니다: $WorkDir  (-WorkDir 로 자비스 실제 작업 폴더를 지정해 주세요)"
+        exit 99
+    }
 }
 $WorkDir = (Resolve-Path -LiteralPath $WorkDir).Path
 
@@ -151,6 +195,22 @@ elseif ($env:CLAUDE_CODE_OAUTH_TOKEN) {
 elseif ($env:ANTHROPIC_API_KEY) {
     Add-Step 'Claude 토큰' 'WARN' 'ANTHROPIC_API_KEY 로 동작 중 — 구독이 아니라 API 종량과금'
 }
+elseif ($canPrompt -and (Get-Command claude -ErrorAction SilentlyContinue)) {
+    # setup-token 은 브라우저 로그인이 필요한 대화형 명령이라 출력을 가로채면 화면이 깨진다.
+    # 콘솔을 그대로 물려주고 실행한 뒤, 마지막에 출력되는 토큰만 받아 등록한다.
+    Write-Output ''
+    Write-Output '─ Claude 토큰 발급 ─ 브라우저가 열리면 로그인해 주세요. (건너뛰려면 Ctrl+C)'
+    try { & claude setup-token } catch { Write-Output "setup-token 실행 실패: $($_.Exception.Message)" }
+
+    $pasted = (Read-Host '위에 출력된 토큰을 붙여넣고 Enter (건너뛰려면 그냥 Enter)').Trim()
+    if ($pasted) {
+        Set-UserEnv -Name 'CLAUDE_CODE_OAUTH_TOKEN' -Value $pasted
+        Add-Step 'Claude 토큰' 'OK' 'CLAUDE_CODE_OAUTH_TOKEN 사용자 환경변수 등록'
+    }
+    else {
+        Add-Step 'Claude 토큰' 'TODO' 'claude setup-token 후 -ClaudeToken "<토큰>" 으로 재실행해 주세요'
+    }
+}
 else {
     Add-Step 'Claude 토큰' 'TODO' 'claude setup-token 실행 후 -ClaudeToken "<토큰>" 으로 재실행해 주세요'
 }
@@ -161,6 +221,16 @@ if ($GeminiApiKey) {
 }
 elseif ($env:GEMINI_API_KEY -or $env:GOOGLE_API_KEY) {
     Add-Step 'Gemini 키' 'OK' '이미 프로세스 환경에 있음'
+}
+elseif ($canPrompt) {
+    $pasted = (Read-Host 'GEMINI_API_KEY 를 붙여넣고 Enter (프로젝트 .env 에만 있으면 신뢰 해제 시 또 깨집니다 / 건너뛰려면 그냥 Enter)').Trim()
+    if ($pasted) {
+        Set-UserEnv -Name 'GEMINI_API_KEY' -Value $pasted
+        Add-Step 'Gemini 키' 'OK' 'GEMINI_API_KEY 사용자 환경변수 등록'
+    }
+    else {
+        Add-Step 'Gemini 키' 'TODO' '-GeminiApiKey "<키>" 로 재실행해 주세요'
+    }
 }
 else {
     Add-Step 'Gemini 키' 'TODO' '-GeminiApiKey "<키>" 로 재실행 (프로젝트 .env 의존이면 신뢰 해제 시 또 깨진다)'

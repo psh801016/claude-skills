@@ -23,16 +23,30 @@ Codex·Claude·Gemini 세 레그가 **동시에** 죽으면 모델 문제가 아
 
 ### 2.0 자동 복구 (권장)
 
-2.1~2.3을 한 번에 처리한다. 관리자 PowerShell에서 실행한다.
+2.1~2.3을 한 번에 처리한다. **일반 PowerShell에서 실행해도 된다** — 관리자 권한이 필요하면 스스로 UAC 승격 창을 띄운다.
 
 ```powershell
 .\scripts\fix-chain.ps1 -WorkDir "C:\Users\PSH\MultiAgent"
-# claude setup-token 으로 토큰을 받은 뒤:
-.\scripts\fix-chain.ps1 -ClaudeToken "<토큰>" -GeminiApiKey "<키>"
 ```
 
-소유권 회수 · 폴더 신뢰 기록 · 환경변수 등록까지 자동으로 하고, 끝에서 프리플라이트로 검증한다.
-브라우저 로그인이 필요한 `claude setup-token`만 사람이 해야 한다. 아래 2.1~2.3은 수동 절차와 원리다.
+한 번 실행으로 끝나는 순서:
+
+1. 관리자 권한 자동 승격(UAC [예] 클릭)
+2. 작업 폴더 소유권·ACL 회수 — 폴더가 없으면 `MultiAgent` 를 자동 탐색한다
+3. `trustedFolders.json` 에 신뢰 항목 기록(대화형 `/permissions` 대체, 기존 항목 병합 + `.bak` 백업)
+4. `claude setup-token` 을 직접 실행 → 브라우저 로그인 → 출력된 토큰을 붙여넣으면 환경변수 등록
+5. `GEMINI_API_KEY` 붙여넣기(선택) → 환경변수 등록
+6. `preflight-chain.ps1` 로 검증까지 이어서 실행
+
+사람이 해야 하는 건 **UAC 승인 · 브라우저 로그인 · 토큰 붙여넣기** 세 가지뿐이다.
+값을 미리 알고 있으면 프롬프트 없이 넘길 수도 있다:
+
+```powershell
+.\scripts\fix-chain.ps1 -ClaudeToken "<토큰>" -GeminiApiKey "<키>"
+.\scripts\fix-chain.ps1 -NonInteractive   # 스케줄러에서 무인 실행 — 프롬프트 대신 TODO 로 보고
+```
+
+아래 2.1~2.3은 수동 절차와 그 원리다.
 
 ### 2.1 Codex — 샌드박스 셋업 실패
 
