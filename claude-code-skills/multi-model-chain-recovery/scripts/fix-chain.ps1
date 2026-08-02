@@ -23,8 +23,10 @@
 [CmdletBinding()]
 param(
     [string]$WorkDir = 'C:\Users\PSH\MultiAgent',
+    [string[]]$TrustDirs,
     [string]$ClaudeToken,
     [string]$GeminiApiKey,
+    [switch]$DisableFolderTrust,
     [switch]$SkipOwnership,
     [switch]$SkipVerify,
     [switch]$NonInteractive,
@@ -167,19 +169,61 @@ try {
         }
     }
 
-    $before = $map[$WorkDir]
-    $map[$WorkDir] = 'TRUST_FOLDER'
+    # 루틴이 어느 폴더에서 gemini 를 부르는지는 작업 폴더와 다를 수 있다(예: 볼트 경로).
+    # 작업 폴더 + 그 부모 + 사용자가 지정한 폴더까지 한꺼번에 신뢰한다.
+    $targets = New-Object System.Collections.Generic.List[string]
+    $targets.Add($WorkDir)
+    $parent = Split-Path -Parent $WorkDir
+    if ($parent) { $targets.Add($parent) }
+    foreach ($d in @($TrustDirs)) { if ($d) { $targets.Add($d) } }
+
+    $added = @()
+    foreach ($t in $targets) {
+        $key = try { (Resolve-Path -LiteralPath $t -ErrorAction Stop).Path } catch { $t }
+        $value = if ($key -eq $parent) { 'TRUST_PARENT' } else { 'TRUST_FOLDER' }
+        if ($map[$key] -ne $value) { $added += $key }
+        $map[$key] = $value
+    }
 
     # Windows PowerShell 5.1 의 `-Encoding utf8` 은 BOM 을 붙인다.
     # gemini-cli 는 이 파일을 JSON.parse 로 읽으므로 BOM 이 있으면 파싱이 깨진다 — BOM 없이 쓴다.
     $json = $map | ConvertTo-Json -Depth 5
     [System.IO.File]::WriteAllText($trustPath, $json, (New-Object System.Text.UTF8Encoding($false)))
 
-    $note = if ($before -eq 'TRUST_FOLDER') { '이미 신뢰됨(변경 없음)' } else { "$trustPath 기록" }
+    $note = if ($added.Count -eq 0) { "이미 신뢰됨 (항목 $($map.Count)개)" }
+            else { "$($added.Count)개 폴더 신뢰 기록 — $($added -join ', ')" }
     Add-Step 'Gemini 신뢰' 'OK' $note
 }
 catch {
     Add-Step 'Gemini 신뢰' 'FAIL' "$($_.Exception.Message) — gemini 안에서 /permissions 로 수동 설정"
+}
+
+# 폴더별 신뢰로는 루틴이 실행되는 모든 경로를 못 덮는 경우가 있다.
+# 그때는 신뢰 기능 자체를 끈다 — 개인 머신 한정 선택이라 기본값이 아니라 명시 옵션이다.
+if ($DisableFolderTrust) {
+    try {
+        $settingsPath = Join-Path $HOME '.gemini/settings.json'
+        $settings = if (Test-Path -LiteralPath $settingsPath) {
+            Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak" -Force
+            Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+        } else {
+            [pscustomobject]@{}
+        }
+
+        $security = if ($settings.PSObject.Properties['security']) { $settings.security } else { [pscustomobject]@{} }
+        $folderTrust = if ($security.PSObject.Properties['folderTrust']) { $security.folderTrust } else { [pscustomobject]@{} }
+
+        $folderTrust | Add-Member -NotePropertyName 'enabled' -NotePropertyValue $false -Force
+        $security    | Add-Member -NotePropertyName 'folderTrust' -NotePropertyValue $folderTrust -Force
+        $settings    | Add-Member -NotePropertyName 'security' -NotePropertyValue $security -Force
+
+        $sJson = $settings | ConvertTo-Json -Depth 10
+        [System.IO.File]::WriteAllText($settingsPath, $sJson, (New-Object System.Text.UTF8Encoding($false)))
+        Add-Step 'Gemini 신뢰검사' 'OK' "security.folderTrust.enabled=false 기록 ($settingsPath) — 되돌리려면 .bak 복원"
+    }
+    catch {
+        Add-Step 'Gemini 신뢰검사' 'FAIL' $_.Exception.Message
+    }
 }
 
 # ── 3·4. 환경변수 등록 ───────────────────────────────────────────────────────
@@ -239,6 +283,35 @@ elseif ($canPrompt) {
 }
 else {
     Add-Step 'Gemini 키' 'TODO' '-GeminiApiKey "<키>" 로 재실행 (프로젝트 .env 의존이면 신뢰 해제 시 또 깨진다)'
+}
+
+# ── 4.5 환경변수를 못 받은 봇 프로세스 탐지 ──────────────────────────────────
+# 환경변수는 "새로 뜨는 프로세스"에만 상속된다. 자비스가 이미 떠 있으면 등록 전 환경을
+# 그대로 들고 있어서, 토큰을 아무리 넣어도 같은 OAuth 만료 오류가 계속 난다.
+
+if ($isWin) {
+    try {
+        $stale = @(Get-CimInstance Win32_Process -ErrorAction Stop |
+            Where-Object {
+                $_.CommandLine -and
+                $_.CommandLine -match '(?i)hermes|jarvis|자비스|discord|bot\.py|bot\.js' -and
+                $_.Name -match '(?i)^(node|python|pythonw|pwsh|powershell)'
+            })
+
+        if ($stale.Count -eq 0) {
+            Add-Step '봇 프로세스' 'OK' '이 이름으로 실행 중인 봇 프로세스를 찾지 못함 — 다음 기동 시 새 환경을 받는다'
+        }
+        else {
+            foreach ($p in $stale) {
+                $started = try { $p.CreationDate } catch { $null }
+                $when = if ($started) { (Get-Date $started -Format 'MM-dd HH:mm') } else { '시각 미상' }
+                Add-Step '봇 프로세스' 'TODO' "PID $($p.ProcessId) ($($p.Name), $when 기동) — 재시작해야 새 토큰을 받는다"
+            }
+        }
+    }
+    catch {
+        Add-Step '봇 프로세스' 'SKIP' "프로세스 조회 실패: $($_.Exception.Message)"
+    }
 }
 
 # ── 5. 자가 점검 상주 등록 ───────────────────────────────────────────────────
