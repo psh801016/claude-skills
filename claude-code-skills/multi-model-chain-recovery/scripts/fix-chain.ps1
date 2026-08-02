@@ -28,7 +28,8 @@ param(
     [switch]$SkipOwnership,
     [switch]$SkipVerify,
     [switch]$NonInteractive,
-    [switch]$NoElevate
+    [switch]$NoElevate,
+    [switch]$SkipGuardian
 )
 
 $ErrorActionPreference = 'Stop'
@@ -240,7 +241,34 @@ else {
     Add-Step 'Gemini 키' 'TODO' '-GeminiApiKey "<키>" 로 재실행 (프로젝트 .env 의존이면 신뢰 해제 시 또 깨진다)'
 }
 
-# ── 5. 검증 ─────────────────────────────────────────────────────────────────
+# ── 5. 자가 점검 상주 등록 ───────────────────────────────────────────────────
+# 한 번 등록해 두면 이후로는 사람이 명령을 칠 일이 없다 — 예약 작업이 점검·복구를 대신한다.
+
+if ($SkipGuardian -or -not $isWin) {
+    Add-Step '자가 점검' 'SKIP' $(if ($isWin) { '-SkipGuardian 지정' } else { 'Windows 전용 단계' })
+}
+else {
+    $installer = Join-Path $PSScriptRoot 'install-guardian.ps1'
+    if (Test-Path -LiteralPath $installer) {
+        try {
+            $gOut = & $installer -WorkDir $WorkDir 2>&1 | Out-String
+            if ($LASTEXITCODE -eq 0 -or $gOut -match '등록 완료') {
+                Add-Step '자가 점검' 'OK' '예약 작업 등록 — 로그온 시 + 60분마다 자동 점검·복구'
+            }
+            else {
+                Add-Step '자가 점검' 'WARN' (($gOut -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1))
+            }
+        }
+        catch {
+            Add-Step '자가 점검' 'WARN' "등록 실패: $($_.Exception.Message)"
+        }
+    }
+    else {
+        Add-Step '자가 점검' 'SKIP' 'install-guardian.ps1 없음'
+    }
+}
+
+# ── 6. 검증 ─────────────────────────────────────────────────────────────────
 
 Write-Output ''
 $todo = @($steps | Where-Object { $_.Status -in @('FAIL', 'TODO') })

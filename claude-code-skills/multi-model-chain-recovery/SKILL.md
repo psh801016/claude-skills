@@ -101,6 +101,19 @@ gemini
 |---|---|
 | `scripts/fix-chain.ps1` | 복구. 소유권·신뢰·환경변수를 자동 처리하고 끝에서 검증한다(§2.0) |
 | `scripts/preflight-chain.ps1` | 점검. 루틴 시작 직전에 실행한다. **종료 코드 = 실패한 레그 수** |
+| `scripts/guardian-run.ps1` | 자가 점검 1회분 — 점검 → 무인 복구 → 재점검 → 로그 |
+| `scripts/install-guardian.ps1` | 위를 Windows 예약 작업으로 상주시킨다(로그온 시 + 60분마다) |
+
+**상주 등록하면 이후로는 사람이 명령을 칠 일이 없다.** `fix-chain.ps1` 이 마지막에 자동으로 등록한다
+(`-SkipGuardian` 으로 끌 수 있다). 예약 작업은 최고 권한으로 창 없이 돌면서
+소유권 회수·폴더 신뢰처럼 **무인으로 가능한 복구는 스스로 끝내고**,
+브라우저 로그인이 필요한 토큰 재발급 같은 잔여 항목만 로그에 남긴다.
+
+```powershell
+.\scripts\install-guardian.ps1 -WorkDir "C:\Users\PSH\MultiAgent"   # 등록(+즉시 1회 실행)
+.\scripts\install-guardian.ps1 -Uninstall                            # 해제
+Get-Content "C:\Users\PSH\MultiAgent\_shared\chain-guardian.log" -Tail 20   # 이력
+```
 
 > **CLI 는 호출 연산자(`&`)로 실행한다.** npm 전역 설치는 같은 이름으로 `.cmd`·`.ps1` 을 함께 깔고,
 > 어느 쪽이 잡히는지는 환경마다 다르다. `Start-Process` 는 `.ps1` 을 실행하지 못해
