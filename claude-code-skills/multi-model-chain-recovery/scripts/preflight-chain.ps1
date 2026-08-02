@@ -54,6 +54,41 @@ function Find-Fingerprint {
     return $null
 }
 
+function Format-CliArg {
+    param([string]$Value)
+    if ($Value -match '[\s"]') { '"' + ($Value -replace '"', '\"') + '"' } else { $Value }
+}
+
+function Resolve-CliTarget {
+    <#
+      npm 전역 설치는 같은 이름으로 .ps1 / .cmd / 확장자 없는 셸 스크립트를 함께 깐다.
+      PowerShell 의 Get-Command 는 .ps1 을 먼저 집는데, Start-Process 는 .ps1 을 실행하지 못하고
+      "%1은(는) 올바른 Win32 응용 프로그램이 아닙니다" 로 죽는다(실측 2026-08-02).
+      실행 가능한 형태를 골라 필요한 인터프리터를 앞에 붙여서 돌려준다.
+    #>
+    param([string]$Exe)
+
+    $all = @(Get-Command $Exe -All -ErrorAction SilentlyContinue)
+    if ($all.Count -eq 0) { return $null }
+
+    $exe = $all | Where-Object { $_.Source -match '\.exe$' } | Select-Object -First 1
+    if ($exe) { return @{ File = $exe.Source; Pre = @() } }
+
+    $shim = $all | Where-Object { $_.Source -match '\.(cmd|bat)$' } | Select-Object -First 1
+    if ($shim) { return @{ File = $env:ComSpec; Pre = @('/c', (Format-CliArg $shim.Source)) } }
+
+    $ps1 = $all | Where-Object { $_.Source -match '\.ps1$' } | Select-Object -First 1
+    if ($ps1) {
+        $psExe = try { (Get-Process -Id $PID).Path } catch { 'powershell.exe' }
+        return @{ File = $psExe
+                  Pre  = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Format-CliArg $ps1.Source)) }
+    }
+
+    $any = $all | Where-Object { $_.Source } | Select-Object -First 1
+    if ($any) { return @{ File = $any.Source; Pre = @() } }
+    return $null
+}
+
 function Invoke-Smoke {
     param(
         [string]$Exe,
@@ -62,18 +97,15 @@ function Invoke-Smoke {
         [string]$Cwd
     )
 
-    $cmd = Get-Command $Exe -ErrorAction SilentlyContinue
-    if (-not $cmd) {
+    $target = Resolve-CliTarget -Exe $Exe
+    if (-not $target) {
         return [pscustomobject]@{ Found = $false; Code = -1; Output = ''; TimedOut = $false }
     }
 
-    # npm 전역 설치는 .cmd 심으로 깔린다 — Start-Process 로 직접 못 부르므로 ComSpec 경유.
-    $file = $cmd.Source
-    $argv = $CliArgs
-    if ($file -match '\.(cmd|bat)$') {
-        $argv = @('/c', "`"$file`"") + $CliArgs
-        $file = $env:ComSpec
-    }
+    # Start-Process 는 -ArgumentList 원소를 그대로 이어 붙인다 — 공백이 든 인자는 직접 감싸야
+    # 프롬프트가 여러 인자로 쪼개지지 않는다.
+    $file = $target.File
+    $argv = @($target.Pre) + @($CliArgs | ForEach-Object { Format-CliArg $_ })
 
     $outFile = [System.IO.Path]::GetTempFileName()
     $errFile = [System.IO.Path]::GetTempFileName()
