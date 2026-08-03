@@ -68,19 +68,28 @@ if (-not (Test-Path -LiteralPath $launchDir)) {
 }
 $vbsPath = Join-Path $launchDir 'guardian-launch.vbs'
 
-$psCommand = '{0} -NoProfile -ExecutionPolicy Bypass -File "{1}" -WorkDir "{2}"' -f $psExe, $runner, $WorkDir
-$vbsBody = 'CreateObject("WScript.Shell").Run "{0}", 0, False' -f ($psCommand -replace '"', '""')
-[System.IO.File]::WriteAllText($vbsPath, $vbsBody, (New-Object System.Text.ASCIIEncoding))
+$psCommand = '"{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -WorkDir "{2}"' -f $psExe, $runner, $WorkDir
+
+# 세 번째 인자 True = 끝날 때까지 대기.
+# False 로 두면 wscript 가 즉시 끝나 작업 스케줄러가 "실행 종료"로 보고,
+# MultipleInstances IgnoreNew 와 실행 시간 제한이 실제 guardian 에 걸리지 않아 중복 실행이 난다.
+$vbsBody = 'CreateObject("WScript.Shell").Run "{0}", 0, True' -f ($psCommand -replace '"', '""')
+
+# ASCII 로 저장하면 경로의 한글이 '?' 로 바뀌어 잘못된 경로를 실행한다(G:\내 드라이브\... 등).
+# wscript 는 UTF-16LE + BOM 을 인식하므로 그렇게 쓴다.
+[System.IO.File]::WriteAllText($vbsPath, $vbsBody, (New-Object System.Text.UnicodeEncoding($false, $true)))
 
 $wscript = Join-Path $env:WINDIR 'System32\wscript.exe'
 if (-not (Test-Path -LiteralPath $wscript)) { $wscript = 'wscript.exe' }
 
 $action = New-ScheduledTaskAction -Execute $wscript -Argument ('"{0}"' -f $vbsPath) -WorkingDirectory $launchDir
 
+# RepetitionDuration 을 생략하면 반복이 보장되지 않는다 — 무기한 반복을 명시한다.
 $triggers = @(
     New-ScheduledTaskTrigger -AtLogOn
     New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) `
-        -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes)
+        -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
+        -RepetitionDuration ([TimeSpan]::MaxValue)
 )
 
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `

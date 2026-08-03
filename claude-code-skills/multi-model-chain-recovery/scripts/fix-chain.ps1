@@ -44,6 +44,18 @@ function Add-Step {
     Write-Output ("[{0,-6}] {1} — {2}" -f $Status, $Name, $Detail)
 }
 
+function Write-TextAtomic {
+    <#
+      임시 파일에 쓴 뒤 교체한다. 본 파일에 직접 쓰다가 중단되면 내용이 잘려 나가고,
+      다음 실행이 그 손상본을 .bak 에 덮어써 마지막 정상 백업까지 잃는다.
+    #>
+    param([string]$Path, [string]$Content, [System.Text.Encoding]$Encoding)
+
+    $tmp = "$Path.tmp"
+    [System.IO.File]::WriteAllText($tmp, $Content, $Encoding)
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
 function Test-Admin {
     try {
         $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -61,7 +73,12 @@ $canPrompt = -not $NonInteractive -and [Environment]::UserInteractive
 
 if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin)) {
     $psExe = try { (Get-Process -Id $PID).Path } catch { 'powershell.exe' }
-    $fwd = @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-NoElevate')
+
+    # Start-Process 는 -ArgumentList 원소를 그대로 이어 붙인다 — 공백이 든 경로는 직접 감싸야
+    # 승격된 쪽에서 인자 바인딩이 깨지지 않는다("C:\내 폴더" 같은 경우).
+    function Quote-Arg { param([string]$v) if ($v -match '[\s"]') { '"' + ($v -replace '"', '\"') + '"' } else { $v } }
+
+    $fwd = @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Quote-Arg $PSCommandPath), '-NoElevate')
     foreach ($p in $PSBoundParameters.GetEnumerator()) {
         if ($p.Key -eq 'NoElevate') { continue }
         if ($p.Value -is [switch]) {
@@ -70,11 +87,11 @@ if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin))
         elseif ($p.Value -is [array]) {
             # 배열을 [string] 으로 캐스팅하면 공백으로 이어붙어 한 값이 된다 —
             # 콤마로 넘겨야 승격된 쪽에서 다시 배열로 바인딩된다.
-            $fwd += @("-$($p.Key)", (($p.Value | ForEach-Object { $_ }) -join ','))
+            $fwd += @("-$($p.Key)", (Quote-Arg (($p.Value | ForEach-Object { $_ }) -join ',')))
         }
-        else { $fwd += @("-$($p.Key)", [string]$p.Value) }
+        else { $fwd += @("-$($p.Key)", (Quote-Arg ([string]$p.Value))) }
     }
-    if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $fwd += @('-WorkDir', $WorkDir) }
+    if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $fwd += @('-WorkDir', (Quote-Arg $WorkDir)) }
 
     Write-Output '관리자 권한이 필요합니다. 승격 창을 띄웁니다 — UAC 창에서 [예]를 눌러 주세요.'
     try {
@@ -90,12 +107,11 @@ if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin))
 # ── 작업 폴더 확정 ───────────────────────────────────────────────────────────
 
 if (-not (Test-Path -LiteralPath $WorkDir)) {
+    # 사용자 폴더만 얕게 훑는다 — C:\ · D:\ 전체 재귀는 관리자 권한에서 수 분씩 걸린다.
     $found = $null
-    foreach ($root in @($env:USERPROFILE, 'C:\', 'D:\')) {
-        if (-not $root -or -not (Test-Path -LiteralPath $root)) { continue }
-        $found = Get-ChildItem -LiteralPath $root -Directory -Filter 'MultiAgent' -Recurse -Depth 3 `
+    if ($env:USERPROFILE -and (Test-Path -LiteralPath $env:USERPROFILE)) {
+        $found = Get-ChildItem -LiteralPath $env:USERPROFILE -Directory -Filter 'MultiAgent' -Recurse -Depth 2 `
             -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($found) { break }
     }
     if ($found) {
         Write-Output "지정된 작업 폴더가 없어 자동 탐색했습니다: $($found.FullName)"
@@ -163,7 +179,6 @@ try {
     $map = [ordered]@{}
     $broken = $false
     if (Test-Path -LiteralPath $trustPath) {
-        Copy-Item -LiteralPath $trustPath -Destination "$trustPath.bak" -Force
         try {
             # Get-Content 는 PS 5.1 에서 BOM 없는 UTF-8 을 시스템 코드페이지(cp949)로 읽어
             # 한글 경로를 깨뜨리고, 깨진 바이트가 JSON 이스케이프 오류로 이어진다(실측 2026-08-03).
@@ -179,9 +194,12 @@ try {
                     foreach ($prop in $o.PSObject.Properties) { $map[$prop.Name] = $prop.Value }
                 }
             }
+            # 파싱에 성공한 내용만 .bak 으로 남긴다 — 깨진 파일을 백업에 덮어쓰면
+            # 마지막 정상 백업까지 잃는다.
+            Copy-Item -LiteralPath $trustPath -Destination "$trustPath.bak" -Force
         }
         catch {
-            # 이미 깨진 파일이면 붙들고 있지 않는다 — 보존해 두고 새로 쓴다.
+            # 이미 깨진 파일이면 붙들고 있지 않는다 — .broken 으로 보존하고(.bak 은 건드리지 않는다) 새로 쓴다.
             Copy-Item -LiteralPath $trustPath -Destination "$trustPath.broken" -Force
             $map = [ordered]@{}
             $broken = $true
@@ -235,7 +253,7 @@ try {
     # Windows PowerShell 5.1 의 `-Encoding utf8` 은 BOM 을 붙인다.
     # gemini-cli 는 이 파일을 JSON.parse 로 읽으므로 BOM 이 있으면 파싱이 깨진다 — BOM 없이 쓴다.
     $json = $map | ConvertTo-Json -Depth 5
-    [System.IO.File]::WriteAllText($trustPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+    Write-TextAtomic -Path $trustPath -Content $json -Encoding (New-Object System.Text.UTF8Encoding($false))
 
     $parts = @()
     if ($broken) { $parts += '기존 파일이 깨져 있어 .broken 으로 보존하고 새로 씀' }
@@ -255,14 +273,14 @@ if ($DisableFolderTrust) {
         $settingsPath = Join-Path $HOME '.gemini/settings.json'
         $settings = [pscustomobject]@{}
         if (Test-Path -LiteralPath $settingsPath) {
-            Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak" -Force
             try {
                 # trustedFolders.json 과 같은 이유로 인코딩을 명시해서 읽는다(cp949 오독 방지).
                 $sRaw = [System.IO.File]::ReadAllText($settingsPath, [System.Text.Encoding]::UTF8)
                 if ($sRaw.Trim()) { $settings = $sRaw | ConvertFrom-Json }
+                Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak" -Force
             }
             catch {
-                # 깨진 설정을 붙들면 전체 단계가 죽는다 — 보존하고 새로 쓴다.
+                # 깨진 설정을 붙들면 전체 단계가 죽는다 — .broken 으로 보존하고 새로 쓴다.
                 Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.broken" -Force
                 $settings = [pscustomobject]@{}
             }
@@ -276,7 +294,7 @@ if ($DisableFolderTrust) {
         $settings    | Add-Member -NotePropertyName 'security' -NotePropertyValue $security -Force
 
         $sJson = $settings | ConvertTo-Json -Depth 10
-        [System.IO.File]::WriteAllText($settingsPath, $sJson, (New-Object System.Text.UTF8Encoding($false)))
+        Write-TextAtomic -Path $settingsPath -Content $sJson -Encoding (New-Object System.Text.UTF8Encoding($false))
         Add-Step 'Gemini 신뢰검사' 'OK' "security.folderTrust.enabled=false 기록 ($settingsPath) — 되돌리려면 .bak 복원"
     }
     catch {
