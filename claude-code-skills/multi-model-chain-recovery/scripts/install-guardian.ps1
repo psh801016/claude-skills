@@ -23,12 +23,18 @@
 param(
     [string]$WorkDir = 'C:\Users\PSH\MultiAgent',
     [string]$TaskName = 'multi-model-chain-guardian',
+    [ValidateRange(1, 1440)]
     [int]$IntervalMinutes = 60,
     [switch]$Uninstall
 )
 
 $ErrorActionPreference = 'Stop'
 $isWin = ($null -eq $IsWindows) -or $IsWindows
+
+if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    Write-Error '이 스크립트는 .ps1 파일로 직접 실행해야 합니다.'
+    exit 1
+}
 
 if (-not $isWin) {
     Write-Output '이 스크립트는 Windows 예약 작업 전용입니다.'
@@ -48,6 +54,12 @@ if ($Uninstall) {
     catch { Write-Output "해제할 작업이 없습니다: $TaskName" }
     exit 0
 }
+
+if (-not (Test-Path -LiteralPath $WorkDir -PathType Container)) {
+    Write-Error "작업 폴더가 없습니다: $WorkDir"
+    exit 99
+}
+$WorkDir = (Resolve-Path -LiteralPath $WorkDir).Path
 
 $runner = Join-Path $PSScriptRoot 'guardian-run.ps1'
 if (-not (Test-Path -LiteralPath $runner)) {
@@ -70,10 +82,16 @@ $vbsPath = Join-Path $launchDir 'guardian-launch.vbs'
 
 $psCommand = '"{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -WorkDir "{2}"' -f $psExe, $runner, $WorkDir
 
-# 세 번째 인자 True = 끝날 때까지 대기.
+# 세 번째 인자 True = 끝날 때까지 대기. 반환 코드를 WScript.Quit 로 전달해야
+# 예약 작업의 LastTaskResult가 guardian-run.ps1의 실제 실패 레그 수를 보존한다.
 # False 로 두면 wscript 가 즉시 끝나 작업 스케줄러가 "실행 종료"로 보고,
 # MultipleInstances IgnoreNew 와 실행 시간 제한이 실제 guardian 에 걸리지 않아 중복 실행이 난다.
-$vbsBody = 'CreateObject("WScript.Shell").Run "{0}", 0, True' -f ($psCommand -replace '"', '""')
+$escapedCommand = $psCommand -replace '"', '""'
+$vbsBody = @"
+Dim exitCode
+exitCode = CreateObject("WScript.Shell").Run("$escapedCommand", 0, True)
+WScript.Quit exitCode
+"@
 
 # ASCII 로 저장하면 경로의 한글이 '?' 로 바뀌어 잘못된 경로를 실행한다(G:\내 드라이브\... 등).
 # wscript 는 UTF-16LE + BOM 을 인식하므로 그렇게 쓴다.
@@ -84,34 +102,44 @@ if (-not (Test-Path -LiteralPath $wscript)) { $wscript = 'wscript.exe' }
 
 $action = New-ScheduledTaskAction -Execute $wscript -Argument ('"{0}"' -f $vbsPath) -WorkingDirectory $launchDir
 
-# RepetitionDuration 을 생략하면 반복이 보장되지 않는다 — 무기한 반복을 명시한다.
+# RepetitionDuration 을 생략하면 반복이 보장되지 않는다. [TimeSpan]::MaxValue 는
+# Task Scheduler XML 허용 범위를 넘어 등록 자체가 실패하므로 10년을 명시한다.
+# 10년 뒤에는 반복 트리거가 끝나지만 AtLogOn 트리거는 계속 유지된다. 폭주 위험 때문에
+# guardian이 자기 작업을 재등록하는 자동 갱신은 두지 않는다.
 $triggers = @(
     New-ScheduledTaskTrigger -AtLogOn
     New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) `
         -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
-        -RepetitionDuration ([TimeSpan]::MaxValue)
+        -RepetitionDuration (New-TimeSpan -Days 3650)
 )
 
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15) `
+    -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
     -MultipleInstances IgnoreNew
 
 $principal = New-ScheduledTaskPrincipal -UserId ("{0}\{1}" -f $env:USERDOMAIN, $env:USERNAME) `
     -LogonType Interactive -RunLevel Highest
 
 try {
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $triggers `
         -Settings $settings -Principal $principal `
-        -Description '3중 체인(Codex/Claude/Gemini) 자가 점검 및 무인 복구' | Out-Null
+        -Description '3중 체인(Codex/Claude/Gemini) 자가 점검 및 무인 복구' `
+        -Force -ErrorAction Stop | Out-Null
 
     Write-Output "예약 작업 '$TaskName' 등록 완료 — 로그온 시 + $IntervalMinutes 분마다 자동 점검합니다."
     Write-Output "로그: $(Join-Path $WorkDir '_shared\chain-guardian.log')"
-    Write-Output '지금 즉시 1회 실행합니다...'
-    Start-ScheduledTask -TaskName $TaskName
-    exit 0
 }
 catch {
     Write-Error "등록 실패: $($_.Exception.Message)"
     exit 1
+}
+
+try {
+    Write-Output '지금 즉시 1회 실행합니다...'
+    Start-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+    exit 0
+}
+catch {
+    Write-Error "등록은 완료됐지만 즉시 실행 실패: $($_.Exception.Message)"
+    exit 2
 }

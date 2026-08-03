@@ -51,9 +51,16 @@ function Write-TextAtomic {
     #>
     param([string]$Path, [string]$Content, [System.Text.Encoding]$Encoding)
 
-    $tmp = "$Path.tmp"
-    [System.IO.File]::WriteAllText($tmp, $Content, $Encoding)
-    Move-Item -LiteralPath $tmp -Destination $Path -Force
+    $parent = Split-Path -Parent $Path
+    $leaf = Split-Path -Leaf $Path
+    $tmp = Join-Path $parent ('.{0}.{1}.{2}.tmp' -f $leaf, $PID, [guid]::NewGuid().ToString('N'))
+    try {
+        [System.IO.File]::WriteAllText($tmp, $Content, $Encoding)
+        Move-Item -LiteralPath $tmp -Destination $Path -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 function Test-Admin {
@@ -74,30 +81,39 @@ $canPrompt = -not $NonInteractive -and [Environment]::UserInteractive
 if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin)) {
     $psExe = try { (Get-Process -Id $PID).Path } catch { 'powershell.exe' }
 
-    # Start-Process 는 -ArgumentList 원소를 그대로 이어 붙인다 — 공백이 든 경로는 직접 감싸야
-    # 승격된 쪽에서 인자 바인딩이 깨지지 않는다("C:\내 폴더" 같은 경우).
-    function Quote-Arg { param([string]$v) if ($v -match '[\s"]') { '"' + ($v -replace '"', '\"') + '"' } else { $v } }
-
-    $fwd = @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Quote-Arg $PSCommandPath), '-NoElevate')
+    # powershell.exe -File 은 Start-Process 의 문자열 결합을 거치면 string[] 인수를 보존하지
+    # 못한다(두 TrustDirs가 쉼표 포함 문자열 하나로 바인딩되는 것을 PS 5.1에서 재현).
+    # 바인딩 값을 JSON으로 직렬화하고 단일 EncodedCommand에서 hashtable splat으로 복원한다.
+    $forwardParams = [ordered]@{ NoElevate = $true }
     foreach ($p in $PSBoundParameters.GetEnumerator()) {
         if ($p.Key -eq 'NoElevate') { continue }
         if ($p.Value -is [switch]) {
-            if ($p.Value.IsPresent) { $fwd += "-$($p.Key)" }
+            if ($p.Value.IsPresent) { $forwardParams[$p.Key] = $true }
         }
-        elseif ($p.Value -is [array]) {
-            # 배열을 [string] 으로 캐스팅하면 공백으로 이어붙어 한 값이 된다 —
-            # 콤마로 넘겨야 승격된 쪽에서 다시 배열로 바인딩된다.
-            $fwd += @("-$($p.Key)", (Quote-Arg (($p.Value | ForEach-Object { $_ }) -join ',')))
-        }
-        else { $fwd += @("-$($p.Key)", (Quote-Arg ([string]$p.Value))) }
+        else { $forwardParams[$p.Key] = $p.Value }
     }
-    if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $fwd += @('-WorkDir', (Quote-Arg $WorkDir)) }
+    if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $forwardParams['WorkDir'] = $WorkDir }
+
+    $payload = [ordered]@{ Script = $PSCommandPath; Parameters = $forwardParams } |
+        ConvertTo-Json -Depth 8 -Compress
+    $payloadB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
+    $bootstrap = @"
+`$json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$payloadB64'))
+`$payload = `$json | ConvertFrom-Json
+`$splat = @{}
+foreach (`$property in `$payload.Parameters.PSObject.Properties) { `$splat[`$property.Name] = `$property.Value }
+& `$payload.Script @splat
+if (`$null -ne `$LASTEXITCODE) { exit `$LASTEXITCODE }
+exit 0
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
+    $fwd = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded)
 
     Write-Output '관리자 권한이 필요합니다. 승격 창을 띄웁니다 — UAC 창에서 [예]를 눌러 주세요.'
     try {
-        Start-Process -FilePath $psExe -ArgumentList $fwd -Verb RunAs | Out-Null
-        Write-Output '새로 열린 관리자 창에서 계속 진행됩니다. 이 창은 닫으셔도 됩니다.'
-        exit 0
+        $elevated = Start-Process -FilePath $psExe -ArgumentList $fwd -Verb RunAs -Wait -PassThru
+        Write-Output "승격된 복구가 종료되었습니다(exit=$($elevated.ExitCode))."
+        exit $elevated.ExitCode
     }
     catch {
         Write-Output "승격 실패($($_.Exception.Message)) — 관리자 권한 없이 가능한 단계만 진행합니다."
@@ -138,6 +154,21 @@ elseif (-not (Test-Admin)) {
     Add-Step 'Codex 소유권' 'FAIL' '관리자 권한 PowerShell 에서 다시 실행해 주세요'
 }
 else {
+    $workItem = Get-Item -LiteralPath $WorkDir -Force
+    $reparse = @()
+    $reparseScanErrors = @()
+    if ($workItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { $reparse += $workItem }
+    $reparse += @(Get-ChildItem -LiteralPath $WorkDir -Recurse -Force -Attributes ReparsePoint `
+        -ErrorAction SilentlyContinue -ErrorVariable +reparseScanErrors)
+    if ($reparseScanErrors.Count -gt 0) {
+        Add-Step 'Codex 소유권' 'FAIL' "reparse point 검사 중 접근 실패 $($reparseScanErrors.Count)건 — 안전을 위해 ACL 변경 중단"
+        Add-Step 'Codex 소유자' 'SKIP' 'ACL 변경을 실행하지 않음'
+    }
+    elseif ($reparse.Count -gt 0) {
+        Add-Step 'Codex 소유권' 'FAIL' "reparse point/junction $($reparse.Count)개 발견 — 재귀 ACL 변경 중 외부 경로 침범 위험"
+        Add-Step 'Codex 소유자' 'SKIP' 'ACL 변경을 실행하지 않음'
+    }
+    else {
     # takeown 은 이미 성공했더라도 다시 돌려서 문제 없다(멱등).
     & takeown.exe /F $WorkDir /R /D Y 2>&1 | Out-Null
 
@@ -160,6 +191,12 @@ else {
     else {
         Add-Step 'Codex 소유자' 'OK' $owner
     }
+    }
+}
+
+function Test-GeminiApiKey {
+    param([string]$Value)
+    return -not [string]::IsNullOrWhiteSpace($Value) -and $Value -match '^AIza[0-9A-Za-z_-]{20,}$'
 }
 
 # ── 2. Gemini: 폴더 신뢰 ─────────────────────────────────────────────────────
@@ -169,6 +206,17 @@ $trustPath = if ($env:GEMINI_CLI_TRUSTED_FOLDERS_PATH) {
 } else {
     Join-Path $HOME '.gemini/trustedFolders.json'
 }
+
+$configMutex = New-Object System.Threading.Mutex($false, 'Local\multi-model-chain-recovery-gemini-config')
+$configLockAcquired = $false
+try {
+try {
+    $configLockAcquired = $configMutex.WaitOne([TimeSpan]::FromSeconds(30))
+}
+catch [System.Threading.AbandonedMutexException] {
+    $configLockAcquired = $true
+}
+if (-not $configLockAcquired) { throw 'Gemini 설정 잠금 대기 30초 초과' }
 
 try {
     $trustDir = Split-Path -Parent $trustPath
@@ -216,12 +264,9 @@ try {
         $parent = try { (Resolve-Path -LiteralPath $parent -ErrorAction Stop).Path } catch { $parent }
         $targets.Add($parent)
     }
-    # 콤마로 넘어온 값(승격 시 전달 형식)도 풀어서 받는다.
     foreach ($d in @($TrustDirs)) {
-        foreach ($one in ("$d" -split ',')) {
-            $one = $one.Trim()
-            if ($one) { $targets.Add($one) }
-        }
+        $one = "$d".Trim()
+        if ($one) { $targets.Add($one) }
     }
 
     $added = @()
@@ -268,9 +313,19 @@ catch {
 
 # 폴더별 신뢰로는 루틴이 실행되는 모든 경로를 못 덮는 경우가 있다.
 # 그때는 신뢰 기능 자체를 끈다 — 개인 머신 한정 선택이라 기본값이 아니라 명시 옵션이다.
-if ($DisableFolderTrust) {
+$userGeminiKey = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
+$userGoogleKey = [Environment]::GetEnvironmentVariable('GOOGLE_API_KEY', 'User')
+$validProvidedGeminiKey = Test-GeminiApiKey $GeminiApiKey
+$validUserGeminiKey = (Test-GeminiApiKey $userGeminiKey) -or (Test-GeminiApiKey $userGoogleKey)
+$invalidPersistedGeminiKey = ($userGeminiKey -or $userGoogleKey) -and -not $validUserGeminiKey
+$configureGeminiSettings = $DisableFolderTrust -or $validProvidedGeminiKey -or $validUserGeminiKey -or $invalidPersistedGeminiKey
+if ($configureGeminiSettings) {
     try {
         $settingsPath = Join-Path $HOME '.gemini/settings.json'
+        $settingsDir = Split-Path -Parent $settingsPath
+        if (-not (Test-Path -LiteralPath $settingsDir)) {
+            New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
+        }
         $settings = [pscustomobject]@{}
         if (Test-Path -LiteralPath $settingsPath) {
             try {
@@ -286,20 +341,48 @@ if ($DisableFolderTrust) {
             }
         }
 
-        $security = if ($settings.PSObject.Properties['security']) { $settings.security } else { [pscustomobject]@{} }
-        $folderTrust = if ($security.PSObject.Properties['folderTrust']) { $security.folderTrust } else { [pscustomobject]@{} }
-
-        $folderTrust | Add-Member -NotePropertyName 'enabled' -NotePropertyValue $false -Force
-        $security    | Add-Member -NotePropertyName 'folderTrust' -NotePropertyValue $folderTrust -Force
+        if (-not ($settings -is [pscustomobject])) { $settings = [pscustomobject]@{} }
+        $security = if (
+            $settings.PSObject.Properties['security'] -and
+            $settings.security -is [pscustomobject]
+        ) { $settings.security } else { [pscustomobject]@{} }
+        $changes = @()
+        if ($DisableFolderTrust) {
+            $folderTrust = if (
+                $security.PSObject.Properties['folderTrust'] -and
+                $security.folderTrust -is [pscustomobject]
+            ) { $security.folderTrust } else { [pscustomobject]@{} }
+            $folderTrust | Add-Member -NotePropertyName 'enabled' -NotePropertyValue $false -Force
+            $security    | Add-Member -NotePropertyName 'folderTrust' -NotePropertyValue $folderTrust -Force
+            $changes += 'security.folderTrust.enabled=false'
+        }
+        if ($validProvidedGeminiKey -or $validUserGeminiKey -or $invalidPersistedGeminiKey) {
+            $auth = if (
+                $security.PSObject.Properties['auth'] -and
+                $security.auth -is [pscustomobject]
+            ) { $security.auth } else { [pscustomobject]@{} }
+            $selectedType = if ($validProvidedGeminiKey -or $validUserGeminiKey) { 'gemini-api-key' } else { 'oauth-personal' }
+            $auth     | Add-Member -NotePropertyName 'selectedType' -NotePropertyValue $selectedType -Force
+            $security | Add-Member -NotePropertyName 'auth' -NotePropertyValue $auth -Force
+            $changes += "security.auth.selectedType=$selectedType"
+        }
         $settings    | Add-Member -NotePropertyName 'security' -NotePropertyValue $security -Force
 
         $sJson = $settings | ConvertTo-Json -Depth 10
         Write-TextAtomic -Path $settingsPath -Content $sJson -Encoding (New-Object System.Text.UTF8Encoding($false))
-        Add-Step 'Gemini 신뢰검사' 'OK' "security.folderTrust.enabled=false 기록 ($settingsPath) — 되돌리려면 .bak 복원"
+        Add-Step 'Gemini 설정' 'OK' "$($changes -join ' / ') 기록 ($settingsPath) — 되돌리려면 .bak 복원"
     }
     catch {
         Add-Step 'Gemini 신뢰검사' 'FAIL' $_.Exception.Message
     }
+}
+}
+catch {
+    Add-Step 'Gemini 설정 잠금' 'FAIL' $_.Exception.Message
+}
+finally {
+    if ($configLockAcquired) { try { $configMutex.ReleaseMutex() } catch { } }
+    $configMutex.Dispose()
 }
 
 # ── 3·4. 환경변수 등록 ───────────────────────────────────────────────────────
@@ -310,12 +393,16 @@ function Set-UserEnv {
     Set-Item -Path "env:$Name" -Value $Value      # 현재 세션에도 즉시 반영
 }
 
+$userClaudeToken = [Environment]::GetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', 'User')
 if ($ClaudeToken) {
     Set-UserEnv -Name 'CLAUDE_CODE_OAUTH_TOKEN' -Value $ClaudeToken
     Add-Step 'Claude 토큰' 'OK' 'CLAUDE_CODE_OAUTH_TOKEN 사용자 환경변수 등록'
 }
+elseif ($userClaudeToken) {
+    Add-Step 'Claude 토큰' 'OK' '사용자 환경변수에 이미 등록돼 있음'
+}
 elseif ($env:CLAUDE_CODE_OAUTH_TOKEN) {
-    Add-Step 'Claude 토큰' 'OK' '이미 등록돼 있음'
+    Add-Step 'Claude 토큰' 'TODO' '현재 프로세스에만 있음 — 사용자 환경변수로 영구 등록 필요'
 }
 elseif ($env:ANTHROPIC_API_KEY) {
     Add-Step 'Claude 토큰' 'WARN' 'ANTHROPIC_API_KEY 로 동작 중 — 구독이 아니라 API 종량과금'
@@ -340,12 +427,21 @@ else {
     Add-Step 'Claude 토큰' 'TODO' 'claude setup-token 실행 후 -ClaudeToken "<토큰>" 으로 재실행해 주세요'
 }
 
-if ($GeminiApiKey) {
+if ($GeminiApiKey -and -not $validProvidedGeminiKey) {
+    Add-Step 'Gemini 키' 'FAIL' '입력값이 유효한 Google API 키 형식이 아님(AIza... ASCII 키 필요)'
+}
+elseif ($validProvidedGeminiKey) {
     Set-UserEnv -Name 'GEMINI_API_KEY' -Value $GeminiApiKey
     Add-Step 'Gemini 키' 'OK' 'GEMINI_API_KEY 사용자 환경변수 등록'
 }
+elseif ($validUserGeminiKey) {
+    Add-Step 'Gemini 키' 'OK' '사용자 환경변수에 이미 등록돼 있음'
+}
+elseif ($invalidPersistedGeminiKey) {
+    Add-Step 'Gemini 키' 'TODO' '사용자 환경변수 값이 API 키 형식이 아님 — 올바른 AIza... 키로 교체 필요'
+}
 elseif ($env:GEMINI_API_KEY -or $env:GOOGLE_API_KEY) {
-    Add-Step 'Gemini 키' 'OK' '이미 프로세스 환경에 있음'
+    Add-Step 'Gemini 키' 'TODO' '현재 프로세스에만 있음 — 사용자 환경변수로 영구 등록 필요'
 }
 elseif ($canPrompt) {
     $pasted = (Read-Host 'GEMINI_API_KEY 를 붙여넣고 Enter (프로젝트 .env 에만 있으면 신뢰 해제 시 또 깨집니다 / 건너뛰려면 그냥 Enter)').Trim()
@@ -370,7 +466,7 @@ if ($isWin) {
         $stale = @(Get-CimInstance Win32_Process -ErrorAction Stop |
             Where-Object {
                 $_.CommandLine -and
-                $_.CommandLine -match '(?i)hermes|jarvis|자비스|discord|bot\.py|bot\.js' -and
+                $_.CommandLine -match '(?i)kakao-claude-bridge[\\/](?:server|slack_bot)\.py(?:["\s]|$)' -and
                 $_.Name -match '(?i)^(node|python|pythonw|pwsh|powershell)'
             })
 
@@ -401,19 +497,20 @@ else {
     if (Test-Path -LiteralPath $installer) {
         try {
             $gOut = & $installer -WorkDir $WorkDir 2>&1 | Out-String
-            if ($LASTEXITCODE -eq 0 -or $gOut -match '등록 완료') {
+            $gExit = $LASTEXITCODE
+            if ($gExit -eq 0 -and $gOut -match '등록 완료') {
                 Add-Step '자가 점검' 'OK' '예약 작업 등록 — 로그온 시 + 60분마다 자동 점검·복구'
             }
             else {
-                Add-Step '자가 점검' 'WARN' (($gOut -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1))
+                Add-Step '자가 점검' 'FAIL' (($gOut -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 1))
             }
         }
         catch {
-            Add-Step '자가 점검' 'WARN' "등록 실패: $($_.Exception.Message)"
+            Add-Step '자가 점검' 'FAIL' "등록 실패: $($_.Exception.Message)"
         }
     }
     else {
-        Add-Step '자가 점검' 'SKIP' 'install-guardian.ps1 없음'
+        Add-Step '자가 점검' 'FAIL' 'install-guardian.ps1 없음'
     }
 }
 
@@ -437,7 +534,9 @@ if (-not $SkipVerify) {
     if (Test-Path -LiteralPath $preflight) {
         Write-Output "`n--- 검증 ---"
         & $preflight -WorkDir $WorkDir
-        exit $LASTEXITCODE
+        $preflightExit = $LASTEXITCODE
+        if ($todo.Count -gt 0) { exit [Math]::Max($todo.Count, $preflightExit) }
+        exit $preflightExit
     }
 }
 

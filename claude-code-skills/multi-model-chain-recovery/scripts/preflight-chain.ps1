@@ -71,11 +71,9 @@ function Get-CliDiag {
 
 function Invoke-Smoke {
     <#
-      CLI 를 호출 연산자(&)로 실행한다 — 사용자가 콘솔에 직접 치는 것과 같은 경로라
-      npm 이 깔아 놓은 .cmd / .ps1 / .exe 어느 형태든 PowerShell 이 알아서 해석한다.
-      (Start-Process 는 .ps1 을 실행하지 못해 "올바른 Win32 응용 프로그램이 아닙니다" 로 죽고,
-       빈 경로를 넘기면 FilePath 검증에서 크래시한다 — 실측 2026-08-02.)
-      타임아웃은 백그라운드 작업으로 감싸서 확보하고, stderr 는 2>&1 로 합쳐 지문 탐지에 쓴다.
+      별도 powershell.exe에서 호출 연산자(&)로 CLI를 실행한다. 타임아웃이면 이번
+      스모크가 만든 정확한 PID 트리만 종료한다. 이름 기반 종료는 사용자의 대화형
+      Codex/Claude/Gemini 세션까지 죽일 수 있으므로 사용하지 않는다.
     #>
     param(
         [string]$Exe,
@@ -89,32 +87,56 @@ function Invoke-Smoke {
                                   TimedOut = $false; Diag = (Get-CliDiag $Exe) }
     }
 
-    $job = Start-Job -ScriptBlock {
-        param($Name, $JobArgs, $WorkingDir)
-        Set-Location -LiteralPath $WorkingDir
-        $ErrorActionPreference = 'Continue'
-        $text = (& $Name @JobArgs 2>&1 | Out-String)
-        [pscustomobject]@{ Text = $text; Code = $LASTEXITCODE }
-    } -ArgumentList $Exe, $CliArgs, $Cwd
-
+    $payload = [ordered]@{ Exe = $Exe; Args = @($CliArgs); Cwd = $Cwd } |
+        ConvertTo-Json -Depth 5 -Compress
+    $payloadB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
+    $bootstrap = @"
+`$ErrorActionPreference = 'Continue'
+[Console]::OutputEncoding = New-Object Text.UTF8Encoding(`$false)
+`$json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$payloadB64'))
+`$payload = `$json | ConvertFrom-Json
+Set-Location -LiteralPath `$payload.Cwd
+`$cliArgs = @(`$payload.Args)
+& `$payload.Exe @cliArgs 2>&1 | Out-String | Write-Output
+exit `$LASTEXITCODE
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
+    $psExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    if (-not (Test-Path -LiteralPath $psExe)) { $psExe = 'powershell.exe' }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $psExe
+    $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = New-Object Text.UTF8Encoding($false)
+    $psi.StandardErrorEncoding = New-Object Text.UTF8Encoding($false)
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
     try {
-        if (-not (Wait-Job -Job $job -Timeout $TimeoutSeconds)) {
-            Stop-Job -Job $job -ErrorAction SilentlyContinue
-            return [pscustomobject]@{ Found = $true; Code = -2; Output = ''
-                                      TimedOut = $true; Diag = '' }
+        if (-not $process.Start()) { throw "프로세스 시작 실패: $Exe" }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            try { & taskkill.exe /PID $process.Id /T /F 2>&1 | Out-Null }
+            catch { try { $process.Kill() } catch { } }
+            [void]$process.WaitForExit(5000)
+            return [pscustomobject]@{ Found = $true; Code = -2
+                                      Output = ([string]$stdoutTask.Result + [string]$stderrTask.Result)
+                                      TimedOut = $true; Diag = "pid=$($process.Id) tree terminated" }
         }
-
-        $payload = @(Receive-Job -Job $job -ErrorAction SilentlyContinue) |
-                   Where-Object { $_ -and $_.PSObject.Properties['Text'] } |
-                   Select-Object -First 1
-
-        $text = if ($payload) { [string]$payload.Text } else { '' }
-        $code = if ($payload -and $null -ne $payload.Code) { [int]$payload.Code } else { 0 }
-        return [pscustomobject]@{ Found = $true; Code = $code; Output = $text
+        $process.WaitForExit()
+        $text = [string]$stdoutTask.Result + [string]$stderrTask.Result
+        return [pscustomobject]@{ Found = $true; Code = $process.ExitCode; Output = $text
+                                  TimedOut = $false; Diag = '' }
+    }
+    catch {
+        return [pscustomobject]@{ Found = $true; Code = -3; Output = $_.Exception.Message
                                   TimedOut = $false; Diag = '' }
     }
     finally {
-        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        $process.Dispose()
     }
 }
 
@@ -266,7 +288,25 @@ if ($targets -contains 'claude') {
     $results += Test-Leg -Leg 'Claude' -Exe 'claude' -CliArgs @('-p', $prompt) -StaticWarnings (Get-ClaudeWarnings)
 }
 if ($targets -contains 'gemini') {
-    $results += Test-Leg -Leg 'Gemini' -Exe 'gemini' -CliArgs @('-p', $prompt) -StaticWarnings (Get-GeminiWarnings)
+    $geminiResult = Test-Leg -Leg 'Gemini' -Exe 'gemini' -CliArgs @('-p', $prompt) -StaticWarnings (Get-GeminiWarnings)
+    if ($geminiResult.Status -eq 'FAIL') {
+        # Gemini CLI OAuth/free tier가 429 또는 지원종료여도 실제 멀티모델 체계는
+        # Antigravity consult 경로를 사용한다. 그 실경로를 2차 스모크한다.
+        $consult = 'C:\Users\PSH\dev\multi-model\consult.ps1'
+        if (Test-Path -LiteralPath $consult) {
+            $fallback = Test-Leg -Leg 'Gemini' -Exe 'powershell.exe' `
+                -CliArgs @(
+                    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $consult,
+                    '-Provider', 'gemini', '-Retries', '1',
+                    '-TimeoutMs', ([string]($TimeoutSec * 1000)), '-Prompt', $prompt
+                ) -StaticWarnings @()
+            if ($fallback.Status -eq 'OK') {
+                $fallback.Detail = 'PONG 응답 확인 (Antigravity Gemini 폴백)'
+                $geminiResult = $fallback
+            }
+        }
+    }
+    $results += $geminiResult
 }
 
 # Format-Table 은 출력이 파이프/파일로 리다이렉트되면(=봇이 캡처하는 그 상황) 폭을 못 잡아

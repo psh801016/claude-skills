@@ -5,7 +5,7 @@ description: Codex·Claude·Gemini 3중 체인(자비스 자동 루틴·cross-re
 
 # multi-model-chain-recovery — 3중 체인 복구
 
-Codex·Claude·Gemini 세 레그가 **동시에** 죽으면 모델 문제가 아니다. 거의 항상 **무인(headless) 실행 환경**의 문제다 — 세 CLI 모두 "사람이 앞에 있다"고 가정한 폴백(브라우저 로그인·신뢰 확인 프롬프트·샌드박스 승인)을 갖고 있고, 디스코드 봇/스케줄러에서 돌면 그 폴백이 전부 실패로 떨어진다.
+Codex·Claude·Gemini 세 레그가 **동시에** 죽으면 모델 문제가 아니다. 거의 항상 **무인(headless) 실행 환경**의 문제다 — 세 CLI 모두 "사람이 앞에 있다"고 가정한 폴백(브라우저 로그인·신뢰 확인 프롬프트·샌드박스 승인)을 갖고 있고, Slack 자비스 브리지/스케줄러에서 돌면 그 폴백이 전부 실패로 떨어진다.
 
 ## 1. 30초 지문 판별
 
@@ -87,6 +87,8 @@ gemini
 
 - 신뢰 상태는 `~/.gemini/trustedFolders.json`(경로 → `TRUST_FOLDER` | `TRUST_PARENT` | `DO_NOT_TRUST`)에 저장된다. **손으로 편집하지 않는다** — 부모의 `TRUST_FOLDER`가 자식의 `DO_NOT_TRUST`를 덮는 알려진 버그가 있어 의도와 다르게 굳는다. `/permissions` 또는 `fix-chain.ps1`(작업 폴더 경로에 정확히 `TRUST_FOLDER`만 병합하고 `.bak` 백업을 남긴다)을 쓴다.
 - **API 키를 프로젝트 `.env`에 두지 않는다.** 미신뢰 폴더에서는 `.env`가 통째로 무시되므로, 신뢰가 풀리는 순간 키까지 같이 사라져 인증 실패로 번진다. `GEMINI_API_KEY`는 사용자/머신 환경변수에 둔다.
+- `fix-chain.ps1`은 `AIza...` ASCII 형식이 아닌 값을 API 키로 인정하지 않는다. 잘못된 저장값 때문에 CLI가 깨지면 키 인증 선택을 해제하고 올바른 키 교체를 TODO로 남긴다.
+- Gemini CLI OAuth가 429·지원종료로 실패해도 실제 멀티모델 체계의 Antigravity Gemini가 `PONG`이면 프리플라이트의 Gemini 레그는 그 실경로로 통과한다.
 - 신뢰 프롬프트 자체를 무인 환경에서 없애려면 `~/.gemini/settings.json`에 `{"security":{"folderTrust":{"enabled":false}}}` — 안전장치를 끄는 선택이므로 개인 머신에 한정한다.
 
 ## 3. 무인 실행 3원칙 (재발 방지)
@@ -108,6 +110,8 @@ gemini
 사용자 화면에 주기적으로 창이 뜨는 부작용이 있어 기본값에서 뺐다. 등록하면 예약 작업이
 최고 권한으로 **창 없이**(wscript 창스타일 0) 돌면서 소유권 회수·폴더 신뢰처럼
 무인으로 가능한 복구는 스스로 끝내고, 브라우저 로그인이 필요한 토큰 재발급 같은 잔여 항목만 로그에 남긴다.
+VBS는 PowerShell 종료까지 기다린 뒤 `WScript.Quit`로 실제 실패 레그 수를 예약 작업에 전달한다.
+예약 작업은 기존 작업을 먼저 삭제하지 않고 `-Force`로 갱신하며, `IgnoreNew`·30분 실행 제한·10년 반복 기간을 사용한다.
 
 가디언에는 폭주 방지 장치가 둘 있다.
 - `fix-chain` 호출 시 **`-SkipGuardian` 필수** — 빼면 fix-chain 이 예약 작업을 재등록·즉시 실행해서
@@ -124,7 +128,8 @@ Get-Content "C:\Users\PSH\MultiAgent\_shared\chain-guardian.log" -Tail 20   # �
 > **CLI 는 호출 연산자(`&`)로 실행한다.** npm 전역 설치는 같은 이름으로 `.cmd`·`.ps1` 을 함께 깔고,
 > 어느 쪽이 잡히는지는 환경마다 다르다. `Start-Process` 는 `.ps1` 을 실행하지 못해
 > `%1은(는) 올바른 Win32 응용 프로그램이 아닙니다` 로 죽는다(실측 2026-08-02). 타임아웃이 필요하면
-> `Start-Job` + `Wait-Job -Timeout` 으로 감싼다 — 사용자가 콘솔에 직접 치는 것과 같은 경로가 된다.
+> 별도 `powershell.exe`에서 호출 연산자로 실행하고 타임아웃이면 **그 PID 트리만** `taskkill /PID /T`로 종료한다.
+> 이름 기반 종료는 사용자의 대화형 Codex·Claude·Gemini 세션까지 죽일 수 있어 금지한다.
 
 > **JSON 은 BOM 없이 쓰고, 읽을 때는 인코딩을 명시한다.** `Get-Content` 는 PS 5.1 에서 BOM 없는 UTF-8 을
 > 시스템 코드페이지(cp949)로 읽어 한글 경로를 깨뜨리고, 깨진 바이트가 JSON 이스케이프 오류로 이어진다
