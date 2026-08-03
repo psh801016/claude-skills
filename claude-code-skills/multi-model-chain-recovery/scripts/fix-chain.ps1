@@ -31,7 +31,8 @@ param(
     [switch]$SkipVerify,
     [switch]$NonInteractive,
     [switch]$NoElevate,
-    [switch]$SkipGuardian
+    [switch]$InstallGuardian,
+    [switch]$SkipGuardian   # 하위 호환용 — 상주 등록은 이제 기본값이 아니라 -InstallGuardian 옵트인이다
 )
 
 $ErrorActionPreference = 'Stop'
@@ -155,17 +156,30 @@ try {
     }
 
     $map = [ordered]@{}
+    $broken = $false
     if (Test-Path -LiteralPath $trustPath) {
         Copy-Item -LiteralPath $trustPath -Destination "$trustPath.bak" -Force
-        $existing = @(Get-Content -LiteralPath $trustPath -Raw | ConvertFrom-Json)
-        if ($existing.Count -gt 0 -and $existing[0] -is [string]) {
-            # 경로 배열 스키마 → 맵으로 승격
-            foreach ($p in $existing) { $map[$p] = 'TRUST_FOLDER' }
-        }
-        else {
-            foreach ($o in $existing) {
-                foreach ($prop in $o.PSObject.Properties) { $map[$prop.Name] = $prop.Value }
+        try {
+            # Get-Content 는 PS 5.1 에서 BOM 없는 UTF-8 을 시스템 코드페이지(cp949)로 읽어
+            # 한글 경로를 깨뜨리고, 깨진 바이트가 JSON 이스케이프 오류로 이어진다(실측 2026-08-03).
+            # 인코딩을 명시해서 읽는다.
+            $raw = [System.IO.File]::ReadAllText($trustPath, [System.Text.Encoding]::UTF8)
+            $existing = @($raw | ConvertFrom-Json)
+            if ($existing.Count -gt 0 -and $existing[0] -is [string]) {
+                # 경로 배열 스키마 → 맵으로 승격
+                foreach ($p in $existing) { $map[$p] = 'TRUST_FOLDER' }
             }
+            else {
+                foreach ($o in $existing) {
+                    foreach ($prop in $o.PSObject.Properties) { $map[$prop.Name] = $prop.Value }
+                }
+            }
+        }
+        catch {
+            # 이미 깨진 파일이면 붙들고 있지 않는다 — 보존해 두고 새로 쓴다.
+            Copy-Item -LiteralPath $trustPath -Destination "$trustPath.broken" -Force
+            $map = [ordered]@{}
+            $broken = $true
         }
     }
 
@@ -178,11 +192,29 @@ try {
     foreach ($d in @($TrustDirs)) { if ($d) { $targets.Add($d) } }
 
     $added = @()
+    $resolvedTargets = @()
     foreach ($t in $targets) {
         $key = try { (Resolve-Path -LiteralPath $t -ErrorAction Stop).Path } catch { $t }
+        $resolvedTargets += $key
         $value = if ($key -eq $parent) { 'TRUST_PARENT' } else { 'TRUST_FOLDER' }
         if ($map[$key] -ne $value) { $added += $key }
         $map[$key] = $value
+    }
+
+    # 상위 경로에 DO_NOT_TRUST 가 걸려 있으면 하위를 아무리 신뢰시켜도 safe mode 로 떨어진다.
+    # (실측 2026-08-03: "g:/" 가 DO_NOT_TRUST 라 볼트 전체가 미신뢰였다.)
+    $cleared = @()
+    foreach ($k in @($map.Keys)) {
+        if ($map[$k] -ne 'DO_NOT_TRUST') { continue }
+        $norm = $k.Replace('/', '\').TrimEnd('\')
+        foreach ($t in $resolvedTargets) {
+            $tn = $t.Replace('/', '\').TrimEnd('\')
+            if ($tn -eq $norm -or $tn.StartsWith($norm + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                $map.Remove($k)
+                $cleared += $k
+                break
+            }
+        }
     }
 
     # Windows PowerShell 5.1 의 `-Encoding utf8` 은 BOM 을 붙인다.
@@ -190,9 +222,12 @@ try {
     $json = $map | ConvertTo-Json -Depth 5
     [System.IO.File]::WriteAllText($trustPath, $json, (New-Object System.Text.UTF8Encoding($false)))
 
-    $note = if ($added.Count -eq 0) { "이미 신뢰됨 (항목 $($map.Count)개)" }
-            else { "$($added.Count)개 폴더 신뢰 기록 — $($added -join ', ')" }
-    Add-Step 'Gemini 신뢰' 'OK' $note
+    $parts = @()
+    if ($broken) { $parts += '기존 파일이 깨져 있어 .broken 으로 보존하고 새로 씀' }
+    if ($added.Count -gt 0) { $parts += "$($added.Count)개 폴더 신뢰 기록" }
+    if ($cleared.Count -gt 0) { $parts += "상위 DO_NOT_TRUST 해제 — $($cleared -join ', ')" }
+    if ($parts.Count -eq 0) { $parts += "이미 신뢰됨 (항목 $($map.Count)개)" }
+    Add-Step 'Gemini 신뢰' 'OK' ($parts -join ' / ')
 }
 catch {
     Add-Step 'Gemini 신뢰' 'FAIL' "$($_.Exception.Message) — gemini 안에서 /permissions 로 수동 설정"
@@ -317,8 +352,8 @@ if ($isWin) {
 # ── 5. 자가 점검 상주 등록 ───────────────────────────────────────────────────
 # 한 번 등록해 두면 이후로는 사람이 명령을 칠 일이 없다 — 예약 작업이 점검·복구를 대신한다.
 
-if ($SkipGuardian -or -not $isWin) {
-    Add-Step '자가 점검' 'SKIP' $(if ($isWin) { '-SkipGuardian 지정' } else { 'Windows 전용 단계' })
+if (-not $InstallGuardian -or $SkipGuardian -or -not $isWin) {
+    Add-Step '자가 점검' 'SKIP' $(if ($isWin) { '상주 등록 안 함 (-InstallGuardian 으로 켤 수 있다)' } else { 'Windows 전용 단계' })
 }
 else {
     $installer = Join-Path $PSScriptRoot 'install-guardian.ps1'
