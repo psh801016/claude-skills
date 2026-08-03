@@ -197,7 +197,10 @@ function Get-GeminiWarnings {
     }
 
     try {
-        $trust = Get-Content -LiteralPath $trustPath -Raw | ConvertFrom-Json
+        # PS 5.1 의 Get-Content 는 BOM 없는 UTF-8 을 cp949 로 읽어 한글 경로를 깨뜨린다 —
+        # 인코딩을 명시해서 읽는다(실측 2026-08-03).
+        $trustRaw = [System.IO.File]::ReadAllText($trustPath, [System.Text.Encoding]::UTF8)
+        $trust = $trustRaw | ConvertFrom-Json
 
         # 정상 스키마는 경로 → TRUST_FOLDER|TRUST_PARENT|DO_NOT_TRUST 맵이지만,
         # 경로 배열로 저장된 버전도 있어 둘 다 받는다.
@@ -210,21 +213,32 @@ function Get-GeminiWarnings {
                 ForEach-Object { [pscustomobject]@{ Name = $_.Name; Value = $_.Value } }
         }
 
+        # 신뢰 파일에는 "g:/" 처럼 슬래시로 저장된 항목이 섞인다 — 구분자를 맞춰서 비교한다.
+        $normWork = $WorkDir.Replace('/', '\').TrimEnd('\')
+
         $trusted = $false
         $decided = $false
         foreach ($entry in $entries) {
             $p = try { (Resolve-Path -LiteralPath $entry.Name -ErrorAction Stop).Path } catch { $entry.Name }
-            $isSelf = $p.TrimEnd('\', '/') -ieq $WorkDir.TrimEnd('\', '/')
-            $isAncestor = $WorkDir.StartsWith($p.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
+            $normP = $p.Replace('/', '\').TrimEnd('\')
+
+            $isSelf = $normP -ieq $normWork
+            $isAncestor = $normWork.StartsWith($normP + '\', [StringComparison]::OrdinalIgnoreCase)
+
             if ($isSelf -and $entry.Value -in @('TRUST_FOLDER', 'TRUST_PARENT')) { $trusted = $true }
             if ($isAncestor -and $entry.Value -eq 'TRUST_PARENT') { $trusted = $true }
             if ($isSelf -and $entry.Value -eq 'DO_NOT_TRUST') {
-                $warn += "작업 폴더가 DO_NOT_TRUST 로 저장돼 있다 — /permissions 로 변경"
+                $warn += '작업 폴더가 DO_NOT_TRUST 로 저장돼 있다 — /permissions 로 변경'
+                $decided = $true
+            }
+            # 상위 경로의 DO_NOT_TRUST 는 하위 신뢰를 무력화한다(실측: "g:/" 가 볼트 전체를 막았다).
+            if ($isAncestor -and $entry.Value -eq 'DO_NOT_TRUST') {
+                $warn += "상위 경로 '$($entry.Name)' 가 DO_NOT_TRUST — 하위를 신뢰시켜도 safe mode 로 떨어진다"
                 $decided = $true
             }
         }
         if (-not $trusted -and -not $decided) {
-            $warn += "작업 폴더에 대한 신뢰 항목 없음 — safe mode 진입 가능"
+            $warn += '작업 폴더에 대한 신뢰 항목 없음 — safe mode 진입 가능'
         }
     }
     catch {

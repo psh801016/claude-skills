@@ -67,6 +67,11 @@ if ($isWin -and -not $NoElevate -and -not $SkipOwnership -and -not (Test-Admin))
         if ($p.Value -is [switch]) {
             if ($p.Value.IsPresent) { $fwd += "-$($p.Key)" }
         }
+        elseif ($p.Value -is [array]) {
+            # 배열을 [string] 으로 캐스팅하면 공백으로 이어붙어 한 값이 된다 —
+            # 콤마로 넘겨야 승격된 쪽에서 다시 배열로 바인딩된다.
+            $fwd += @("-$($p.Key)", (($p.Value | ForEach-Object { $_ }) -join ','))
+        }
         else { $fwd += @("-$($p.Key)", [string]$p.Value) }
     }
     if (-not $PSBoundParameters.ContainsKey('WorkDir')) { $fwd += @('-WorkDir', $WorkDir) }
@@ -188,8 +193,18 @@ try {
     $targets = New-Object System.Collections.Generic.List[string]
     $targets.Add($WorkDir)
     $parent = Split-Path -Parent $WorkDir
-    if ($parent) { $targets.Add($parent) }
-    foreach ($d in @($TrustDirs)) { if ($d) { $targets.Add($d) } }
+    if ($parent) {
+        # 비교는 해석된 경로끼리 해야 한다 — 대소문자·후행 구분자 때문에 원본끼리 비교하면 어긋난다.
+        $parent = try { (Resolve-Path -LiteralPath $parent -ErrorAction Stop).Path } catch { $parent }
+        $targets.Add($parent)
+    }
+    # 콤마로 넘어온 값(승격 시 전달 형식)도 풀어서 받는다.
+    foreach ($d in @($TrustDirs)) {
+        foreach ($one in ("$d" -split ',')) {
+            $one = $one.Trim()
+            if ($one) { $targets.Add($one) }
+        }
+    }
 
     $added = @()
     $resolvedTargets = @()
@@ -238,11 +253,19 @@ catch {
 if ($DisableFolderTrust) {
     try {
         $settingsPath = Join-Path $HOME '.gemini/settings.json'
-        $settings = if (Test-Path -LiteralPath $settingsPath) {
+        $settings = [pscustomobject]@{}
+        if (Test-Path -LiteralPath $settingsPath) {
             Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak" -Force
-            Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
-        } else {
-            [pscustomobject]@{}
+            try {
+                # trustedFolders.json 과 같은 이유로 인코딩을 명시해서 읽는다(cp949 오독 방지).
+                $sRaw = [System.IO.File]::ReadAllText($settingsPath, [System.Text.Encoding]::UTF8)
+                if ($sRaw.Trim()) { $settings = $sRaw | ConvertFrom-Json }
+            }
+            catch {
+                # 깨진 설정을 붙들면 전체 단계가 죽는다 — 보존하고 새로 쓴다.
+                Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.broken" -Force
+                $settings = [pscustomobject]@{}
+            }
         }
 
         $security = if ($settings.PSObject.Properties['security']) { $settings.security } else { [pscustomobject]@{} }
