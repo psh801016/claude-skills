@@ -17,7 +17,8 @@
 param(
     [string]$WorkDir = 'C:\Users\PSH\MultiAgent',
     [string]$LogPath,
-    [int]$TimeoutSec = 90
+    [int]$TimeoutSec = 90,
+    [int]$RepairCooldownHours = 6
 )
 
 $ErrorActionPreference = 'Continue'
@@ -59,19 +60,52 @@ if ($first.Code -eq 0) {
     exit 0
 }
 
-Write-Log "guardian: 실패 레그 $($first.Code)개 감지 — 자동 복구 시도"
+Write-Log "guardian: 실패 레그 $($first.Code)개 감지"
 foreach ($line in ($first.Text -split "`r?`n" | Where-Object { $_ -match '^\[' })) {
     Write-Log "  before: $line"
 }
 
-if (Test-Path -LiteralPath $fix) {
-    $fixOut = & $fix -WorkDir $WorkDir -NonInteractive -NoElevate -SkipVerify 2>&1 | Out-String
+# 복구를 언제나 돌리지 않는다 — fix-chain 이 실제로 고칠 수 있는 증상일 때만 손을 댄다.
+# (인증 만료·쿼터 소진에 소유권 회수와 신뢰 파일 수정을 매시간 반복하면 무의미한 변경만 쌓인다.)
+$needOwnership = $first.Text -match '소유권|ACL|샌드박스'
+$needTrust     = $first.Text -match '미신뢰|not trusted'
+$repairable    = $needOwnership -or $needTrust
+
+# 같은 증상으로 계속 실패할 때 매시간 같은 수정을 반복하지 않도록 쿨다운을 둔다.
+$statePath = Join-Path (Split-Path -Parent $LogPath) 'chain-guardian.state'
+$lastRepair = try {
+    if (Test-Path -LiteralPath $statePath) { [datetime](Get-Content -LiteralPath $statePath -Raw).Trim() } else { $null }
+} catch { $null }
+$cooledDown = (-not $lastRepair) -or ((Get-Date) - $lastRepair).TotalHours -ge $RepairCooldownHours
+
+if (-not $repairable) {
+    Write-Log '  복구 생략 — fix-chain 이 고칠 수 있는 증상이 아니다(인증·쿼터·타임아웃은 사람 또는 재시도 영역)'
+}
+elseif (-not $cooledDown) {
+    Write-Log "  복구 생략 — 마지막 복구 시도 이후 $RepairCooldownHours 시간이 지나지 않았다 ($lastRepair)"
+}
+elseif (-not (Test-Path -LiteralPath $fix)) {
+    Write-Log '  fix-chain.ps1 을 찾지 못했다 — 재점검만 수행'
+}
+else {
+    Write-Log '  자동 복구 시도'
+    # -SkipGuardian 필수: fix-chain 의 마지막 단계가 예약 작업을 재등록하고 즉시 실행하므로,
+    # 빼면 guardian → fix-chain → guardian 무한 재기동이 된다(실측 2026-08-03, 약 2분 주기로 창이 떴다).
+    # 배열 splat 은 위치 인수로 넘어간다 — 이름 있는 스위치를 넘기려면 해시테이블이어야 한다.
+    $fixArgs = @{
+        WorkDir        = $WorkDir
+        NonInteractive = $true
+        NoElevate      = $true
+        SkipVerify     = $true
+        SkipGuardian   = $true
+    }
+    if (-not $needOwnership) { $fixArgs['SkipOwnership'] = $true }
+
+    $fixOut = & $fix @fixArgs 2>&1 | Out-String
     foreach ($line in ($fixOut -split "`r?`n" | Where-Object { $_ -match '^\[|^남은 작업' })) {
         Write-Log "  fix: $line"
     }
-}
-else {
-    Write-Log "  fix: fix-chain.ps1 을 찾지 못했다 — 재점검만 수행"
+    try { Set-Content -LiteralPath $statePath -Value (Get-Date).ToString('o') -Encoding utf8 } catch { }
 }
 
 $second = Invoke-Preflight

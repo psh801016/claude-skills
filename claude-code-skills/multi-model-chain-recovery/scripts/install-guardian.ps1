@@ -59,9 +59,23 @@ if (-not (Test-Path -LiteralPath $runner)) {
 $psExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 if (-not (Test-Path -LiteralPath $psExe)) { $psExe = 'powershell.exe' }
 
-$argument = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -WorkDir "{1}"' -f $runner, $WorkDir
+# powershell.exe 는 콘솔 앱이라 예약 작업이 직접 띄우면 -WindowStyle Hidden 을 줘도
+# 검은 창이 깜빡인다(실측 2026-08-02 — 사용자 화면에 매시간 터미널이 떴다).
+# wscript 로 창 스타일 0(숨김) 으로 감싸서 완전히 조용하게 만든다.
+$launchDir = Join-Path $env:LOCALAPPDATA 'multi-model-chain-guardian'
+if (-not (Test-Path -LiteralPath $launchDir)) {
+    New-Item -ItemType Directory -Path $launchDir -Force | Out-Null
+}
+$vbsPath = Join-Path $launchDir 'guardian-launch.vbs'
 
-$action = New-ScheduledTaskAction -Execute $psExe -Argument $argument -WorkingDirectory $PSScriptRoot
+$psCommand = '{0} -NoProfile -ExecutionPolicy Bypass -File "{1}" -WorkDir "{2}"' -f $psExe, $runner, $WorkDir
+$vbsBody = 'CreateObject("WScript.Shell").Run "{0}", 0, False' -f ($psCommand -replace '"', '""')
+[System.IO.File]::WriteAllText($vbsPath, $vbsBody, (New-Object System.Text.ASCIIEncoding))
+
+$wscript = Join-Path $env:WINDIR 'System32\wscript.exe'
+if (-not (Test-Path -LiteralPath $wscript)) { $wscript = 'wscript.exe' }
+
+$action = New-ScheduledTaskAction -Execute $wscript -Argument ('"{0}"' -f $vbsPath) -WorkingDirectory $launchDir
 
 $triggers = @(
     New-ScheduledTaskTrigger -AtLogOn

@@ -242,7 +242,11 @@ $results = @()
 Write-Output "3중 체인 프리플라이트 — WorkDir: $WorkDir (timeout ${TimeoutSec}s)`n"
 
 if ($targets -contains 'codex') {
-    $results += Test-Leg -Leg 'Codex' -Exe 'codex' -CliArgs @('exec', $prompt) -StaticWarnings (Get-CodexWarnings)
+    # --skip-git-repo-check: codex exec 는 git 저장소 밖이면 실행을 거부한다
+    # ("Not inside a trusted directory and --skip-git-repo-check was not specified", 실측 2026-08-03).
+    # 스모크는 어느 폴더에서든 떠야 하므로 항상 붙인다.
+    $results += Test-Leg -Leg 'Codex' -Exe 'codex' `
+        -CliArgs @('exec', '--skip-git-repo-check', $prompt) -StaticWarnings (Get-CodexWarnings)
 }
 if ($targets -contains 'claude') {
     $results += Test-Leg -Leg 'Claude' -Exe 'claude' -CliArgs @('-p', $prompt) -StaticWarnings (Get-ClaudeWarnings)
