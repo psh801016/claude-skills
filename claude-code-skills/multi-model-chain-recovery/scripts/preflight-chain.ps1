@@ -101,8 +101,20 @@ Set-Location -LiteralPath `$payload.Cwd
 exit `$LASTEXITCODE
 "@
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
-    $psExe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    if (-not (Test-Path -LiteralPath $psExe)) { $psExe = 'powershell.exe' }
+    # $env:WINDIR 이 없으면 Join-Path 가 널 인수로 죽어 프리플라이트 전체가 중단된다
+    # (ErrorActionPreference='Stop' 이라 경고가 아니라 종료다). 현재 호스트로 폴백한다.
+    $psExe = $null
+    if ($env:WINDIR) {
+        $candidate = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        if (Test-Path -LiteralPath $candidate) { $psExe = $candidate }
+    }
+    if (-not $psExe) { $psExe = (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source }
+    if (-not $psExe) { $psExe = try { (Get-Process -Id $PID).Path } catch { $null } }
+    if (-not $psExe) {
+        return [pscustomobject]@{ Found = $true; Code = -3
+                                  Output = 'PowerShell 실행 파일을 찾지 못했다'
+                                  TimedOut = $false; Diag = '' }
+    }
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $psExe
     $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
