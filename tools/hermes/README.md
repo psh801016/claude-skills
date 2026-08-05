@@ -43,26 +43,48 @@ Hermes 공식 트러블슈팅에 같은 증상이 그대로 있다:
 `hermes-voice-fix.py` 는 `config.yaml` 의 **`stt:` 블록만** 고친다.
 채널·에이전트·모델·TTS·크론 설정은 건드리지 않는다.
 
+### 먼저: 설정이 어디 있는지 확인 (도커일 때 중요)
+
+PC 에 도커로 띄운 경우, `config.yaml` 이 **컨테이너 안에만** 있으면
+컨테이너를 다시 만들 때(`docker compose up -d --force-recreate`, 이미지 업데이트 등)
+설정이 통째로 날아간다. 먼저 확인한다:
+
+```powershell
+docker ps                                          # 컨테이너 이름 확인
+docker inspect <container> --format "{{json .Mounts}}"
+```
+
+- 출력에 `.hermes` 가 호스트 경로로 **바인드 마운트돼 있으면** → 호스트 쪽 파일을
+  직접 고치면 되고, 재생성해도 살아남는다
+- 마운트가 **없으면** → 아래처럼 컨테이너 안에서 고치되, 이건 그 컨테이너에만
+  남는다. 재생성 예정이면 마운트를 먼저 걸든지, 고친 뒤 `docker cp` 로 호스트에
+  빼두는 게 안전하다
+
 ### 실행
 
-Hermes 가 도커로 떠 있으면 **컨테이너 안에서** 실행해야 한다
-(`~/.hermes/config.yaml` 이 컨테이너 안에 있다):
+**마운트가 있는 경우** — 호스트에서 그냥 실행:
 
-```bash
+```powershell
+python hermes-voice-fix.py --config "<마운트된 호스트 경로>\config.yaml"
+python hermes-voice-fix.py --config "<마운트된 호스트 경로>\config.yaml" --apply
+```
+
+**마운트가 없는 경우** — 컨테이너 안에서 실행:
+
+```powershell
 docker cp hermes-voice-fix.py <container>:/tmp/
+docker exec -it <container> pip install ruamel.yaml                   # 주석 보존용 (권장)
 docker exec -it <container> python3 /tmp/hermes-voice-fix.py          # 미리보기
 docker exec -it <container> python3 /tmp/hermes-voice-fix.py --apply  # 반영
+docker cp <container>:/root/.hermes/config.yaml .\config.yaml.backup  # 사본 확보
 ```
 
-바로 호스트에 설치돼 있으면 그냥:
-
-```bash
-python3 hermes-voice-fix.py            # dry-run — 뭘 바꿀지 diff 로 보여주기만
-python3 hermes-voice-fix.py --apply    # 백업 뜨고 반영
-python3 hermes-voice-fix.py --rollback # 마지막 백업으로 되돌리기
-```
+> 컨테이너 안 홈 경로는 이미지에 따라 `/root` 또는 `/home/<user>` 다.
+> `docker exec <container> sh -c 'echo $HOME'` 로 확인하면 된다.
+> 스크립트는 `~` 를 알아서 풀기 때문에 대개 `--config` 없이 그냥 돌려도 된다.
 
 **기본이 dry-run 이다.** `--apply` 없이는 파일을 쓰지 않는다. 먼저 diff 를 보고 판단하면 된다.
+윈도우 호스트에서 직접 돌려도 동작한다(파이썬 3만 있으면 된다).
 
 ### 옵션
 
@@ -89,8 +111,10 @@ python3 hermes-voice-fix.py --rollback # 마지막 백업으로 되돌리기
 로컬로 갈 경우 모델이 `tiny`/`base` 면 `small` 로 올린다. 한국어에서 `base` 는
 실사용이 어렵다. 첫 실행 시 모델을 내려받는다.
 
-> VPS 가 KVM2(2vCPU·8GB)면 로컬 `medium` 이상은 버겁다. 한국어 품질을 원하면
-> Groq 무료 티어를 권한다.
+> 로컬 전사는 컨테이너에 할당된 자원을 쓴다. Docker Desktop 은 기본 할당이
+> 넉넉하지 않으니, 로컬 모델을 올릴 거면 Settings → Resources 에서 메모리를
+> 확인한다(`small` 은 2GB 안팎, `medium` 은 5GB 안팎). 전사할 때마다 CPU 를
+> 오래 물기 때문에, PC 로 다른 작업을 하는 중이라면 Groq 무료 티어가 쾌적하다.
 
 ### 안전장치
 
@@ -109,9 +133,9 @@ python3 hermes-voice-fix.py --rollback # 마지막 백업으로 되돌리기
 
 ## 3단계 — 반영 및 확인
 
-```bash
-docker restart <hermes-container>     # 또는 docker compose restart / systemctl restart hermes
-hermes config                          # 실제 반영값 확인
+```powershell
+docker restart <container>                      # 또는 docker compose restart
+docker exec -it <container> hermes config       # 실제 반영값 확인
 ```
 
 슬랙에서 음성 메모를 보내 확인한다.
@@ -127,10 +151,12 @@ hermes config                          # 실제 반영값 확인
 
 문제가 생기면 되돌린 뒤 재시작하면 원상복구된다:
 
-```bash
-python3 hermes-voice-fix.py --rollback
-docker restart <hermes-container>
+```powershell
+docker exec -it <container> python3 /tmp/hermes-voice-fix.py --rollback
+docker restart <container>
 ```
+
+컨테이너를 새로 만들어버렸다면 그냥 스크립트를 다시 한 번 돌리면 된다.
 
 ---
 

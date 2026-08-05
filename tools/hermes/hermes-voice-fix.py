@@ -352,12 +352,25 @@ def do_rollback(config: Path, explicit: str | None) -> int:
 def restart_hint() -> None:
     print("\n다음: Hermes 재시작 후 슬랙에서 음성 메모를 보내 확인하세요.")
     if shutil.which("docker"):
-        print("  docker restart <hermes-container>")
-        print("  또는  docker compose restart   (compose 디렉터리에서)")
+        print("  docker restart <container>       또는  docker compose restart")
+    elif in_container():
+        # 컨테이너 안에서는 docker CLI 가 안 보인다. 호스트에서 재시작해야 한다.
+        print("  (호스트 쪽에서)  docker restart <container>")
+        print("  주의: config.yaml 이 볼륨에 마운트돼 있지 않으면 컨테이너를")
+        print("        재생성할 때 이 변경이 사라집니다. README '먼저' 절 참고.")
     if shutil.which("systemctl"):
         print("  systemctl restart hermes")
     if shutil.which("hermes"):
         print("\n반영값 확인:  hermes config")
+
+
+def in_container() -> bool:
+    if Path("/.dockerenv").exists():
+        return True
+    try:
+        return "docker" in Path("/proc/1/cgroup").read_text(encoding="utf-8")
+    except OSError:
+        return False
 
 
 # ------------------------------------------------------------------ main
