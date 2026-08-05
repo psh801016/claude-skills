@@ -1,18 +1,18 @@
 ---
 name: drawing-to-3d-walls
 description: >-
-  건축 도면(평면도)을 3D 벽체 모델로 변환한다 — PDF·DWG/DXF·래스터 이미지(스샷/사진) 모두 입력 가능.
-  Blender headless로 벽을 압출해 아이소 렌더 PNG + .blend 파일을 만든다. ASURA의 CGI→AI 실사화
-  워크플로우 입력 자산 생성용. 다음 상황이면 반드시 이 스킬을 사용하라: 사용자가 평면도/도면 이미지·PDF·DWG와 함께
-  "3D 벽체 만들어", "벽체 세워줘", "도면 3D로", "이 평면도 3D로 뽑아", "층 도면 입체로",
-  "floor plan to 3D", "walls from drawing", "제원 보고 만들어", 또는 홀/방 치수표(가로×세로×높이)를
-  주며 방을 세우라고 할 때. 입력이 벡터 PDF든 DWG든 단순 스샷이든 상관없이 이 스킬로 처리한다.
+  건축 평면도(PDF·DWG/DXF·래스터 스샷/사진)를 Blender headless로 3D 벽체로 압출해
+  아이소 렌더 PNG + .blend를 만든다. 도면과 함께 "3D 벽체 만들어", "벽체 세워줘", "도면 3D로",
+  "이 평면도 3D로 뽑아", "층 도면 입체로", "floor plan to 3D", "walls from drawing",
+  "제원 보고 만들어"라고 하거나, 홀/방 치수표(가로×세로×높이)를 주며 방을 세우라고 할 때 사용한다.
 ---
 
 # 도면 → 3D 벽체
 
 2D 건축 도면에서 3D 벽체를 만든다. 엔진 = Python(추출) + **Blender 5.1 headless**(압출/렌더).
 ASURA의 **CGI→AI 실사화** 파이프라인 입력 자산을 만드는 핵심·반복 작업이다.
+
+입력이 벡터 PDF든 DWG든 단순 스샷이든 상관없이 이 스킬로 처리한다 — 포맷별 경로는 아래에서 갈린다.
 
 ## 원본 파이프라인 위치
 스크립트 원본과 학습 노트는 `C:\Users\PSH\dev\drawing-to-3d-walls`. 이 스킬의 `scripts/`는 그것을

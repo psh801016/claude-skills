@@ -1,12 +1,23 @@
 ---
 name: magnific-compositing-prep
-description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용 프롬프트로 변환하는 스킬. 수직/수평 왜곡 최소화, 소실점 정확도 유지, 합성 친화적 배경이 핵심. '마그네픽 프롬프트', '합성 배경', '3D 합성용', '합성할 배경', '수직 수평 맞게', '합성용 업스케일' — 이 중 하나라도 나오면 반드시 이 스킬을 사용한다. '나노바나나'·'업스케일 프롬프트'는 단독으로는 발동하지 않는다 — 합성/업스케일 전처리 문맥이 함께 있을 때만 이 스킬이다(나노바나나 단독 이미지 생성 요청, 실사화 결과물의 단순 업스케일 설정 문의는 해당 스킬이 담당: 심리스 텍스처 목적이면 texture-prompt-maker, 실사화 업스케일 설정은 interior/arch 스킬의 엔진 선택 절). 이미지가 없어도 공간 설명만으로 실행 가능. interior-prompt-maker(CGI→실사화)·cinematic-exhibition-lighting(조명 전환)과 목적이 다르다 — 이 스킬은 합성 배경의 기하학 정확도 확보가 목적이다."
+description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지를 Magnific nanobanana 업스케일 전처리용 프롬프트로 변환한다 — 수직·수평 왜곡 최소화와 소실점 보존이 목적. '마그네픽 프롬프트', '합성 배경', '3D 합성용', '합성할 배경', '수직 수평 맞게', '합성용 업스케일' 중 하나라도 나오면 사용한다. 이미지 없이 공간 설명만으로도 실행 가능."
 ---
 
 # Magnific Compositing Prep 프롬프트 메이커
 
 포토샵 3D 합성 배경을 Magnific nanobanana 4x로 업스케일하기 위한 전처리 프롬프트 생성.
 수직/수평 라인과 소실점 보존이 최우선이며, 새로운 왜곡·오브젝트 추가를 원천 차단한다.
+
+## 발동 경계
+
+"나노바나나"·"업스케일 프롬프트"는 **단독으로는 이 스킬을 발동시키지 않는다.**
+합성·업스케일 전처리 문맥이 함께 있을 때만 이 스킬이다.
+
+- 나노바나나 단독 이미지 생성 요청 → 이 스킬 아님
+- 심리스 텍스처 목적 → `texture-prompt-maker`
+- 실사화 결과물의 업스케일 설정 문의 → `interior-prompt-maker` / `arch-prompt-maker`의 엔진 선택 절
+- CGI→실사화(`interior-prompt-maker`) · 조명 전환(`cinematic-exhibition-lighting`)과는
+  목적이 다르다 — 이 스킬은 **합성 배경의 기하학 정확도 확보**가 목적이다.
 
 > 용어: 여기서 "nanobanana"는 **Magnific 업스케일러의 nanobanana 엔진 프리셋**을 뜻한다(원래 nano-banana는 Google Gemini 계열 이미지 모델의 별칭 — 공식명 Gemini Flash Image). SETTINGS(Creativity/Resemblance/Detail/HDR)는 Magnific UI 슬라이더 값이며 Google Gemini API 파라미터가 아니다.
 

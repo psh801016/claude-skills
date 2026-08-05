@@ -1,11 +1,21 @@
 ---
 name: texture-prompt-maker
-description: "마감재 · 표면 · 재질 사진을 3D 소프트웨어(3DS Max · Blender · SketchUp · D5 · Lumion · Enscape) 용 심리스(seamless) 타일링 알베도/PBR 텍스처를 생성하는 image 프롬프트로 변환하는 전문 스킬. 사용자가 마감재·표면·재질 이미지와 함께 '텍스처 만들어줘', '심리스 텍스처', '타일링 텍스처', '알베도 텍스처', '재질 텍스처', '마감재 텍스처', '3D 텍스처', 'PBR 텍스처', '스샷 텍스처', '이 재질로 텍스처', 'seamless texture', '3DS Max 텍스처', '노멀맵/러프니스맵' 같은 말을 하면 반드시 이 스킬을 사용한다. 두 가지 입력 모드를 자동 판단한다: - 모드 A: 마감재·표면 클로즈업 1장 → 그 표면 전체를 텍스처로 - 모드 B: 공간·장면 이미지 1장 + 재질 지정(예: '파란 카펫', '벽돌 벽') → 해당 재질 영역만 추출 출력은 텍스처 생성용 PROMPT + NEGATIVE. 나노바나나 · Gemini 이미지 · Stable Diffusion 등에 그대로 사용. 공간 전체를 실사화하는 것은 interior-prompt-maker / arch-prompt-maker, 포토샵 합성 배경 준비는 magnific-compositing-prep 를 사용한다."
+description: "마감재·표면·재질 사진을 3D 소프트웨어(3DS Max·Blender·SketchUp·D5·Lumion·Enscape)용 심리스 타일링 알베도/PBR 텍스처 생성 프롬프트로 변환한다. 재질 이미지와 함께 '텍스처 만들어줘', '심리스 텍스처', '타일링/알베도/PBR/3D 텍스처', '마감재 텍스처', '이 재질로 텍스처', 'seamless texture', '노멀맵/러프니스맵'이라고 하면 사용한다. 클로즈업 1장(모드 A)과 장면+재질 지정(모드 B)을 자동 판단한다."
 ---
 
 # 심리스 텍스처(알베도/PBR) 프롬프트 메이커
 
 마감재·표면 사진을, 3D 소프트웨어에 바로 import 할 수 있는 **평탄하고(de-lit, 탈조명), 이음새 없이 타일링되는(seamless) 알베도(albedo/diffuse) 텍스처**를 만드는 image 프롬프트로 변환한다.
+
+## 입력 모드와 라우팅
+
+- **모드 A** — 마감재·표면 클로즈업 1장 → 그 표면 전체를 텍스처로.
+- **모드 B** — 공간·장면 이미지 1장 + 재질 지정(예: "파란 카펫", "벽돌 벽") → 해당 재질 영역만 추출.
+
+출력은 텍스처 생성용 PROMPT + NEGATIVE이며, 나노바나나 · Gemini 이미지 ·
+Stable Diffusion 등에 그대로 쓴다.
+공간 전체 실사화는 `interior-prompt-maker` / `arch-prompt-maker`,
+포토샵 합성 배경 준비는 `magnific-compositing-prep`.
 
 **출력 타입 2종 (먼저 결정):**
 - **MATERIAL_TILE (기본):** 1:1 정사각, 상하좌우 4방향 심리스 — 단일 재질 면.

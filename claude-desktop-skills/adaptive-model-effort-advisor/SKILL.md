@@ -1,13 +1,19 @@
 ---
 name: adaptive-model-effort-advisor
-description: Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning level from task shape, learn from measured outcomes, and define a one-step escalation path. Use for substantial tasks without a deliberate model choice, cost or speed optimization, poor model results, model/effort comparisons, routing through C:\Users\PSH\dev\multi-model, or questions about which Codex, Gemini, or Claude model to use. Also use after model upgrades to re-evaluate prior recommendations from current aliases and observed outcomes.
+description: Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning effort for a task, with one escalation step. Use when the user asks which model to use, asks to cut cost or latency, compares models or effort levels, reports poor results from a model, routes through C:\Users\PSH\dev\multi-model, or wants prior recommendations re-evaluated after a model upgrade.
 ---
 
 # Adaptive Model Effort Advisor
 
 Choose model capacity and reasoning time independently. Start cheaply, verify, and escalate only at the observed failure point. Never treat the newest or largest model as automatically best.
 
-Apply this proactively to every non-trivial user request. Do not wait for the user to ask which model to use. Before executing substantial analysis, coding, design, research, or document work, state the resolved provider/model/effort and one escalation path. Skip the announcement only for trivial one-step requests where routing has no practical benefit.
+## When to run
+
+Run this when the user raises model choice, cost, or latency — or when a route has already failed and needs escalating.
+
+**Do not run it on every request, and do not announce a route before ordinary work.** That announcement was written when models could not plan their own approach; current models do, so a forced preamble on every task costs tokens and adds nothing. If the user has not raised model choice and the default route is working, skip this skill entirely.
+
+(2026-08-05: always-on invocation removed. Rationale in `DECISIONS.md` → ADR 2026-08-05.)
 
 ## Workflow
 
