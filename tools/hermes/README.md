@@ -226,8 +226,62 @@ docker restart <container>
 - 에러 메시지를 "이미지" 로 뭉뚱그린 것이 이번 오진의 출발점이었다. 실제 받은
   mimetype 을 그대로 노출하도록 바꾸면 다음 디버깅이 훨씬 빨라진다.
 
-### 다음 단계
+### 붙이는 법 — `slack_audio.py` (드롭인 모듈)
 
-브리지의 첨부 처리 함수(위 분기가 있는 곳)를 붙여주면 그 코드에 맞춘 패치를
-작성한다. `slack-claude-bridge` 는 GitHub 저장소로 올라와 있지 않아 이 세션에서
-직접 열 수 없다.
+같은 폴더의 **`slack_audio.py`** 가 위 패치의 알맹이를 이미 구현해 놨다.
+브리지 코드를 몰라도 되도록 만들었으니, `slack-claude-bridge` 폴더에 복사하고
+첨부 처리하는 자리에서 함수 두 개만 부르면 된다.
+
+```python
+from slack_audio import is_audio_file, describe_attachment, transcribe_slack_audio
+
+# 첨부를 훑는 기존 자리에서:
+audio_files = [f for f in files if is_audio_file(f)]
+
+if audio_files:
+    try:
+        spoken = transcribe_slack_audio(audio_files[0], SLACK_BOT_TOKEN, language="ko")
+    except Exception as exc:
+        say(f"❌ 음성 전사 실패\n{exc}")     # fail-loud (ASURA 규칙)
+        return
+    user_text = f"{user_text}\n{spoken}".strip() if user_text else spoken
+    # 이후는 텍스트 명령과 완전히 동일한 경로로 진행
+
+elif image_files:
+    ...  # 기존 이미지 경로 그대로
+
+elif files:
+    # "이미지 없음" 으로 뭉뚱그리지 말고 실제로 뭐가 왔는지 밝힌다
+    say("❌ 지원하지 않는 첨부: " + ", ".join(describe_attachment(f) for f in files))
+```
+
+**동작 방식**
+
+- 표준 라이브러리만으로 돈다. `requests` 도 SDK 도 필요 없다
+- 전사 엔진은 있는 것부터 자동 선택: faster-whisper(로컬) → Groq → OpenAI.
+  셋 다 없으면 **무엇이 없어서 실패했는지 전부 적어서** 예외를 던진다
+- 키는 환경변수로: `GROQ_API_KEY` / `VOICE_TOOLS_OPENAI_KEY` 또는 `OPENAI_API_KEY`
+- 언어 기본값 `ko`. `transcribe_slack_audio(..., language="")` 로 자동감지 가능
+- 임시 파일은 전사 후 지운다 (`keep_file=True` 로 남길 수 있음)
+
+**검증됨 (오프라인)**
+
+```bash
+python3 slack_audio.py --selftest     # 11/11 통과
+```
+
+실제 슬랙이 보낸 그 음성 클립 메타데이터(`audio/mp4`, `slack_audio`, m4a)로
+판별을 확인했고, mimetype 이 비어 오는 경우·이미지/PDF 제외·다운로드 사전조건도
+같이 검사한다. 다운로드 경로는 로컬 HTTP 서버로 6건 검증했다 — Bearer 헤더 전송,
+바이트 일치, 확장자 보존, **권한 없을 때 슬랙이 200 으로 주는 로그인 HTML 을
+파일로 오인하지 않고 차단**, HTTP 403, 빈 파일.
+
+전사 엔진 실호출은 키·오디오가 필요해 이 환경에서 돌려보지 못했다. 첫 실행 때
+`--selftest` 가 아니라 실제 음성으로 한 번 확인할 것.
+
+### 아직 못 한 것
+
+브리지의 첨부 처리 함수를 직접 보지 못해 **위 스니펫을 어디에 끼울지**는
+추정이다(`server.py` 또는 `commands.py` 에서 `files` 를 순회하며 mimetype 을
+보는 곳). 해당 함수를 붙여주면 그 코드 모양에 맞춘 정확한 diff 를 만든다.
+`slack-claude-bridge` 는 GitHub 에 올라와 있지 않아 이 세션에서 열 수 없다.
