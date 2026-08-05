@@ -1,5 +1,22 @@
 # Hermes 음성명령 복구 절차
 
+> ## ⚠️ 먼저 읽을 것 — 이 도구는 ASURA 환경에 적용되지 않는다 (2026-08-05 확인)
+>
+> 이 폴더의 `hermes-voice-fix.py` 는 **Nous Research 의 Hermes Agent 제품**
+> (`~/.hermes/config.yaml` 을 쓰는 그것) 을 전제로 만들었다.
+>
+> 그런데 슬랙에서 실제로 응답하는 `Hermes · 자비스` 봇은 그 제품이 아니라
+> **ASURA 가 직접 만든 로컬 파이썬 브리지 `C:\Users\PSH\slack-claude-bridge`** 다.
+> 근거: 에러 문구가 GitHub 전체 코드 검색 0건(자체 코드 문자열), 같은 채널에서
+> `server.py`·`commands.py`·`watchdog.ps1`·`bridge.log` 디버깅, 봇이 스스로
+> "로컬 자비스" 라 칭하며 `G:\내 드라이브\` 에 산출물 기록.
+>
+> **따라서 아래 2단계(config.yaml 편집)는 이 환경에서 할 일이 없다.**
+> 실제로 고칠 곳은 브리지의 첨부 처리 코드다 — 맨 아래 "실제 고칠 지점" 참조.
+>
+> 이 문서의 1단계(`files:read` 스코프)와 STT 개념은 어느 구현이든 유효하다.
+> 스크립트는 나중에 Hermes Agent 제품을 실제로 쓰게 될 때를 위해 남겨둔다.
+
 **증상** — 슬랙에서 Hermes·자비스에게 음성 메모를 보내면 전사되지 않고 이렇게 끝난다:
 
 ```
@@ -8,17 +25,19 @@
 지원되는 이미지 첨부가 없습니다.
 ```
 
-**원인은 두 겹이다. 1단계가 진짜 원인이고, 2단계는 1단계를 고쳐야 드러난다.**
+> **아래 1·2단계는 Hermes Agent 제품을 쓸 때의 절차다.** ASURA 환경의 실제
+> 원인은 맨 아래 "실제 고칠 지점" 에 있다 — 봇이 4초 만에 실패한 것으로 보아
+> 다운로드 실패가 아니라 **mimetype 필터에서 즉시 걸린 것**이다.
 
 ---
 
-## 1단계 — 슬랙 `files:read` 스코프 (필수, 수동)
+## 1단계 — 슬랙 `files:read` 스코프 (구현과 무관하게 필요)
 
-봇이 이벤트는 받아서 `답변 생성 중`까지 갔는데 **첨부 파일 자체를 못 내려받은** 상태다.
-파일을 못 받으니 전사(STT)는 시작조차 못 한다. 에러 문구가 "이미지"인 건 첨부 실패
-메시지가 이미지 기준으로 적혀 있어서일 뿐, 이미지 문제가 아니다.
+첨부를 내려받으려면 어떤 구현이든 이 스코프가 있어야 한다. 없으면 봇이 대화는
+해도 업로드된 파일을 못 읽는다. 이번 건의 직접 원인은 아니었지만(필터가 먼저
+걸렀다), 오디오 분기를 붙인 뒤 실제로 파일을 받으려면 반드시 필요하다.
 
-Hermes 공식 트러블슈팅에 같은 증상이 그대로 있다:
+Hermes 공식 트러블슈팅의 관련 항목:
 
 > Bot can chat but can't read uploaded images/files — Add `files:read`, then **reinstall** the app.
 
@@ -165,3 +184,50 @@ docker restart <container>
 - [Slack | Hermes Agent](https://github.com/nousresearch/hermes-agent/blob/main/website/docs/user-guide/messaging/slack.md) — `files:read` 스코프, 재설치 요구사항, 음성 자동 전사
 - [Voice & TTS | Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/features/tts/) — STT 프로바이더, 환경변수, 폴백 순서
 - [cli-config.yaml.example](https://github.com/NousResearch/hermes-agent/blob/main/cli-config.yaml.example) — `stt:` 키 구조와 기본값
+
+---
+
+## 실제 고칠 지점 — `slack-claude-bridge` (ASURA 환경)
+
+### 실측 근거 (슬랙 원본, 2026-08-05 확인)
+
+- 채널 `#hermes-자비스` (`C0BHUNMETDJ`), 부모 메시지 `1785846192.903279`
+- 첨부: `오디오 클립 (2026-08-04 21:23:09).m4a` — **`audio/mp4`, 301.6 KB**
+- 봇 응답 2건이 **4초 만에** 도착: `⏳ 답변 생성 중.` → `❌ 첨부 이미지 전달 실패`
+
+4초 만에 실패했다는 건 다운로드를 오래 시도하다 죽은 게 아니라, **필터에서
+즉시 걸렀다**는 뜻이다. 즉 첨부 처리기가 이미지 mimetype 만 통과시킨다.
+
+### 패치 방향
+
+`C:\Users\PSH\slack-claude-bridge` 의 첨부 처리 부분 (`server.py` 또는
+`commands.py` 중 `files` 를 순회하며 mimetype 을 보는 곳):
+
+```
+현재: files[] 중 image/* 만 골라냄 → 없으면 "지원되는 이미지 첨부가 없습니다"
+
+변경: mimetype 으로 분기
+  audio/*  또는 subtype == "slack_audio"
+    → url_private_download 를 Bearer 토큰으로 다운로드 (files:read 필요)
+    → STT 전사 (faster-whisper 로컬 / Groq / OpenAI)
+    → 전사 텍스트를 사용자 메시지 본문으로 주입해 기존 경로로 진행
+  image/*  → 기존 경로 그대로
+  그 외    → 실제 첨부 타입을 밝힌 에러
+             ("지원되지 않는 첨부: application/pdf" 처럼)
+```
+
+### 주의
+
+- 슬랙이 붙여주는 `files[].transcription` 필드에 **기대지 말 것.** 한국어 음성
+  클립엔 전사가 안 붙는 경우가 많다. 자체 STT 를 태워야 한다.
+- 한국어 전사는 언어를 `ko` 로 고정하는 편이 정확하다. 자동감지에 맡기면
+  짧은 발화에서 영어로 오판하는 일이 있다.
+- 로컬 faster-whisper 를 쓸 경우 `base` 는 한국어 실사용이 어렵다. `small` 이상.
+- 에러 메시지를 "이미지" 로 뭉뚱그린 것이 이번 오진의 출발점이었다. 실제 받은
+  mimetype 을 그대로 노출하도록 바꾸면 다음 디버깅이 훨씬 빨라진다.
+
+### 다음 단계
+
+브리지의 첨부 처리 함수(위 분기가 있는 곳)를 붙여주면 그 코드에 맞춘 패치를
+작성한다. `slack-claude-bridge` 는 GitHub 저장소로 올라와 있지 않아 이 세션에서
+직접 열 수 없다.
