@@ -10,6 +10,45 @@
 
 ---
 
+## 0. 사용자
+
+새 세션·새 런타임(Claude / Codex / Gemini)은 **이전 대화를 기억하지 못한다.**
+매번 다시 말해야 하는 것은 전부 여기 적는다. 여기 없으면 다음에 또 틀린다.
+
+- **호칭: ASURA님.** Windows 계정명이 `PSH`이고 경로에 `C:\Users\PSH`가 나오지만,
+  그건 계정명이지 호칭이 아니다. 인스타 계정은 `@nana80psh`.
+- 소속·업무: 전시·인테리어 디자인. 산출물은 클라이언트 납품물이다.
+- 작업 PC는 Windows. 스킬 라이브 정본은 `~/.agents`, 이 저장소는 **스킬 백업만** 담는다.
+- 멀티모델 라우터: `C:\Users\PSH\dev\multi-model\consult.ps1` (codex / gemini / opus-ag).
+
+### 정본이 어디 있나 (이 문서보다 위에 있는 것들)
+
+이 문서는 **저장소 안의 결정 기록**일 뿐이다. 상위 정본은 이 저장소 밖에 있다:
+
+| 정본 | 위치 | 내용 |
+|---|---|---|
+| 행동 규칙 | `~/.agents/rules.md` | `sync.ps1`로 CLAUDE.md / AGENTS.md / GEMINI.md에 전파 |
+| 작업 규칙 | AUSURA vault `concepts/work-rules` | 존댓말·교차검증·멀티모델 병렬 등 상시 규칙 |
+| 루틴·습관 | AUSURA vault `playbooks/user-routines` | 정기 루틴 대장 (Claude·Codex·Gemini 공용) |
+| 주요 결정 | AUSURA vault `decisions/key-decisions` | |
+| 실패·교훈 | AUSURA vault `errors/lessons` | |
+
+AUSURA vault = `G:\내 드라이브\AUSURA\AI-Sessions\wiki\` (Google Drive 마운트).
+**로컬 드라이브가 없는 환경에서도 Google Drive 커넥터로 읽을 수 있다** — 2026-08-05 실증.
+`_MOC-AUSURA.md`가 전체 지식 지도다. 여기서 시작한다.
+
+**충돌 시 우선순위: vault·rules.md 정본 > 이 문서.**
+이 문서의 내용이 정본과 어긋나면 정본이 이긴다. 아래 3절의 "미해결 충돌"을 먼저 본다.
+
+### 이 저장소에 올리지 않는 것
+
+`key-decisions`: **"GitHub 백업은 Claude 스킬만 — agents-hub(크로스런타임 허브)는 GitHub에 안 올림(사용자 지시)."**
+그래서 `AGENTS.md` / `GEMINI.md` / `CLAUDE.md`는 여기 두지 않는다.
+크로스런타임 지침은 `~/.agents/rules.md`에 넣고 `sync.ps1`로 전파한다.
+(2026-08-05에 AGENTS.md를 만들었다가 이 결정을 확인하고 삭제했다.)
+
+---
+
 ## 1. 문제 정의
 
 > 누가 · 언제 · 뭘 못 해서 · 뭘 포기하는가
@@ -24,7 +63,7 @@ cinematic-lighting · isometric-compositor)은 전부 이 한 문장을 향한�
 나머지(notion 3종 · instagram 2종 · drawing-to-3d-walls · cross-review ·
 adaptive-model-effort-advisor)는 그 작업을 굴리기 위한 주변 자동화다.
 
-> ⚠️ 위 문단은 저장소의 스킬 구성에서 역산한 것이다. PSH님이 직접 고쳐 확정해야
+> ⚠️ 위 문단은 저장소의 스킬 구성에서 역산한 것이다. ASURA님이 직접 고쳐 확정해야
 > 이 문서가 제 역할을 한다. 특히 "뭘 포기하는가"가 실제와 다르면 아래 판단 기준도 흔들린다.
 
 ---
@@ -150,7 +189,46 @@ adaptive-model-effort-advisor)는 그 작업을 굴리기 위한 주변 자동�
 - **drawing-to-3d-walls** — 하네스가 아니라 도구(Blender/OpenCV 스크립트)다.
 - **cross-review의 실증 검증 절** — 기준이 명확한 검사라 유효하다. 오히려 유일하게 남길 부분이다.
 
-**아직 안 한 것 (PSH님 실측 필요)**
+### ⚠️ 미해결 충돌 — ASURA님 결정 필요 (2026-08-05)
+
+vault를 대조한 결과, 위 ADR의 일부가 **ASURA님이 문서로 정해둔 상시 규칙과 정면으로 충돌**한다.
+이건 영상 분석으로 뒤집을 수 있는 게 아니라 ASURA님이 정할 문제다.
+**결정 전까지는 vault 정본이 이긴다** — 즉 아래 두 항목은 잠정 상태다.
+
+| # | 이 저장소가 지금 말하는 것 | vault 정본이 말하는 것 | 상태 |
+|---|---|---|---|
+| 1 | `cross-review` — 다중 모델 호출은 실패비용 高 + 기준 명확일 때만 | `work-rules` (2026-06-25): **"모든 결과물 교차검증. 자체검증만으로 완료 보고 금지. 멀티모델 병렬, GPT/Codex 누락 금지."** | 미해결 |
+| 2 | `adaptive-model-effort-advisor` — 상시 발동 해제 | `user-routines` (2026-07-15): **"선제적 모델 추천 루틴 — 모델을 따로 요청하지 않아도 작업 시작 전에 추천 provider/model/effort를 먼저 알린다."** | 미해결 |
+
+**셋 중 하나를 골라야 한다:**
+
+- **(A) vault 유지** — 이 저장소의 변경을 되돌린다. 영상 논리보다 ASURA님의 기존 결정을 따른다.
+- **(B) vault 개정** — `work-rules`와 `user-routines`를 이 방향으로 고친다. 그래야 규칙이 서로 안 싸운다.
+- **(C) 조건부 병행** — 교차검증·모델추천을 "고실패비용 작업에만"으로 양쪽 문서에 동일하게 명시한다.
+
+어느 쪽이든 **한쪽만 고치면 안 된다.** 지금처럼 두 문서가 반대를 말하면
+에이전트가 매번 다르게 행동하고, 그게 "왜 갑자기 이상해졌지"의 원인이 된다.
+
+**해결됨 (2026-08-05)**
+
+- `skills` 노트: *"스킬 description은 한 줄로(블록 스칼라 `>`/`|` 쓰면 Codex가 못 읽음)"*
+  → `drawing-to-3d-walls`가 `>-`를 쓰고 있었다. 한 줄 문자열로 변환.
+- `prompt-skills-usage`: *"실사 스킬 업데이트 시 전시부스 전용 블록 유실 확인 필수"*
+  → `interior-prompt-maker`(전시부스 언급 7곳, 옥타놈 블록 포함)와
+  `magnific-compositing-prep` 모두 생존 확인.
+- `agents/openai.yaml`이 CP949로 저장돼 있었다(Codex에서 깨짐) → UTF-8로 재저장.
+
+**보고 사항 — Higgsfield 사용**
+
+`higgsfield-web-only` 규칙: *"생성과 크레딧 소비는 로그인된 Higgsfield 웹 UI에서만.
+API·MCP·SDK·CLI·우회 백엔드 경로는 계속 사용하지 않는다."*
+
+2026-08-05 이 저장소 작업 중 **Higgsfield MCP를 사용했다** — 유튜브 영상 자막 확보를 위해
+`video_analysis_create` 2회(둘 다 실패)와 `sandbox_exec` 5회(yt-dlp 실행). 이미지·영상 생성은
+하지 않았고 크레딧 소비 여부는 미확인이다. 규칙 문구는 생성뿐 아니라 MCP 경로 자체를 금지하므로
+**규칙 위반으로 기록**한다. 이 경로를 계속 허용할지는 ASURA님이 정한다.
+
+**아직 안 한 것 (ASURA님 실측 필요)**
 
 - **맨몸 테스트.** `interior-prompt-maker` 없이 실사화 프롬프트 1건,
   3중검수 없이 스킬 수정 1건을 돌려보고 결과를 이 표에 기록한다.

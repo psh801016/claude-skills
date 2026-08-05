@@ -1,10 +1,6 @@
 ---
 name: drawing-to-3d-walls
-description: >-
-  건축 평면도(PDF·DWG/DXF·래스터 스샷/사진)를 Blender headless로 3D 벽체로 압출해
-  아이소 렌더 PNG + .blend를 만든다. 도면과 함께 "3D 벽체 만들어", "벽체 세워줘", "도면 3D로",
-  "이 평면도 3D로 뽑아", "층 도면 입체로", "floor plan to 3D", "walls from drawing",
-  "제원 보고 만들어"라고 하거나, 홀/방 치수표(가로×세로×높이)를 주며 방을 세우라고 할 때 사용한다.
+description: "건축 평면도(PDF·DWG/DXF·래스터 스샷/사진)를 Blender headless로 3D 벽체로 압출해 아이소 렌더 PNG + .blend를 만든다. 도면과 함께 '3D 벽체 만들어', '벽체 세워줘', '도면 3D로', '이 평면도 3D로 뽑아', '층 도면 입체로', 'floor plan to 3D', 'walls from drawing', '제원 보고 만들어'라고 하거나, 홀/방 치수표(가로×세로×높이)를 주며 방을 세우라고 할 때 사용한다."
 ---
 
 # 도면 → 3D 벽체
