@@ -41,7 +41,7 @@ ASURA님(@nana80psh)이 인스타에 저장(보관)한 게시물을 주제별 �
      이유를 한 줄 남긴다.
    - 애매하면 억지로 밀어넣지 말고 그대로 두고 보고에 올린다. 오분류는 사용자가 옮기며 조정한다.
 4. **폴더 확인/생성**: `GET /api/v1/collections/list/?collection_types=["MEDIA"]` **페이지네이션**(한번에 6개, next_max_id로 전량). 없는 카테고리는 `POST /api/v1/collections/create/` body `name=...` headers `X-CSRFToken`+`X-IG-App-ID`.
-5. **증분(월2회 새 저장분만)**: 이전 처리한 code 집합을 `kakao-claude-bridge/insta_saved_seen.json`(또는 AUSURA)에 저장 → 이번엔 새 code만 처리. **파일이 없으면(첫 실행) 전량을 신규로 처리하고 완료 시 파일을 새로 생성한다.** (전량 재처리는 idempotent라 무해하나 느림·불필요.)
+5. **증분(월2회 새 저장분만)**: 이전 처리한 code 집합을 `slack-claude-bridge/insta_saved_seen.json`(또는 AUSURA)에 저장 → 이번엔 새 code만 처리. **파일이 없으면(첫 실행) 전량을 신규로 처리하고 완료 시 파일을 새로 생성한다.** (전량 재처리는 idempotent라 무해하나 느림·불필요.)
 6. **자동 저장(핵심)** — 각 게시물을 해당 폴더에 add:
    - 토큰 추출(페이지 소스 정규식): `fb_dtsg`=`"DTSGInitialData",[],{"token":"([^"]+)"`, `lsd`=`"LSD",[],{"token":"([^"]+)"`, `csrf`=쿠키 `csrftoken`.
    - `media_id` = **shortcode를 base64 디코드**(알파벳 `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_`, n=n*64+idx). = media pk. (검증됨, 피드 pk와 일치)
