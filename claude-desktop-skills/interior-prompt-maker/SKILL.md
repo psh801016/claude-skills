@@ -1,11 +1,20 @@
 ---
 name: interior-prompt-maker
-description: "실내 CGI·렌더를 Magnific, Gemini/Nano Banana, SD·ComfyUI image-to-image용 사실적 사진 프롬프트로 변환한다. 이미지 1장 실사화와 2장 구조보존 리모델링을 구분하고, 한국 전시부스의 목공·블럭·옥타늄·맥시마 시공을 구조 증거로 구역별 판별한다. 사용자가 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '실사화 스킬', '리모델링 프롬프트', 'i2i 프롬프트', '사진처럼', 'CGI 느낌 제거'라고 하면 사용한다. 프롬프트·스킬 요청은 이미지 생성 권한이 아니며 사용자가 생성·제작을 명시한 경우에만 생성 도구를 호출한다. 엔진 미지정 시 Magnific / Gemini / SD·ComfyUI 중 하나를 확인하고 엔진별 출력을 섞지 않는다. 건물 외관은 arch-prompt-maker, 재질 추출은 texture-prompt-maker, 조명만 이식할 때는 cinematic-exhibition-lighting, 사람 별도 합성은 person-layer-maker를 사용한다."
+description: "실내 CGI·렌더를 Magnific / Gemini·Nano Banana / SD·ComfyUI image-to-image용 사실적 사진 프롬프트로 변환한다. 실내 이미지와 함께 '프롬프트 만들어줘', '실사화해줘', '실사화 스킬', '리모델링 프롬프트', 'i2i 프롬프트', '사진처럼', 'CGI 느낌 제거'라고 하면 사용한다. 1장 실사화와 2장 구조보존 리모델링을 구분하고, 한국 전시부스 시공(목공·블럭·옥타늄·맥시마)을 구조 증거로 구역별 판별한다."
 ---
 
 # 인테리어 Image-to-Image 프롬프트 메이커
 
 인테리어 CGI/렌더/모델 이미지를 실제 건축 인테리어 사진과 구분 불가능한 수준의 프롬프트로 변환한다.
+
+## 발동 범위와 라우팅
+
+- **엔진을 먼저 확정한다.** 미지정이면 Magnific / Gemini / SD·ComfyUI 중 무엇인지 확인하고,
+  엔진별 출력을 섞지 않는다.
+- 프롬프트·스킬 요청은 **이미지 생성 권한이 아니다.** 사용자가 생성·제작을 명시했을 때만
+  생성 도구를 호출한다.
+- 건물 외관은 `arch-prompt-maker`, 재질 추출은 `texture-prompt-maker`,
+  조명만 이식할 때는 `cinematic-exhibition-lighting`, 사람 별도 합성은 `person-layer-maker`.
 
 ## 핵심 원칙
 

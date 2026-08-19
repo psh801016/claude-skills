@@ -14,7 +14,7 @@ description: "Notion 업무일지를 오늘 날짜로 업로드하는 스킬. �
 **보드는 읽기 전용 소스다** — 일지에 없는 활성 항목을 보드에서 자동 제거/PARA 변경하는 것은 절대 금지. 제거는 사용자 지시 + 3중검수 통과 시에만. (2026-06-30 사용자 확정 규칙)
 **모든 날짜·요일은 Asia/Seoul(KST) 기준으로 계산한다.**
 
-자동화: 텔레그램 브리지가 **평일(월~금) 오전 9시**에 이 방식으로 자동 업로드한다(`kakao-claude-bridge` server.py briefing_scheduler + commands.py run_diary). 수동 호출도 동일 절차(수동 호출은 요청 시점의 실제 오늘 날짜로 생성).
+자동화: Hermes Slack 브리지가 **평일(월~금) 오전 9시**에 이 방식으로 자동 업로드한다(`slack-claude-bridge` server.py briefing_scheduler + commands.py run_diary). 수동 호출도 동일 절차(수동 호출은 요청 시점의 실제 오늘 날짜로 생성).
 
 ## 대상 DB (하드코딩 — 이름 검색으로 DB를 찾지 말 것)
 - 🔧 프로젝트 보드: `collection://49d9582e-1be9-836d-a874-075f6db29687`

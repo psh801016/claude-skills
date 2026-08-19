@@ -19,9 +19,29 @@ ASURA님(@nana80psh)이 인스타에 저장(보관)한 게시물을 주제별 �
 ## 절차 (claude-in-chrome)
 1. 탭에서 `https://www.instagram.com/nana80psh/saved/all-posts/` 열고 로그인 확인(로그아웃이면 사용자에게 재로그인 요청 — 비번/OAuth 대행 금지).
 2. **저장 게시물 전량 읽기**(캡션 포함): `GET /api/v1/feed/saved/posts/?count=50&max_id=<next>` 반복. headers `X-IG-App-ID:936619743392459`, credentials include. 응답 `items[].media.{code,pk,user.username,caption.text}` + `next_max_id`. **8페이지씩** 나눠 window.__data에 누적(CDP eval 45s 한도 회피, detached 루프면 무관).
-3. **분류**: `username + caption` 소문자에 키워드 규칙 매칭(건축·전시/AI 워크플로우·도구/AI 이미지·아트/AI 영상/3D·Blender/아나모픽 LED/인터랙티브·이머시브/그래픽·모션·타이포/제품·공간·오브제, 미매칭=레퍼런스·기타). 캡션 없는 릴스는 대부분 기타로 감(한계).
+3. **분류** (2026-08-05 개정 — 키워드 규칙 매칭에서 모델 판단으로 교체):
+   `username + caption`(+ 캡션이 없으면 썸네일)을 보고 아래 카테고리 중 하나로 직접 판정한다.
+   키워드 테이블을 만들어 매칭하지 않는다 — 규칙은 항상 예외에서 터지고, 예전 방식은
+   캡션 없는 릴스를 대부분 "기타"로 흘려보냈다(구방식의 자인된 한계).
+
+   | 카테고리 | 무엇이 들어가나 |
+   |---|---|
+   | 건축·전시 | 건물·공간·전시부스·행사장 |
+   | AI 워크플로우·도구 | 모델·툴·파이프라인·프롬프트 기법 |
+   | AI 이미지·아트 | 생성 이미지 결과물 |
+   | AI 영상 | 생성 영상 결과물 |
+   | 3D·Blender | 모델링·렌더·시뮬레이션 |
+   | 아나모픽 LED | 아나모픽·포리스펙티브 LED 사이니지 |
+   | 인터랙티브·이머시브 | 체험형 설치·미디어아트 |
+   | 그래픽·모션·타이포 | 2D 그래픽·모션·타이포그래피 |
+   | 제품·공간·오브제 | 가구·제품·오브제 |
+   | 레퍼런스·기타 | **위 어디에도 확실히 안 들어갈 때만** |
+
+   - "레퍼런스·기타"는 미매칭 자동 낙하 지점이 아니라 **적극적 판정**이다. 여기로 보낼 땐
+     이유를 한 줄 남긴다.
+   - 애매하면 억지로 밀어넣지 말고 그대로 두고 보고에 올린다. 오분류는 사용자가 옮기며 조정한다.
 4. **폴더 확인/생성**: `GET /api/v1/collections/list/?collection_types=["MEDIA"]` **페이지네이션**(한번에 6개, next_max_id로 전량). 없는 카테고리는 `POST /api/v1/collections/create/` body `name=...` headers `X-CSRFToken`+`X-IG-App-ID`.
-5. **증분(월2회 새 저장분만)**: 이전 처리한 code 집합을 `kakao-claude-bridge/insta_saved_seen.json`(또는 AUSURA)에 저장 → 이번엔 새 code만 처리. **파일이 없으면(첫 실행) 전량을 신규로 처리하고 완료 시 파일을 새로 생성한다.** (전량 재처리는 idempotent라 무해하나 느림·불필요.)
+5. **증분(월2회 새 저장분만)**: 이전 처리한 code 집합을 `slack-claude-bridge/insta_saved_seen.json`(또는 AUSURA)에 저장 → 이번엔 새 code만 처리. **파일이 없으면(첫 실행) 전량을 신규로 처리하고 완료 시 파일을 새로 생성한다.** (전량 재처리는 idempotent라 무해하나 느림·불필요.)
 6. **자동 저장(핵심)** — 각 게시물을 해당 폴더에 add:
    - 토큰 추출(페이지 소스 정규식): `fb_dtsg`=`"DTSGInitialData",[],{"token":"([^"]+)"`, `lsd`=`"LSD",[],{"token":"([^"]+)"`, `csrf`=쿠키 `csrftoken`.
    - `media_id` = **shortcode를 base64 디코드**(알파벳 `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_`, n=n*64+idx). = media pk. (검증됨, 피드 pk와 일치)

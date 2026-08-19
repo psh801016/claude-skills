@@ -1,6 +1,6 @@
 ---
 name: adaptive-model-effort-advisor
-description: Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning level from task shape, learn from measured outcomes, and define a one-step escalation path. Use for substantial tasks without a deliberate model choice, cost or speed optimization, poor model results, model/effort comparisons, routing through C:\Users\PSH\dev\multi-model, or questions about which Codex, Gemini, or Claude model to use. Also use after model upgrades to re-evaluate prior recommendations from current aliases and observed outcomes.
+description: Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning effort for a task, with one escalation step. Apply proactively before any non-trivial work — state the route without waiting to be asked. Also use when the user asks which model to use, asks to cut cost or latency, compares models or effort levels, reports poor results, routes through C:\Users\PSH\dev\multi-model, or wants prior recommendations re-evaluated after a model upgrade.
 ---
 
 # Adaptive Model Effort Advisor
@@ -8,6 +8,10 @@ description: Recommend the cheapest reliable Codex, Gemini, or Claude model and 
 Choose model capacity and reasoning time independently. Start cheaply, verify, and escalate only at the observed failure point. Never treat the newest or largest model as automatically best.
 
 Apply this proactively to every non-trivial user request. Do not wait for the user to ask which model to use. Before executing substantial analysis, coding, design, research, or document work, state the resolved provider/model/effort and one escalation path. Skip the announcement only for trivial one-step requests where routing has no practical benefit.
+
+> 2026-08-06: 상시 발동을 해제하자는 제안(ADR 2026-08-05)이 있었으나 **ASURA님이 기각**했다.
+> 2026-07-19 사용자 지시로 못박힌 규칙이라 유지한다. description만 압축했다.
+> 이 절을 다시 지우자는 제안이 나오면 이 줄을 먼저 읽는다.
 
 ## Workflow
 
