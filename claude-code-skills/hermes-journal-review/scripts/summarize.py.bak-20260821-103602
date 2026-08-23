@@ -13,7 +13,6 @@
 """
 import json
 import os
-import re
 import sys
 from collections import Counter, defaultdict
 
@@ -32,13 +31,6 @@ SHARED_JOURNAL = os.path.join(
     "G:\\", "내 드라이브", "AUSURA",
     "AI-Sessions", "conversations", "runtime-journal.jsonl",
 )
-
-
-# 슬랙·텔레그램·브리지로 시킨 일은 runtime-journal 에 안 들어가고 AUSURA
-# inbox 에만 쌓인다(2026-08-21 실측: runtime-journal 의 runtime 은 claude/
-# antigravity 뿐, 슬랙 0건). 그래서 슬랙 작업이 자기개선 표본에서 통째로
-# 빠져 있었다. inbox 도 같이 읽는다.
-INBOX_DIR = os.path.join(os.path.dirname(SHARED_JOURNAL), "inbox")
 
 
 CODEX_STATE_DB = os.path.join(os.path.expanduser("~"), ".codex", "state_5.sqlite")
@@ -88,52 +80,6 @@ def codex_rows():
     return rows
 
 
-def inbox_rows():
-    """AUSURA inbox 의 .md 를 저널 행 모양으로 바꿔 돌려준다."""
-    out = []
-    paths = []
-    # 오래된 카드는 inbox/archive/ 로 내려가므로 하위까지 훑는다. 안 그러면
-    # 정리할 때마다 저널 표본이 줄어 자기개선 근거가 사라진다(2026-08-21).
-    for dirpath, _dirnames, filenames in os.walk(INBOX_DIR):
-        for name in filenames:
-            if name.endswith(".md") and name != "README.md":
-                paths.append(os.path.join(dirpath, name))
-    for path in sorted(paths):
-        name = os.path.basename(path)
-        try:
-            with open(path, encoding="utf-8") as fh:
-                lines = fh.read().splitlines()
-        except OSError:
-            continue
-        meta, body = {}, lines
-        if lines and lines[0].strip() == "---":
-            end = next(
-                (i for i, ln in enumerate(lines[1:], 1) if ln.strip() == "---"),
-                None,
-            )
-            if end is not None:
-                for ln in lines[1:end]:
-                    key, sep, val = ln.partition(":")
-                    if sep:
-                        meta[key.strip()] = val.strip().strip("'" + '"')
-                body = lines[end + 1:]
-        title = ""
-        for ln in body:
-            ln = ln.strip()
-            if ln and not ln.startswith(("#", "**", "-", "|", ">")):
-                title = ln
-                break
-        source = meta.get("source", "inbox")
-        out.append({
-            "ts": meta.get("ts", ""),
-            "event": "Stop",
-            "runtime": source.split("-")[0] or "inbox",
-            "session": meta.get("id", name[:-3]),
-            "summary": {"user_requests": [title]} if title else {},
-        })
-    return out
-
-
 def journal_paths():
     """읽을 저널 파일 전부. 없는 건 조용히 건너뛴다."""
     found = []
@@ -174,115 +120,6 @@ def load(path, days=None):
         cut = f"{days}"
         rows = [r for r in rows if r.get("ts", "") >= cut]
     return rows
-
-
-# ── 스킬 승격 후보 ────────────────────────────────────────────────
-# ASURA 님 규칙: 반복 작업을 즉시 자동화하지 말고, 같은 패턴이 최소 3회
-# 확인된 뒤에만 스킬로 승격한다. 그런데 그 3회를 세는 곳이 어디에도
-# 없어서 승격이 시작조차 못 했다(2026-08-21). 여기서 센다.
-#
-# 세는 대상은 ASURA 님이 실제로 친 말이다. 루틴이 모델에게 넣는 기계
-# 프롬프트("System instructions:", "아래 ...를 수행하라")가 훨씬 자주
-# 나오는데, 그건 이미 스킬로 있는 것들이라 후보가 아니다.
-PROMOTE_MIN_HITS = 3
-
-_MACHINE_MARKERS = (
-    "system instructions", "you are hermes", "# files mentioned",
-    "use the connected", "base directory for this skill",
-    "<codex_delegation>", "[역할/지침]", "중요: 아래", "아래 notion",
-    "루틴을 수행하라", "수행하라. 대상", "다음 지시를 수행",
-    "[로컬 hermes 브리지 유지보수", "아래는 에이전트 저널",
-    # 연결 점검용 핑. 반복되지만 업무가 아니다.
-    "reply with exactly", "숫자 1만", "pong", "sse_ok", "handover pending approval",
-)
-
-# 후보는 '시켜서 일이 되는 말'이어야 한다. 불평·질문·감탄("뭔소리여",
-# "왜 자꾸뜨는거야")은 아무리 반복돼도 스킬로 만들 게 없다.
-# ponytail: 동사 목록은 손으로 추린 것이다. 놓치는 게 보이면 여기에 더한다.
-_TASK_VERBS = (
-    "올려", "올리", "정리", "만들", "분석", "확인", "보고", "수정", "고쳐", "고치",
-    "실행", "동기화", "업로드", "검색", "작성", "생성", "추출", "변환", "채워",
-    "분류", "점검", "검토", "요약", "발송", "등록", "배포", "설치", "연동",
-)
-
-
-def _looks_like_task(q):
-    return any(v in q for v in _TASK_VERBS)
-
-# ponytail: 잡음 토큰은 손으로 추린 목록이다. 후보가 지저분하면 여기에 더한다.
-_NOISE = {
-    "다시", "시도", "계속", "진행", "확인", "해줘", "해라", "하라", "좀", "그리고",
-    "그럼", "근데", "지금", "내가", "너는", "이거", "저거", "그거", "뭐야", "뭔데",
-    "어떻게", "왜", "안됨", "안돼", "알겠", "네", "응", "ok", "okay", "오케이",
-    "출력", "reply", "with", "exactly", "the", "and", "for", "you",
-}
-
-
-def _is_human_request(q):
-    """루틴이 넣은 기계 프롬프트를 걸러내고 사람이 친 말만 남긴다."""
-    low = q.lower()
-    if len(q) > 120:
-        return False
-    return not any(m in low for m in _MACHINE_MARKERS)
-
-
-def _signature(q):
-    """표현이 조금 달라도 같은 일이면 같은 열쇠가 나오게 만든다."""
-    tokens = []
-    for raw in re.split(r"[^0-9A-Za-z가-힣]+", q.lower()):
-        if len(raw) >= 2 and raw not in _NOISE:
-            tokens.append(raw[:6])
-    return tuple(sorted(set(tokens))[:5])
-
-
-def _covered_by_skill(sig, skill_words):
-    """이미 스킬이 있는 일이면 새 후보가 아니다."""
-    return any(any(t.startswith(w) or w.startswith(t) for w in skill_words) for t in sig)
-
-
-def existing_skill_words():
-    """설치된 스킬 이름을 한글/영문 조각으로 펴서 돌려준다."""
-    words = set()
-    roots = [
-        os.path.join(os.path.expanduser("~"), ".claude", "skills"),
-        os.path.join(os.path.expanduser("~"), ".hermes", "skills"),
-    ]
-    for root in roots:
-        for dirpath, dirnames, filenames in os.walk(root) if os.path.isdir(root) else ():
-            if "SKILL.md" in filenames:
-                for part in re.split(r"[^0-9A-Za-z가-힣]+", os.path.basename(dirpath).lower()):
-                    if len(part) >= 3:
-                        words.add(part[:6])
-                dirnames[:] = []
-    # 스킬 이름은 영문인데 ASURA 님은 한글로 시키신다. 이름만으로는 안 겹치므로
-    # 자주 쓰는 대상어를 손으로 이어둔다.
-    words.update({"업무일지", "일지", "노션", "notion", "인스타", "insta",
-                  "유튜브", "youtub", "보관함", "캘린더", "calend", "출첵", "출석"})
-    return words
-
-
-def promotion_candidates(asks):
-    """(대표문구, 횟수, 런타임들, 이미있음) 목록. 3회 이상만."""
-    skill_words = existing_skill_words()
-    buckets = {}
-    for rt, q in asks:
-        if not _is_human_request(q) or not _looks_like_task(q):
-            continue
-        sig = _signature(q)
-        if not sig:
-            continue
-        b = buckets.setdefault(sig, {"n": 0, "rts": set(), "sample": q})
-        b["n"] += 1
-        b["rts"].add(rt)
-        if len(q) < len(b["sample"]):
-            b["sample"] = q
-    out = []
-    for sig, b in buckets.items():
-        if b["n"] >= PROMOTE_MIN_HITS:
-            out.append((b["sample"], b["n"], sorted(b["rts"]),
-                        _covered_by_skill(sig, skill_words)))
-    out.sort(key=lambda t: -t[1])
-    return out
 
 
 def summarize(rows):
@@ -342,22 +179,6 @@ def summarize(rows):
         for rt, q in asks[-12:]:
             add(f"- [{rt}] {q[:140]}")
 
-        cands = promotion_candidates(asks)
-        add("")
-        add(f"## 스킬 승격 후보 ({PROMOTE_MIN_HITS}회 이상 반복)")
-        fresh = [c for c in cands if not c[3]]
-        known = [c for c in cands if c[3]]
-        if fresh:
-            add("- 아직 스킬이 없는 반복 작업 — ASURA님 승인 후 승격:")
-            for sample, n, rts, _ in fresh[:8]:
-                add(f"    {n}회  [{'/'.join(rts)}]  {sample[:70]}")
-        else:
-            add("- 아직 스킬이 없는 반복 작업: 없음 (새로 만들 것 없음)")
-        if known:
-            add("- 이미 스킬로 있는 반복 작업(참고):")
-            for sample, n, rts, _ in known[:5]:
-                add(f"    {n}회  {sample[:70]}")
-
     # 작업 종료(Stop) — 런타임 무관
     stops = [r for r in rows if r.get("event") == "Stop"]
     if stops:
@@ -403,7 +224,6 @@ def main():
     for p in paths:
         rows.extend(load(p, days=days))
     rows.extend(codex_rows())
-    rows.extend(inbox_rows())
     rows = dedupe(sorted(rows, key=lambda r: str(r.get("ts", ""))))
     if not rows:
         print("저널은 있으나 비어 있습니다: " + ", ".join(paths))
@@ -469,61 +289,7 @@ def demo():
     os.close(fd)
     assert summarize(load(tmp2)).startswith("# 에이전트 저널 요약 — 0건")
     os.remove(tmp2)
-    # 2026-08-21 회귀 ①: 슬랙·브리지 작업은 runtime-journal 에 안 들어가고
-    # AUSURA inbox 에만 쌓여서 자기개선 표본에서 통째로 빠져 있었다.
-    inbox_dir = tempfile.mkdtemp()
-    with open(os.path.join(inbox_dir, "x.md"), "w", encoding="utf-8") as fh:
-        fh.write("---\nid: abc\nsource: hermes-mcp-request-99\n"
-                 "ts: 2026-08-13T06:00:00Z\n---\n\n인스타 보관함 정리해줘\n")
-    _saved_inbox = INBOX_DIR
-    globals()["INBOX_DIR"] = inbox_dir
-    try:
-        got = inbox_rows()
-    finally:
-        globals()["INBOX_DIR"] = _saved_inbox
-    assert len(got) == 1, f"inbox 미수집: {got}"
-    assert got[0]["runtime"] == "hermes", got[0]
-    assert got[0]["summary"]["user_requests"] == ["인스타 보관함 정리해줘"], got[0]
-    # 정리하면서 하위 archive/ 로 내려간 카드도 표본에 남아야 한다.
-    arch = os.path.join(inbox_dir, "archive")
-    os.makedirs(arch, exist_ok=True)
-    with open(os.path.join(arch, "y.md"), "w", encoding="utf-8") as fh:
-        fh.write("---\nid: old\nsource: slack\nts: 2026-07-08T01:00:00Z\n---\n\n"
-                 "예전 카드\n")
-    globals()["INBOX_DIR"] = inbox_dir
-    try:
-        got2 = inbox_rows()
-    finally:
-        globals()["INBOX_DIR"] = _saved_inbox
-    assert len(got2) == 2, f"archive 하위 카드가 표본에서 빠짐: {got2}"
-    os.remove(os.path.join(arch, "y.md"))
-    os.rmdir(arch)
-    os.remove(os.path.join(inbox_dir, "x.md"))
-    os.rmdir(inbox_dir)
-
-    # 2026-08-21 회귀 ②: ASURA 님 규칙은 "같은 패턴 3회 뒤 스킬 승격"인데
-    # 3회를 세는 곳이 없어 승격이 시작조차 못 했다. 3회부터 후보로 뜨고,
-    # 잡담·핑·기계 프롬프트는 아무리 반복돼도 후보가 아니어야 한다.
-    asks = (
-        [("claude", "견적서 자동으로 만들어줘")] * 3
-        + [("claude", "뭔소리여")] * 6
-        + [("codex", "reply with exactly: PONG")] * 4
-        + [("codex", "System instructions: You are Hermes")] * 5
-        + [("claude", "업무일지 올려줘")] * 3
-        + [("claude", "회의록 요약해줘")] * 2
-    )
-    cands = promotion_candidates(asks)
-    texts = [c[0] for c in cands]
-    assert any("견적서" in t for t in texts), f"3회 반복 작업이 후보에서 빠짐: {texts}"
-    assert not any("뭔소리여" in t for t in texts), "잡담이 후보로 올라옴"
-    assert not any("PONG" in t for t in texts), "연결 점검 핑이 후보로 올라옴"
-    assert not any("System instructions" in t for t in texts), "기계 프롬프트가 후보로"
-    assert not any("회의록" in t for t in texts), "2회짜리가 후보로 올라옴(3회 미만)"
-    covered = {c[0]: c[3] for c in cands}
-    assert any("업무일지" in t and covered[t] for t in covered), \
-        "이미 스킬 있는 일이 '새 후보'로 분류됨"
-
-    print("OK  집계 4종 + 경고 3종 + 빈파일 + inbox + 승격후보 통과")
+    print("OK  집계 4종 + 경고 3종 + 빈파일 통과")
 
 
 if __name__ == "__main__":

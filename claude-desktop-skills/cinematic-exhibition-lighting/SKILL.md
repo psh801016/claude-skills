@@ -1,89 +1,76 @@
 ---
 name: cinematic-exhibition-lighting
-description: "Create source-faithful stage-lighting composites, pure additive light plates, and source-aligned material lighting-response passes from an interior or event render plus a lighting reference. Use for cinematic event lighting, beam transfer, concert-light references, table or wall illumination, lighting compositing, and light-only passes. Lock Image 1 camera, architecture, screens, typography, logos, graphics, furniture, and all non-lighting pixels."
+description: "Create source-faithful event-lighting prompts from an interior or stage render plus a lighting reference. Returns a final-composite prompt and a matching light-only plate prompt; generate images only when explicitly asked."
 ---
 
 # Cinematic Exhibition Lighting
 
-Treat Image 1 as the immutable camera and construction source. Transfer only the beam character from Image 2. Never solve a fixed-geometry exhibition or conference render through a full-scene relight.
+Treat Image 1 as the immutable camera and construction source. Transfer only the lighting character from Image 2: beam count, color, aiming behavior, haze, edge softness, and landing behavior. Never use Image 2's room, fixtures, people, screens, text, or architecture.
 
-## Choose the pass mode first
+## Default deliverable
 
-Use exactly one mode and name it in the second output block.
+When Image 1 and lighting-reference Image 2 are supplied, return exactly two independently copyable fenced `text` blocks, in this order:
 
-1. **PURE ADDITIVE LIGHT PLATE** is the default. Use it when only beam shafts, haze, pools, spill, and reflections are needed. The output is RGB 0,0,0 black outside those effects.
-2. **MATERIAL LIGHTING-RESPONSE PASS** is required when the user asks for light to visibly fall on a table, chair, carpet, wall, or other source material, or when the target generator must preserve the visibly lit material within the light masks. Retain Image 1 material pixels *only inside* the directly illuminated masks; keep everything else black. This is not a mistake or a full-scene render.
+1. `COMPOSITED FINAL PROMPT`
+2. `PURE ADDITIVE LIGHT PLATE PROMPT`
 
-Do not use a pure black plate when the user explicitly requires visible source-material response inside the illuminated area.
+Put the heading inside each block. Output no prose before, between, or after the blocks. The first prompt requests the finished lighting-applied image; the second requests the matching black-background light plate. Do **not** create images, invoke an image generator, or save files unless the user explicitly asks to generate, make, render, produce, or deliver the images.
 
-## Beam mapping: no semantic guessing
+## Beam mapping
 
-Before writing a prompt, inspect Image 1 and register every beam with original-canvas coordinates:
+Before writing either prompt, inspect Image 1 and register each intended beam in original-canvas pixel coordinates:
 
-- `S=(x,y)`: the exact centre of one existing visible Image 1 fixture lens or aperture.
-- `T`: a named, visible target surface plus its closed perspective-correct contact polygon.
-- `L`: a closed direct-deposit polygon fully contained within `T`; list its vertices in original-canvas pixel coordinates.
+- `S=(x,y)`: centre of an existing visible fixture lens or aperture.
+- `T`: named visible target surface with a closed, perspective-correct contact polygon.
+- `L`: closed direct-deposit polygon fully inside `T`.
 
-For each beam, state that its centreline starts exactly at `S`, follows the existing fixture aiming axis, and stops at the first intersection with `L`. Include the original canvas dimensions, coordinate records, and polygon vertices. Do not use only vague direction words such as “left”, “right”, “toward the stage”, or “downward”.
+Each beam must begin exactly at `S`, follow the visible aiming axis, and terminate at `L`. If an off-frame source is genuinely supported by Image 1, record its boundary entry point `E=(x,y)` and inward direction instead. Do not invent an in-frame source.
 
-For table illumination, define `T` as the visible usable tabletop plane only: exclude its edge thickness, underside, chairs, objects, base, legs, neighbouring tables, and adjacent structures. Inset `L` from every tabletop edge by a visible guard band and keep every direct-beam deposit fully inside it. The centre aisle, empty floor, carpet, stage, wall, chair, and table legs are excluded unless separately named as a target. Allow short spill only on the same continuous table material, immediately adjacent to `L`, and never across a table edge. Do not substitute circular floor pools for tabletop illumination. Use soft, perspective-correct diffuse tabletop gradients; hard discs, gobos, and floating halos are prohibited unless requested.
+For tabletop targets, define `T` as the usable tabletop only; exclude its edges, underside, legs, chairs, objects, and adjacent surfaces. Inset `L` visibly from every tabletop edge. Use a perspective-correct diffuse response, never a circular floor pool or a floating halo.
 
-## Fixed-source rules
+## Shared invariants
 
-- Image 1 supplies the camera, crop, room, ceiling, walls, stage, screens, artwork, typography, logos, furniture, materials, visible equipment, and all source geometry.
-- Image 2 supplies only beam count, color, source-side direction, landing behavior, haze density, and edge softness. Ignore its performers, audience, truss, fixtures, screens, text, and architecture.
-- Begin a visible beam at the exact recorded `S` lens/aperture and along its visible aiming axis and mounting structure. An off-frame source is allowed only if Image 1 visibly supports its direction: record its canvas-boundary entry point `E=(x,y)` and inward direction, start the beam at `E`, and never invent an in-frame fixture or open-air origin. Never invent, duplicate, relocate, or redesign a fixture, truss, podium, lectern, monitor, speaker, cable, stage extension, table, chair, wall, or ceiling member.
-- Keep beams clear of LED faces unless the user explicitly targets an LED face. Restore source screen artwork above every light layer.
-- Gobo and laser are OFF unless the user explicitly requests them.
+- Image 1 supplies the exact camera, crop, room, ceiling, walls, stage, screens, artwork, typography, logos, furniture, materials, and visible equipment.
+- Keep beams clear of LED faces unless the user explicitly targets an LED face. In the composite, restore the original screen artwork above light layers.
+- Do not invent, remove, duplicate, relocate, or redesign fixtures, truss, podiums, lecterns, microphones, monitors, speakers, cables, furniture, people, walls, ceiling, or stage geometry.
+- Gobo, laser, lens flare, starburst, global color wash, and generic concert decoration are off unless explicitly requested.
 
-## Mandatory output contract
+## COMPOSITED FINAL PROMPT
 
-When Image 1 and lighting-reference Image 2 are supplied, return exactly two independent, separately copyable fenced `text` blocks, in this order:
+The first block must be a complete prompt for a finished lighting-applied render, not a workflow specification. It must:
 
-1. `COMPOSITED FINAL SPEC`
-2. `PURE ADDITIVE LIGHT PLATE PROMPT` **or** `MATERIAL LIGHTING-RESPONSE PASS PROMPT`, matching the selected mode.
+- Start exactly: `Create a final source-faithful lighting composite at the exact pixel dimensions of Image 1.`
+- State Image 1 is the immutable edit target and Image 2 is lighting reference only.
+- List all mapped `S → T → L` or approved `E → T → L` records with coordinates, beam color, intensity, haze, and target-material response.
+- Describe the requested spatial mood faithfully. If the user asks for natural room atmosphere, retain visible soft volumetric beams while distributing restrained response across the specified room surfaces; do not silently remove the beams or focus all light on the stage.
+- Require illumination-only changes inside direct-beam, local-haze, landing, and physically connected short-spill masks. Preserve every source-material edge and all screen artwork.
+- Explicitly prohibit all unrequested new objects and retain the original crop.
 
-Put each heading inside its own fenced block. Output only those two blocks, with no prose before, between, or after them. Do not generate an image unless asked.
+## PURE ADDITIVE LIGHT PLATE PROMPT
 
-### COMPOSITED FINAL SPEC
+The second block must always be a separate, matching light-only extraction prompt. It must:
 
-Specify all of the following:
+- Start exactly: `Create a pure additive lighting pass on a uniform RGB 0,0,0 black canvas at the exact pixel dimensions of Image 1.`
+- Repeat the same mapped beam paths, source coordinates, colors, intensities, haze, and landing geometry used by the composite prompt.
+- Include the shafts and the same visible light deposits/reflections that appear in the finished composite.
+- Include every visually present light effect from the selected composite design: every beam shaft, haze envelope, source glow, landing, and connected reflected-light deposit. A wall, table, seat top, aisle, or stage-front response is included only when it is actually lit in that design; never omit it, and never invent it.
+- Render no room, fixture, screen, graphic, furniture, silhouette, base material, shadow, text, logo, or unlit pixel. Every pixel outside the registered beam, haze, landing, and reflection masks must be RGB 0,0,0 black.
+- Make the plate directly alignable with the composite under Screen or Linear Dodge (Add).
+- Keep shafts visibly readable on black; do not reduce them to faint residual differences. Preserve their source glows, tapered haze, and connected reflected-light deposits.
 
-1. Image 1 remains the untouched bottom layer at its original dimensions.
-2. Generate the selected pass at identical dimensions and blend it with Screen or Linear Dodge (Add).
-3. Mask the pass to each registered `S → T` or `E → T` beam-path mask, its local haze envelope ending at `L`, and its exact closed `L` landing mask.
-4. Use a masked Curves or Multiply adjustment only if the requested look needs contrast; never darken LED faces or direct landing zones.
-5. Restore Image 1 as the top source-pixel layer for all LED faces, typography, logos, graphic panels, screen frames, straight architecture, furniture contours, carpet boundaries, and every unlit region.
-6. Explicitly name all forbidden generated objects, including podiums and lecterns when the scene contains a stage.
-7. Final crop and every source pixel outside the lighting masks remain identical to Image 1.
+## Explicit image-production requests
 
-### Pass prompt requirements
+Only when the user explicitly asks to make, generate, render, produce, or deliver images, create the requested composite and/or plate. For a requested light-only plate, produce the complete visible lighting design from the selected composite on a black canvas, inspect it visually, and ensure no beam, haze, glow, landing, or directly illuminated material response is missing. Deliver it at Image 1's exact pixel dimensions.
 
-Start a pure plate prompt exactly with:
+## Verification
 
-`Create a pure additive lighting pass on a uniform RGB 0,0,0 black canvas.`
+Reject a generated result if any check fails:
 
-Start a response-pass prompt exactly with:
+- A 50% overlay moves, repaints, or rebuilds architecture, screen text, logos, furniture contours, carpet boundaries, or crop.
+- A beam does not begin at its registered source or terminate on its registered `L` polygon.
+- The composite loses requested visible beams, adds a global wash, or concentrates light on an unrequested surface.
+- The light plate differs in beam placement, color, or landing response from the composite, or contains non-black pixels outside the registered lighting masks.
+- Any beam, haze, source glow, landing, or directly illuminated material response visible in the selected composite design is absent from the plate.
+- The plate's shafts are too faint to read clearly against its black canvas.
 
-`Create a source-aligned material lighting-response pass at the exact pixel dimensions of Image 1.`
-
-Then include these requirements, adjusted to the selected mode:
-
-- List every mapped `S → T` or approved `E → T` path with its source/entry coordinate, `T` and `L` polygon vertices, beam color, intensity, haze, and target-surface response.
-- Require a beam to stop at `L`; prohibit accidental landings, material response, or post-target continuation on the aisle, bare floor, stage, LED faces, or any other excluded surface.
-- For a response pass, permit only the original material pixels within a direct-beam, local-haze, `L`, or physically connected short-spill mask. Inside every response mask, alter illumination values only: do not move, warp, extend, erase, repaint, occlude, or synthesize any source-material edge, object silhouette, table boundary, furniture contour, or camera-space geometry. An adjacent-spill mask must share a visible physical edge with `T`, remain on the same continuous source-material surface, and never cross a tabletop edge, aisle, bare floor, stage, furniture boundary, or excluded surface.
-- For a pure plate, render no room, fixture, screen, graphic, furniture, silhouette, base material, shadow, or unlit pixel.
-- Prohibit global blue or magenta wash, lens flare, starburst, generic concert pattern, and any unrequested decorative effect.
-- Explicitly require no new visible hardware, podium, lectern, rostrum, microphone stand, display stand, console, monitor, speaker, cable, person, object, furniture, or architecture.
-
-## Verification and rejection
-
-Reject the result if any check fails:
-
-- A 50% overlay against Image 1 moves, repaints, or rebuilds an architectural edge, screen, logo, text, furniture contour, carpet boundary, or crop.
-- A beam does not visibly begin at its registered existing source lens/approved boundary entry or does not terminate at its registered `L` polygon on `T`.
-- A table-targeted beam, response, or spill pixel crosses its registered tabletop masks onto the aisle, floor, stage, wall, chair, or as a hard isolated disc instead of a perspective-correct tabletop response.
-- A pure plate has a non-black pixel outside its beam, haze, or direct-deposit masks.
-- A material response pass retains source material outside its direct illumination masks or creates any new scene object.
-
-If a generator cannot keep the source and target coordinates registered, reject its output. Do not solve the mismatch by weakening the geometry lock; create or refine the individual source and target masks instead.
+If registration fails, refine individual masks; do not weaken the geometry lock.
