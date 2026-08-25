@@ -27,6 +27,7 @@ description: 아이소메트릭/탑다운 전시·부스 렌더에 실사 인물
 1. `scripts/inspect_rgba_source.py <source>`로 PNG 모드·크기·알파·SHA-256을 기록한다.
 2. 원본을 보기 전용으로 잠그고, 접근 가능한 바닥만 허용 마스크로 만든다. 이미지 전역을 허용하지 않는다.
 3. 원근과 위에서 내려다보는 시점에 맞는 실사 인물만 별도 RGBA 레이어로 만든다. 기본은 3–6명이며, 요청이 없으면 통로를 막지 않도록 듬성듬성 배치한다.
+   - **위치·방향이 중요하면 마커 오버레이를 쓴다(2026-08-25).** 원본 위 새 레이어에 형광색으로 점 = 각 인물 발 접지점, 화살표 = 그 인물이 향할 방향을 그려 별도 PNG로 저장하고, 원본과 함께 2장으로 넣는다. 프롬프트에는 `the [색] dots are where each person stands, the [색] arrows are the direction each person faces` 처럼 색으로 지칭하고 `no markers, no dots, no arrows in the result`를 넣는다. 대충 그려도 통과하며, **장면에 없는 형광색**을 써야 한다. 상세 규격은 `person-layer-maker` C-0 절이 정본이다.
 4. 사람의 키는 옥타 2,500 mm 기준으로 계산하고, 같은 통로 안에서도 먼 곳은 조금 작게 보정한다.
 5. `scripts/composite_rgba.py`로 인물 레이어만 원본 위에 합성한다. 원본 알파는 그대로 되돌린다.
 6. `scripts/verify_source_lock.py`로 허용 마스크 밖 RGB 변경이 0이고 전체 알파가 원본과 동일한지 확인한다. 하나라도 실패하면 출력물을 폐기한다.

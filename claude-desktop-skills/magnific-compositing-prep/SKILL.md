@@ -19,6 +19,12 @@ description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지
 - CGI→실사화(`interior-prompt-maker`) · 조명 전환(`cinematic-exhibition-lighting`)과는
   목적이 다르다 — 이 스킬은 **합성 배경의 기하학 정확도 확보**가 목적이다.
 
+## 전시 조명 보존 인계
+
+- 행사·전시 조명 참고사진, 조명 설계, 합성본, 라이트 플레이트는 먼저 `cinematic-exhibition-lighting`에서 확정한다. 이 스킬은 선택된 합성본의 구조·재질·선명도 보정만 맡으며 광원 배치나 색을 다시 설계하지 않는다.
+- 라이트 플레이트는 원본과 동일한 구도·픽셀 치수의 검정 바탕 효과 레이어다. Magnific 업스케일·재질 보정에 넣지 않고, 별도 레이어로 그대로 보존한다.
+- 화이트·블루 등 확정된 행사 조명 톤을 중성화하거나, 빛줄기·간접광·테이블 반응을 제거하는 보정은 금지한다.
+
 > 용어: 여기서 "nanobanana"는 **Magnific 업스케일러의 nanobanana 엔진 프리셋**을 뜻한다(원래 nano-banana는 Google Gemini 계열 이미지 모델의 별칭 — 공식명 Gemini Flash Image). SETTINGS(Creativity/Resemblance/Detail/HDR)는 Magnific UI 슬라이더 값이며 Google Gemini API 파라미터가 아니다.
 
 ## 처리 순서

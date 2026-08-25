@@ -13,6 +13,12 @@ description: "이미 실사화된 공간 사진(전시부스·행사장·인테�
 조명 레이어는 `cinematic-exhibition-lighting`이 담당한다.
 아이소메트릭·탑다운 렌더는 `isometric-person-compositor`.
 
+## 전시 조명 연동
+
+- 행사장 조명이 포함된 장면에 사람을 넣을 때는 `cinematic-exhibition-lighting`에서 사용자가 선택한 합성본을 조명 정본으로 삼는다. 인물 스킬은 그 조명의 방향·색온도·바닥 반응만 사람에게 맞추고, 광원 수·빛줄기·간접광 배치를 새로 만들거나 바꾸지 않는다.
+- 조명과 인물을 함께 이미지로 요청해도 조명 출력 계약은 조명 스킬이 맡는다: 최종 합성본과 같은 구도의 인물 없는 라이트 플레이트를 각각 유지한다. 인물 레이어·그림자는 합성본에만 더하며 라이트 플레이트에는 사람, 그림자, 의자, 테이블을 넣지 않는다.
+- 사람 합성 후에도 무대·스크린·천장·벽·테이블에 이미 확정된 조명 반응은 보호한다. 인물의 접지 그림자와 바로 인접한 약한 스필만 추가 변경으로 허용한다.
+
 경로는 두 계열이다 — ① 스튜디오 일괄 생성 후 사람만 분리(경로 A/B),
 ② 장면에 직접 배치 생성 후 원본과의 차분(diff)으로 "사람 + 사람에 묻은 빛 + 그림자"만
 레이어로 추출(경로 C). **"배경에 맞게 넣어줘" 요청의 기본값은 경로 C**다 — 배경 정합이 자동이다.
@@ -105,11 +111,46 @@ QUALITY GATE — 재생성 판정 기준
 - **오클루전 명시**: 전경 구조물 뒤에 설 인물은 반드시 `partially occluded behind [구조물]`로 앞뒤 관계를 지정 — 틀린 오클루전은 레이어로도 수정 불가(부분 재생성이 유일한 출구).
 - 구역별 배치는 **장면의 실제 구조물 이름으로** 지정(`on the green grass carpet at the round wooden café tables` 식), 원경은 `smaller and softer as they are farther away`. 텍스트 소품 금지·시선 규칙은 공통 원칙 그대로.
 
-### 포토존·옥타판 구역 및 포즈 판정 (필수)
+### C-0. 마커 오버레이 배치 지시 (2026-08-25 신규 · 실사용 검증 · **방향이 중요하면 1순위**)
+
+**핵심:** 방향·위치를 텍스트로 설명하지 말고 **이미지에 기하를 그려 넣는다.** 아래 판정 절의 `n_front`·`C_floor`·베이스라인은 전부 마커 4개로 대체된다. 사용자가 손으로 대충 그린 마커로도 통과한다(실측 검증 2026-08-25).
+
+**입력은 이미지 2장이다.**
+
+```
+Image 1 = 원본 사진 (마커 없음)      ← 구조·그래픽·픽셀 정본
+Image 2 = 마커만 있는 오버레이 PNG   ← 배치 지시서, 결과에 나오면 안 됨
+```
+
+**마커 4종** (원본 위 새 레이어에 그린 뒤 마커만 저장):
+
+| 마커 | 의미 | 대체하는 규칙 |
+|---|---|---|
+| 사각형 테두리 | 대상 옥타판 평면 `P` | "대상 판을 먼저 특정한다" |
+| 판 하단 직선 | 바닥 베이스라인 | "발 베이스라인은 판 하단과 평행" |
+| 점 N개 | 각 인물 발 접지점 | `C_floor` 계산 |
+| 화살표 | `n_front` (판 앞면 → 열린 공간) | `n_front` 유도 전체 |
+
+**색·정밀도 규칙 (실측 결과):**
+
+- **정밀도는 대충으로 충분하다.** 선 삐뚤, 굵기 제각각, 점 비대칭, 손떨림 화살표로 돌려도 정확히 나왔다. 자 대고 그릴 필요 없다.
+- **지켜야 하는 것은 4가지뿐**: ① 화살표 방향이 맞을 것 ② 사각형이 대상 판 1칸만 감쌀 것 ③ 마커끼리 색이 구분될 것 ④ **프롬프트에 쓴 색 이름 = 실제 그린 색**.
+- **색은 장면에 없는 형광색으로.** 부스 그래픽이 파란색이면 파란 마커를 쓰지 않는다. 형광 마젠타·시안·노랑·연두가 안전하다. 색상값 자체는 자유.
+- **마커 잔상 주의**: 발 접지점 마커가 결과에 점으로 새어나올 수 있다. 점을 신발이 덮을 크기보다 작게 그리거나, 공통 규칙의 원본 픽셀 복원 단계에서 제거한다.
+
+**프롬프트 골격** (색 이름은 실제 그린 색으로 바꿔 쓴다):
+
+> `"Image 1 is the [장면 유형] photograph. Its structure, panels, printed graphics, framing, carpet and lighting are the absolute reference and must stay identical. Image 2 is a MARKER OVERLAY aligned to Image 1. It is a hand-drawn placement guide and must NEVER appear in the output. Read it as follows: the [색A] quadrilateral outlines the ONE target panel; the [색B] line is the floor baseline at the bottom of that panel; the [색C] dots are where each person's feet stand; the [색D] arrow is the direction the people face. [PLACEMENT] Place exactly [N] full-body people in front of the panel outlined in [색A]. Each person stands with both feet on one [색C] dot, heels near the [색B] baseline, backs almost touching the panel. Their chest, hips, knees, toes, face and gaze all point along the [색D] arrow direction. The panel is behind them; they never look at the panel. [OUTPUT] Same framing and aspect ratio as Image 1. No markers, no lines, no dots, no arrows, no overlay graphics of any kind in the result."`
+
+- 마커를 쓰면 프롬프트에서 `screen left/right`·`toward the camera`·`outward`·`n_front` 서술이 전부 사라진다. 아래 판정 절의 금지어 규칙은 그대로 유지된다(마커가 없을 때의 폴백).
+- **`max-ai-render` 패널을 쓸 때**는 마커 PNG를 `[+ 형태 참고]` 슬롯에 넣는다. 별도 도구를 만들지 않는다.
+- 마커가 있으면 "판의 앞뒤가 불명확해 사용자 표시를 요청한다"는 대기 상태가 사라진다 — **마커 요청이 곧 그 표시 요청이다.**
+
+### 포토존·옥타판 구역 및 포즈 판정 (필수 · 마커가 없을 때의 기준)
 
 - **대상 옥타판을 먼저 특정한다.** 판의 색은 기준이 아니다. 긴 옥타 구조가 여러 칸이면 전체 벽을 포토존으로 취급하지 않는다. 사용자가 지정한 옥타판 1칸 또는 행사명·키비주얼이 크게 배치된 히어로 판 1칸만 대상 포토존이다. 일정표·이슈 목록·안내 화면이 있는 다른 판은 제외한다.
 - **화면 좌표보다 실제 판의 3D 면을 먼저 읽는다.** 대상 판의 두 세로 프레임, 하단 베이스라인, 상단선의 원근으로 판 평면 `P`를 잡는다. 그래픽이 인쇄된 표시 앞면에서 관람객이 설 수 있는 열린 공간으로 나오는 수직 방향을 `n_front`로 정의한다. 카메라, 화면 중앙, 화면 좌우·상하, 판의 색, 카펫 색·화살표·그래픽 방향으로 `n_front`를 정하지 않는다.
-- **판의 앞뒤가 불명확하면 추측하지 않는다.** 앞면과 열린 공간을 이미지에서 확정할 수 없으면 사용자 표시 또는 배치 마스터를 요청한다. 카메라를 향하는 쪽을 임의로 판 앞면으로 간주하지 않는다.
+- **판의 앞뒤가 불명확하면 추측하지 않는다.** 앞면과 열린 공간을 이미지에서 확정할 수 없으면 **C-0 마커 오버레이를 요청한다**(대충 그려도 된다고 함께 안내). 마커를 받을 수 없을 때만 배치 마스터를 요청한다. 카메라를 향하는 쪽을 임의로 판 앞면으로 간주하지 않는다.
 - 포토존의 좌우 경계는 대상 판 1칸을 감싸는 **두 개의 세로 프레임/기둥**이다. 두 프레임의 바닥 접점 중점을 `C_floor`로 정의한다. 주인공 2명의 위치는 화면 중앙이 아니라 이 프레임 사이의 **실제 3D 바닥 중심 `C_floor`**다.
 - 두 사람을 하나의 그룹으로 보고 **두 사람 발 접지점의 그룹 중점이 `C_floor`와 일치**하게 한다. 두 사람 사이의 빈 간격 중심도 판의 세로 중앙선에 맞춘다. 판 중앙, 카펫 중앙, 화면 중앙이 서로 다르면 항상 **대상 판의 `C_floor`**가 우선이다.
 - 두 발의 베이스라인은 판 하단 베이스라인과 평행하고 바로 앞에 있어야 한다. 사람을 카펫 앞쪽·대리석 쪽·카메라 쪽으로 당기거나 포토존 칸 바깥으로 옮기지 않는다.
@@ -118,7 +159,7 @@ QUALITY GATE — 재생성 판정 기준
 - **방향은 하나의 3D 관계로만 판정한다.** 공간 관계는 `대상 옥타판 P → 사람의 등 → 사람의 가슴·얼굴·시선 → n_front 방향의 열린 공간`이다. 판은 두 사람의 등 뒤에 있어야 한다. 얼굴·코·가슴·골반·무릎·발끝·시선은 판 앞쪽 열린 반공간을 향해야 한다. 사람은 판을 바라보지 않으며, 머리나 눈만 다른 방향으로 돌면 불합격이다.
 - **화면 투영은 결과 확인용일 뿐 지시 기준이 아니다.** 프롬프트에 `lower-left/right of the frame`, `screen left/right`, `toward the camera/viewer`, `front-facing`, `outward`를 방향 지시로 쓰지 않는다. 같은 3D 방향도 카메라 위치에 따라 화면에서 정면·측면·3/4로 보일 수 있으므로, 판 평면에서 유도한 `n_front`만 유지한다.
 - 프롬프트에는 다음 관계를 한 덩어리로 쓴다: `standing immediately in front of the target Octanorm panel with the panel directly behind their backs; their chests, feet, faces and gaze all extend perpendicularly away from the panel into the open space in front of that panel; derive this direction from the physical panel plane, never from the render camera or screen coordinates`.
-- **정확한 방향이 중요한 경우 텍스트 단독 생성을 금지한다.** 포토샵 수정본 또는 포즈 가이드가 있으면 그것을 한 장의 배치 마스터로 사용하고 주인공 2명 실루엣만 국소 교체한다. 가이드 없이 빈 원본에 텍스트만 써서 방향을 재현한 결과는 후보일 뿐 최종본으로 통과시키지 않는다.
+- **정확한 방향이 중요한 경우 텍스트 단독 생성을 금지한다.** 순서는 ① **C-0 마커 오버레이**(가장 싸다 — 사용자가 5분 안에 대충 그려 주면 된다) ② 포토샵 수정본·포즈 가이드를 배치 마스터로 사용하고 주인공 2명 실루엣만 국소 교체. 가이드도 마커도 없이 빈 원본에 텍스트만 써서 방향을 재현한 결과는 후보일 뿐 최종본으로 통과시키지 않는다.
 - 두 사람은 하나의 포즈 그룹이다. 서로를 바라보거나 대화·이동·관람하는 장면이 아니라 같은 `n_front` 방향으로 나란히 선다. 짝다리·가벼운 몸 틀기·편안한 표정·비대칭 손 자세는 허용하되, 가슴·골반·발끝의 주방향이 판 앞쪽 열린 반공간을 벗어나면 안 된다.
 - 사용자가 참조 이미지처럼 붐비는 행사 분위기를 요구하면, 주인공 2명과 별도로 주변 참석자를 포토존 핵심 구역 밖에 자연스럽게 배치한다. 주변 참석자는 소그룹 대화·대기·이동이 가능하지만 주인공 2명이나 대상 옥타판을 가리지 않는다.
 - 빈 원본에 모든 인물을 새로 구성할 때는 주변 참석자까지 같은 프롬프트에 명시한다. 빈 원본에 `preserve existing people`라고 쓰지 않는다. 기존 사람이 있는 배치 마스터를 수정할 때만 보존 문구를 사용한다.
