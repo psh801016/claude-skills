@@ -37,6 +37,8 @@ Each beam must begin exactly at `S`, follow the visible aiming axis, and termina
 
 For tabletop targets, define `T` as the usable tabletop only; exclude its edges, underside, legs, chairs, objects, and adjacent surfaces. Inset `L` visibly from every tabletop edge. Use a perspective-correct diffuse response, never a circular floor pool or a floating halo.
 
+Before prompting, make a **scene-response map** for every chosen beam: name every existing object that it directly lights, grazes, or is occluded by (for example tabletop, chair-back, exposed aisle carpet, stage lip, wall reveal, or screen surround). Specify its bounded material response and leave every unlit object unchanged. A beam-only design is incomplete when the selected composition visibly needs these connected responses.
+
 ## Natural event-lighting realism
 
 The finished image should read as a professionally photographed live venue, not as a lighting previsualization. Apply this hierarchy: visible source and plausible landing first, subtle local material response second, volumetric shaft last. A shaft is evidence of air scatter, not a solid painted cone.
@@ -45,6 +47,7 @@ The finished image should read as a professionally photographed live venue, not 
 - **Shaft character:** A natural shaft has a soft, irregular density gradient, a dimmer outer envelope, and fades into room ambience before the target. Keep its center translucent enough that the existing room remains visually legible. It may be partly interrupted by truss, screen edge, furniture, or people where those objects actually occlude the optical path.
 - **Aiming and count:** Do not turn every visible fixture on. Select a small asymmetric set whose angles follow the apparent fixture aim and whose landings contribute to the scene. Avoid repeated, evenly spaced, identical-width cones, symmetric fan arrays, and parallel beams that have no visible lighting purpose.
 - **Surface response:** The landing is a low-contrast, perspective-correct material response. Matte carpet and fabric receive broad diffuse lift; black tablecloths receive a restrained, low-sheen elongated lift; metal or polished trim gets only a narrow localized highlight. Keep the response connected to its source and diminish it outside the target.
+- **Furniture and occlusion:** Read tables, chairs, and stage furniture as actual light blockers and receivers, not as an untouched backdrop. Highlight only their real exposed top planes or rims where the mapped beam plausibly reaches them; preserve their shadowed faces and interrupt the light at their existing edges. Do not paint a generic pool beneath or through furniture.
 - **Indirect light:** Treat stage lips, stair treads, wall reveals, and LED spill as local bounce with short falloff. It must inherit the selected palette and never become an even room-wide wash. Preserve the venue's existing ambient exposure and practical ceiling-light balance.
 - **Color discipline:** Unless a show palette is requested, use one dominant temperature with a close supporting tint. White-blue means neutral-cool white with a lightly desaturated blue edge, not saturated cyan beams. Never mix warm amber accents into a white-blue design.
 
@@ -75,6 +78,7 @@ The second block must always be a separate, matching light-only extraction promp
 - Include the shafts and the same visible light deposits/reflections that appear in the finished composite.
 - Preserve the composite's sparse shaft count, soft density falloff, interruptions, and local indirect-light reach; do not turn faint ambient haze into bright isolated cones merely because the background is black.
 - Include every visually present light effect from the selected composite design: every beam shaft, haze envelope, source glow, landing, and connected reflected-light deposit. A wall, table, seat top, aisle, or stage-front response is included only when it is actually lit in that design; never omit it, and never invent it.
+- When the composite lights furniture or architecture, preserve that response as its own bounded additive mask: table-top deposits follow the real perspective-correct top edge; chair responses are separated rim/edge strokes; carpet deposits are clipped to exposed gaps; stage and wall responses remain local. Never reduce these to shafts alone.
 - Render no room, fixture, screen, graphic, furniture, silhouette, base material, shadow, text, logo, or unlit pixel. Every pixel outside the registered beam, haze, landing, and reflection masks must be RGB 0,0,0 black.
 - Make the plate directly alignable with the composite under Screen or Linear Dodge (Add).
 - Keep shafts visibly readable on black; do not reduce them to faint residual differences. Preserve their source glows, tapered haze, and connected reflected-light deposits.
@@ -95,6 +99,7 @@ Reject a generated result if any check fails:
 - The color palette mixes unrelated accents, or white-blue lighting is rendered as saturated blue/cyan rather than neutral-cool white with restrained blue tint.
 - The light plate differs in beam placement, color, or landing response from the composite, or contains non-black pixels outside the registered lighting masks.
 - Any beam, haze, source glow, landing, or directly illuminated material response visible in the selected composite design is absent from the plate.
+- The composite or plate shows beams while ignoring mapped table, chair, aisle, stage, wall, or frame responses, or lets light continue through their visible occluding edges.
 - The plate's shafts are too faint to read clearly against its black canvas.
 - An explicit image request returns only prompt text, or delivers the composite and light plate as one merged/ambiguous output when the user did not limit the request to one.
 
