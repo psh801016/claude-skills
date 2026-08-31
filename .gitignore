@@ -10,3 +10,9 @@ memory/
 __pycache__/
 *.pyc
 sync-skills.ps1
+
+# 자동 생성 백업본 (수정 시 매번 쌓임) — 2026-08-31:
+# sync-skills.ps1.bak-* 가 추적 대상이라 weekly-skill-sync.ps1:163 의
+# 'pre-existing changes' 가드에 걸려 주간 동기화가 통째로 중단됐다.
+*.bak-*
+*.bak2-*
