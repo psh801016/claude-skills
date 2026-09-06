@@ -454,6 +454,12 @@ replaced architecture from the second image, structural transfer from reference 
 → **`references/space-types.md` 에 있다.** 대상 공간 유형(거실·주방·욕실·오피스·로비·전시부스 등)이 정해지면 해당 항목만 읽는다.
 해당 상황이면 넘기지 말고 그 파일을 반드시 읽는다.
 
+## 실제 시공 기준 표현
+
+→ **`references/as-built-reality.md` 에 있다.** 전시부스·행사장·무대·백월이면 `exhibition-booth-classification.md`
+와 **함께** 반드시 읽는다. 공법 판정은 저 문서, "시공하면 실제로 어떻게 보이는가"(포스트 돌출·파시아 2단·
+통로 원바닥·백월 하단 업라이트 감쇠·현수막/후렉스/패트지 재질 구분·컨벤션센터 마감천장)는 이 문서가 정본이다.
+
 ## 예시
 
 → **`references/examples.md` 에 있다.** 작성 형식이 헷갈리거나 완성본 참고가 필요할 때 읽는다.

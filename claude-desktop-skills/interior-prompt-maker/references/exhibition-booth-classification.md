@@ -1,5 +1,8 @@
 # 전시부스 시공 분류기 — 옥타늄 / 맥시마 / 블럭
 
+> **짝 문서: `as-built-reality.md`** — 이 문서는 공법을 **판정**하고, 저 문서는 판정된 공법이
+> **실제 시공되면 어떻게 보이는지**(ASURA님 현장 실사진 기준)를 고정한다. 전시부스 요청이면 둘 다 읽는다.
+
 이 문서는 전시부스가 보이는 모든 `interior-prompt-maker` 요청에서 필수로 읽는다. 목표는 디자인 분위기를 추측하는 것이 아니라, 구조 원본 Image 1의 시공 증거를 구역별로 판정하여 프롬프트에 정확한 공법 언어 하나만 넣는 것이다.
 
 ## 목차
@@ -136,6 +139,20 @@
 10. `carpentry`는 해당 구역에만 `a source-confirmed solid custom-built wall with continuous site-finished surfaces and flush corners`를 쓴다.
 11. `other`는 관찰 가능한 재료·형상만 묘사하고 시스템 공법명을 쓰지 않는다.
 12. `undetermined`는 `preserve the exact visible structure and boundaries of this source region without inferring a booth construction system or adding joints, profiles, beams or hidden supports`만 쓰며 공법 고유 앵커를 방출하지 않는다.
+
+### ★ 2026-09-01 실사 정정 — 맥시마는 얇은 발광 엣지 프레임이다
+
+ASURA님 확인으로 `2026 국방 정보화 컨퍼런스`가 맥시마임이 확정됐고, 그 현장 실사진
+(`…밴드 사진\…-78458595008` 등)을 판독한 결과 아래를 정정한다. **이 절이 아래 항목들보다 우선한다.**
+
+- 실사의 맥시마는 **폭 40~50mm 수준의 슬림한 압출 부재**이고 **부재 면 전체가 균일하게 발광**한다.
+  아래 문장들의 `broad deep rectangular ... box-section`(굵고 깊은 박스빔)은 이 사용자 현장과 다르다.
+  **굵기는 어느 쪽으로도 강제하지 말고 원본에서 보이는 폭을 그대로 유지한다.**
+- 케이싱 대 코어 비율도 실사에서는 케이싱이 거의 보이지 않는다 — 정면에서는 사실상 발광면이 부재다.
+- 발광 스필은 **프레임 앞 바닥 1~2m와 천장 쪽까지** 읽힌다. "바로 아래 바닥까지만"보다 넓다.
+- 프레임 격자가 칸을 만들고 **인필(무광 현수막)은 프레임보다 안쪽으로 들어가** 앉으며 발광하지 않는다.
+- 격자 안쪽의 **흰 클립암 스포트**는 발광 프레임과 별개 조명이다.
+- 세부 실사 관찰 전문은 `as-built-reality.md` §5.
 
 ### 맥시마 → 옥타늄 오변환 회귀 차단
 
