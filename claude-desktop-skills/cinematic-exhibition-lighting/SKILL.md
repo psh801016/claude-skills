@@ -16,6 +16,22 @@ When writing prompts for Image 1, return exactly two independently copyable fenc
 
 Put the heading inside each block. Output no prose before, between, or after the blocks. The first prompt requests the finished lighting-applied image; the second requests the matching black-background light plate. Do **not** create images, invoke an image generator, or save files unless the user explicitly asks to generate, make, render, produce, or deliver the images.
 
+## Production gates — no partial delivery
+
+For every generated composite or light plate, create this execution record **before** making an image:
+
+1. `canvas`: the user's requested width × height. The working canvas and both deliverables must start at this exact size. Do not treat a smaller generated result that was independently enlarged afterward as a size-compliant pair.
+2. `base`: the immutable source asset path and its dimensions.
+3. `selected composite`: the exact approved composite path, or `none` only before any composite has been selected.
+4. `beam ledger`: every `S → T → L` path and its colour/intensity/haze.
+5. `receiver ledger`: every visible direct or connected response on stage, stair, carpet, table, chair, wall, curtain, or screen surround, explicitly marked `lit` or `unlit`.
+
+For a light-only request, the plate must contain every `lit` receiver response and only those responses; all `unlit` receivers and all base geometry remain RGB 0,0,0 black. Do not omit a spatial light response because it is subtle, and do not add a plausible response that is absent from the approved composite.
+
+When a composite is selected, never call an image generator to make its plate. Use only its matching AOV/additive layer or a verified deterministic extraction. If neither exists, stop and report the missing source; an invented plate is forbidden.
+
+Before delivery, verify: exact requested dimensions for both members, locked source/crop, beam-ledger placement, receiver-ledger completeness, and an aligned Screen/Linear Dodge overlay. Reject rather than deliver if any gate is missing, if either file was independently resized, or if the plate is a new lighting design.
+
 ## Reference and delivery routing
 
 - **Lighting reference supplied:** Analyze Image 2 before prompting. Extract only its visible beam count, color temperature, source direction, haze density, beam softness, landing behavior, indirect-light reach, and venue mood. Apply those properties to Image 1's existing fixtures and surfaces; Image 2 never supplies architecture, screens, furniture, people, or graphics.
@@ -24,6 +40,24 @@ Put the heading inside each block. Output no prose before, between, or after the
 - **Explicit image request:** Generate and deliver both images separately: (1) the finished source-faithful composite and (2) its matching pure additive light plate. Generate only one if the user explicitly limits the request to a composite or to a plate.
 - **Review before a skill edit:** When the user asks to see an image before changing this skill, generate the requested visual first and leave this skill unchanged until the user explicitly authorizes an update.
 - If full photorealization is also needed, `interior-prompt-maker` owns the material-preserving base; this skill owns the lighting plan and both final outputs. Magnific and person workflows preserve the user-selected composite and do not redesign its lighting.
+
+## ★ As-built reality rules — mandatory for exhibition and event scenes (wired 2026-09-21)
+
+When Image 1 shows an **exhibition booth, event hall, registration desk, entrance gate, photo zone, or backwall**, read this before planning any lighting:
+
+```
+C:\Users\PSH\.agents\skills\interior-prompt-maker\references\as-built-reality.md
+```
+
+It is the single source of truth for *how these builds actually look when installed*, derived from the user's own site photographs. **Never copy it — read that one path.** Every photorealization skill points at the same file.
+
+Lighting-specific consequences you must respect:
+
+1. **Self-luminous members are structure, not lighting.** A Maxima frame glows because the extrusion itself is the emitting surface — do not re-plan it as a fixture, do not add beams from it, and do not extinguish it. Its infill (matte banner or tension fabric) stays **non-emissive**, set back inside the frame.
+2. **Judge glow by the member, not by print colour.** Whole member face glowing = Maxima. Only a thin edge line glowing = Octanorm with an LED strip. No glow = Octanorm. A bright blue printed graphic is **not** a light source.
+3. **Maxima spill is wide.** Cyan-blue spill reaches the ceiling tiles and 1–2 m of floor, and it shifts the floor's own colour (a red carpet turns violet near the frame). Keep the gradient; do not clip the spill to the frame.
+4. **Registration backwalls fall off downward** (ceiling diffuse dominates) — the opposite of stage backwalls, which are lit from below by uplights. Do not mix the two.
+5. **Booth lighting is weak in real halls.** Clip-arm spots make bright ellipses with darker gaps between them; an evenly bright backwall reads as a render.
 
 ## Beam mapping
 
@@ -87,6 +121,32 @@ The second block must always be a separate, matching light-only extraction promp
 
 Only when the user explicitly asks to make, generate, render, produce, or deliver images, create both the composite and the matching plate as separate outputs unless they explicitly limit the request to one. Build the plate from the selected composite, inspect it visually, and ensure no beam, haze, glow, landing, or directly illuminated material response is missing. Deliver each output at Image 1's exact pixel dimensions.
 
+## Selected-composite plate lock — mandatory
+
+Once a composite is selected, its light plate is an **extraction of that exact selected composite**, not a second lighting design and not a plausible replacement inferred from Image 1. Do not create, move, strengthen, remove, or reinterpret a beam, wash, landing, or reflected response while making the plate.
+
+Before generating a plate, make a response ledger from the selected composite at original-canvas coordinates. For every visible light effect, record its source or indirect source, mask, and receiver. For every table, chair, aisle, wall, screen, or stage region that is **not visibly lit in the selected composite**, record `unlit` and render it RGB 0,0,0 in the plate. Never add a plausible-looking furniture rim, table arc, carpet pool, or environmental bounce merely because the object is near a light.
+
+Use the selected composite as the plate's required spatial reference. Image 1 may be consulted only to name the locked receiver geometry; it must not supply a new lighting plan. If the selected composite is unavailable, no source-aligned mask can be made, or the tool cannot keep a receiver response on its original perspective-correct surface, stop and request/recreate the composite instead of delivering a guessed plate.
+
+After generation, compare the plate against the selected composite effect by effect: every non-black region must correspond to a visible effect in the composite, and every visible composite effect must have a corresponding plate mask. Reject the plate if it contains object silhouettes, geometry-derived highlights, or any table/chair response that cannot be pointed to in the selected composite. A resize is permitted only when the same spatial transform is applied to both members of the composite/plate pair; resizing one output alone never proves alignment.
+
+### Exact extraction is not generation
+
+When the user says “extract,” “pull only the light,” or selects an existing composite, interpret it as a request for an **unchanged extraction**, never a request to generate a new light design. Do not invoke an image generator to recreate the plate from a flattened image: it can invent or relocate fixtures, beams, furniture responses, and material edges.
+
+An exact plate may be delivered only from one of these matching sources: (1) the renderer's Light Select / lighting AOV from the same camera frame, (2) the selected composite's editable additive-light layer(s), or (3) a deterministic before/after compositing workflow that produces a verified light-difference mask without non-light residue. Retain the source as the plate's provenance.
+
+If only flattened source and composite images are available and a verified difference mask cannot be made, stop. State that exact extraction requires the matching AOV or additive-light layer, and do not output an AI-invented substitute. A plausible new plate is a failed result, even if it looks realistic.
+
+### Approved-asset incremental edit lock
+
+When the user says “existing one,” “that one,” “add only this,” or marks a target on an image, the named/marked approved asset is the only edit target. Copy it to a versioned backup, then edit **only** the requested mask. Do not regenerate, restyle, rebuild from Image 1, substitute an earlier generated artifact, or alter any unmarked lighting.
+
+A user-drawn box, arrow, or mark is an edit mask, not a vague placement hint. Use its exact pixel bounds. Do not infer a source count, beam shape, colour, endpoint, or any change outside that mask. If those details cannot be read from the approved asset and mark, ask instead of guessing.
+
+Before delivery, run `scripts/verify_incremental_edit.py` against the backup and candidate with the marked rectangle. It must report the same dimensions and zero changed pixels outside the allowed rectangle. Reject the edit on any failure. Never claim an incremental update was made without this proof.
+
 ## Verification
 
 Reject a generated result if any check fails:
@@ -99,6 +159,8 @@ Reject a generated result if any check fails:
 - The color palette mixes unrelated accents, or white-blue lighting is rendered as saturated blue/cyan rather than neutral-cool white with restrained blue tint.
 - The light plate differs in beam placement, color, or landing response from the composite, or contains non-black pixels outside the registered lighting masks.
 - Any beam, haze, source glow, landing, or directly illuminated material response visible in the selected composite design is absent from the plate.
+- The plate contains a table, chair, aisle, wall, stage, or screen response that is not visibly present at the corresponding location in the selected composite, even if that response looks physically plausible.
+- The plate was generated from a new inferred lighting plan, from Image 1 alone after a composite was selected, or was independently resized without applying the same transform to the selected composite.
 - The composite or plate shows beams while ignoring mapped table, chair, aisle, stage, wall, or frame responses, or lets light continue through their visible occluding edges.
 - The plate's shafts are too faint to read clearly against its black canvas.
 - An explicit image request returns only prompt text, or delivers the composite and light plate as one merged/ambiguous output when the user did not limit the request to one.
