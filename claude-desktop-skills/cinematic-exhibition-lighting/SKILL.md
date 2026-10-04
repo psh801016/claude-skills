@@ -7,6 +7,16 @@ description: "Create source-faithful, naturally photographed event-lighting prom
 
 Treat Image 1 as the immutable camera and construction source. When supplied, Image 2 contributes only lighting character: beam count, color, aiming behavior, haze, edge softness, and landing behavior. Never use Image 2's room, fixtures, people, screens, text, or architecture. Without Image 2, derive a restrained lighting design from the visible fixtures, venue type, and requested mood; do not invent a concert look.
 
+## Image execution — use retained layers, not improvised subtraction
+
+For image requests, read [workflow and output contract](references/workflow-and-output-contract.md) before choosing the production method. Read [lighting layer set](references/lighting-layer-set.md) when separating effects or compositing across graphics/people. The [approved quality reference](references/forward-beam-quality-reference.md) is optional visual guidance, never a fixed lighting preset.
+
+- Preserve the user-selected asset and its lighting. An accepted plate is not permission to regenerate it. A correction changes only the requested effects and updates the matching composite.
+- Keep the restored source artwork **below foreground air effects**, above unrelated surface-light edits. Protect screen content, not the entire rectangular image region in front of it. Screen faces, LED emission and haze in front of a screen are different components.
+- Author or retain the actual light layer(s) used to make the final composite. Export the plate from those same layers. A whole-image AI edit may be a candidate, but `max(candidate - original, 0)`, smoothing, or screen-shaped black masks do not establish an exact light extraction. Do not redraw beams while claiming to extract an approved composite.
+- If the room must become darker, prepare and retain that exposure-adjusted base separately. Adding light cannot darken the original. Deliver that base when it is needed to reproduce the supplied composite.
+- Before delivery, run `python scripts/verify_light_pair.py <pair.json>` as specified in the workflow contract. It checks saved images, layer provenance, required effect supports (including LED-foreground haze when present), unlit areas, dimensions and the declared blend. Its `NUMERIC_PASS` is **not** a visual approval: also inspect for graphic/geometry residue and discontinuities along the complete light paths. Never write or repeat a success flag without its actual check output.
+
 ## Default deliverable
 
 When writing prompts for Image 1, return exactly two independently copyable fenced `text` blocks, in this order:
@@ -20,17 +30,17 @@ Put the heading inside each block. Output no prose before, between, or after the
 
 For every generated composite or light plate, create this execution record **before** making an image:
 
-1. `canvas`: the user's requested width × height. The working canvas and both deliverables must start at this exact size. Do not treat a smaller generated result that was independently enlarged afterward as a size-compliant pair.
+1. `canvas`: the user's requested width × height. Start the final working canvas at that size. If a generator returns a smaller candidate, disclose its native size; register its lighting to the source canvas and build both final members from the same layers. Never independently enlarge the two deliverables or claim native-resolution generation from their final dimensions.
 2. `base`: the immutable source asset path and its dimensions.
-3. `selected composite`: the exact approved composite path, or `none` only before any composite has been selected.
+3. `selected composite`: the exact selected composite path and hash; update this record when the selected version changes. Use `none` only before selection.
 4. `beam ledger`: every `S → T → L` path and its colour/intensity/haze.
-5. `receiver ledger`: every visible direct or connected response on stage, stair, carpet, table, chair, wall, curtain, or screen surround, explicitly marked `lit` or `unlit`.
+5. `receiver ledger`: every visible direct or connected response on stage, stair, carpet, table, chair, wall, curtain, or screen surround, explicitly marked `lit` or `unlit`. Record foreground air support separately from the screen surface; a screen surface marked `unlit` does not mean its foreground air is black.
 
 For a light-only request, the plate must contain every `lit` receiver response and only those responses; all `unlit` receivers and all base geometry remain RGB 0,0,0 black. Do not omit a spatial light response because it is subtle, and do not add a plausible response that is absent from the approved composite.
 
 When a composite is selected, never call an image generator to make its plate. Use only its matching AOV/additive layer or a verified deterministic extraction. If neither exists, stop and report the missing source; an invented plate is forbidden.
 
-Before delivery, verify: exact requested dimensions for both members, locked source/crop, beam-ledger placement, receiver-ledger completeness, and an aligned Screen/Linear Dodge overlay. Reject rather than deliver if any gate is missing, if either file was independently resized, or if the plate is a new lighting design.
+Before delivery, verify: exact requested dimensions for both members, locked source/crop, beam-ledger placement, receiver-ledger completeness, and saved-image reconstruction with the retained base under the **one recorded** blend mode (Screen or Linear Dodge/Add). These modes are not interchangeable. Reject rather than deliver if any gate is missing, if either file was independently resized, or if the plate is a new lighting design.
 
 ## Reference and delivery routing
 
@@ -77,7 +87,7 @@ Before prompting, make a **scene-response map** for every chosen beam: name ever
 
 The finished image should read as a professionally photographed live venue, not as a lighting previsualization. Apply this hierarchy: visible source and plausible landing first, subtle local material response second, volumetric shaft last. A shaft is evidence of air scatter, not a solid painted cone.
 
-- **Venue baseline:** In a clean conference hall, default to low atmospheric haze. Let most fixtures read through their lit target, gentle fixture glow, and short near-source falloff; use only the few shafts that materially improve the requested mood. Full-room haze is allowed only when the user explicitly requests it.
+- **Venue baseline:** In a clean conference hall, default to low atmospheric haze. This is a default, not a cap on an explicit request for stronger effects or a darker room. Preserve readable requested shafts and adjust the room exposure separately; do not use faintness as a substitute for realism. Full-room haze is allowed only when the user explicitly requests it.
 - **Shaft character:** A natural shaft has a soft, irregular density gradient, a dimmer outer envelope, and fades into room ambience before the target. Keep its center translucent enough that the existing room remains visually legible. It may be partly interrupted by truss, screen edge, furniture, or people where those objects actually occlude the optical path.
 - **Aiming and count:** Do not turn every visible fixture on. Select a small asymmetric set whose angles follow the apparent fixture aim and whose landings contribute to the scene. Avoid repeated, evenly spaced, identical-width cones, symmetric fan arrays, and parallel beams that have no visible lighting purpose.
 - **Surface response:** The landing is a low-contrast, perspective-correct material response. Matte carpet and fabric receive broad diffuse lift; black tablecloths receive a restrained, low-sheen elongated lift; metal or polished trim gets only a narrow localized highlight. Keep the response connected to its source and diminish it outside the target.
@@ -88,7 +98,7 @@ The finished image should read as a professionally photographed live venue, not 
 ## Shared invariants
 
 - Image 1 supplies the exact camera, crop, room, ceiling, walls, stage, screens, artwork, typography, logos, furniture, materials, and visible equipment.
-- Keep beams clear of LED faces unless the user explicitly targets an LED face. In the composite, restore the original screen artwork above light layers.
+- Do not aim direct surface illumination at LED faces unless requested. Restore original screen artwork above surface-light corrections, **below** existing or requested foreground beams/haze. Foreground air can overlap a screen in camera projection without illuminating or rewriting the screen surface. Never erase foreground light with a screen-rectangle mask.
 - Do not invent, remove, duplicate, relocate, or redesign fixtures, truss, podiums, lecterns, microphones, monitors, speakers, cables, furniture, people, walls, ceiling, or stage geometry.
 - Gobo, laser, lens flare, starburst, global color wash, and generic concert decoration are off unless explicitly requested.
 
@@ -114,7 +124,7 @@ The second block must always be a separate, matching light-only extraction promp
 - Include every visually present light effect from the selected composite design: every beam shaft, haze envelope, source glow, landing, and connected reflected-light deposit. A wall, table, seat top, aisle, or stage-front response is included only when it is actually lit in that design; never omit it, and never invent it.
 - When the composite lights furniture or architecture, preserve that response as its own bounded additive mask: table-top deposits follow the real perspective-correct top edge; chair responses are separated rim/edge strokes; carpet deposits are clipped to exposed gaps; stage and wall responses remain local. Never reduce these to shafts alone.
 - Render no room, fixture, screen, graphic, furniture, silhouette, base material, shadow, text, logo, or unlit pixel. Every pixel outside the registered beam, haze, landing, and reflection masks must be RGB 0,0,0 black.
-- Make the plate directly alignable with the composite under Screen or Linear Dodge (Add).
+- Make the plate directly alignable with the retained base under the recorded Screen or Linear Dodge (Add) mode, matching the delivered composite.
 - Keep shafts visibly readable on black; do not reduce them to faint residual differences. Preserve their source glows, tapered haze, and connected reflected-light deposits.
 
 ## Explicit image-production requests
@@ -135,9 +145,11 @@ After generation, compare the plate against the selected composite effect by eff
 
 When the user says “extract,” “pull only the light,” or selects an existing composite, interpret it as a request for an **unchanged extraction**, never a request to generate a new light design. Do not invoke an image generator to recreate the plate from a flattened image: it can invent or relocate fixtures, beams, furniture responses, and material edges.
 
-An exact plate may be delivered only from one of these matching sources: (1) the renderer's Light Select / lighting AOV from the same camera frame, (2) the selected composite's editable additive-light layer(s), or (3) a deterministic before/after compositing workflow that produces a verified light-difference mask without non-light residue. Retain the source as the plate's provenance.
+An exact plate may be delivered only from one of these matching sources: (1) the renderer's Light Select / lighting AOV from the same camera frame, (2) the selected composite's retained editable light layer(s), or (3) a registered before/after workflow with known blend/exposure and independently verified effect supports, which proves the difference contains no graphic/geometry residue. A clipped highlight cannot be inverted by subtraction. Retain the source as the plate's provenance; for source (3), preserve the verified difference as a source layer and label its provenance honestly.
 
 If only flattened source and composite images are available and a verified difference mask cannot be made, stop. State that exact extraction requires the matching AOV or additive-light layer, and do not output an AI-invented substitute. A plausible new plate is a failed result, even if it looks realistic.
+
+When a user explicitly requests a missing-effect correction, author that correction as a retained layer, update the composite from it, then export the matching plate. Call it a correction/reconstruction, not an unchanged extraction. Do not alter unrelated accepted effects.
 
 ### Approved-asset incremental edit lock
 
@@ -159,6 +171,7 @@ Reject a generated result if any check fails:
 - The color palette mixes unrelated accents, or white-blue lighting is rendered as saturated blue/cyan rather than neutral-cool white with restrained blue tint.
 - The light plate differs in beam placement, color, or landing response from the composite, or contains non-black pixels outside the registered lighting masks.
 - Any beam, haze, source glow, landing, or directly illuminated material response visible in the selected composite design is absent from the plate.
+- Foreground beam/haze paths are cut at LED/graphic rectangle boundaries, even if typography is preserved. Check path continuity in both outputs, not only the regions outside screens.
 - The plate contains a table, chair, aisle, wall, stage, or screen response that is not visibly present at the corresponding location in the selected composite, even if that response looks physically plausible.
 - The plate was generated from a new inferred lighting plan, from Image 1 alone after a composite was selected, or was independently resized without applying the same transform to the selected composite.
 - The composite or plate shows beams while ignoring mapped table, chair, aisle, stage, wall, or frame responses, or lets light continue through their visible occluding edges.
