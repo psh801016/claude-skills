@@ -27,7 +27,7 @@ description: "포토샵 3D 오브젝트 합성을 위해 실내 배경 이미지
 
 > 용어: 여기서 "nanobanana"는 **Magnific 업스케일러의 nanobanana 엔진 프리셋**을 뜻한다(원래 nano-banana는 Google Gemini 계열 이미지 모델의 별칭 — 공식명 Gemini Flash Image). SETTINGS(Creativity/Resemblance/Detail/HDR)는 Magnific UI 슬라이더 값이며 Google Gemini API 파라미터가 아니다.
 
-## ★ as-built 실사 규칙 — 전시·행사 장면이면 필수 (2026-09-21 배선)
+## ★ as-built 실사 규칙 — 전시·행사 장면이면 필수
 
 배경이 **전시부스·행사장·등록데스크·게이트·포토존·백월**이면 프롬프트를 쓰기 전에 읽는다:
 

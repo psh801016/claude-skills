@@ -108,27 +108,12 @@ MJ 파라미터 (`--v`, `--iw`, `--ar` 등) 절대 포함하지 않는다.
 
 ---
 
-## 정밀 재료 교체(PICK) 모드 — 부분만 콕 집어 교체 (2026-07-06 신규)
+## 정밀 재료 교체(PICK) 모드 — 부분만 콕 집어 교체
 
-리모델링 모드가 "공간 전체 스타일"을 바꾼다면, 이 모드는 **지정된 부분의 표면 재료만** 바꾼다. 행위/기준/전이 3행 규격:
+→ **`references/pick-material-swap.md` 에 있다.** 이미지 2장 + 부분 지정("소파만", "이 벽만", "콕 집어", "빨간 영역만")이면 이 모드다 — 그 파일을 반드시 읽고 행위/기준/전이 3행 규격·프롬프트 구성 5단계·빨간 마스크 규약(소스 쪽 빨간 채움 금지, 크롭으로)을 따른다.
 
-- **행위:** 표면 재료만 바꾼다 (형태 재설계 금지)
-- **기준(보존):** 형상 · 구도 · 객체 경계 · 카메라 — 대상의 실루엣과 나머지 공간 전부
-- **전이:** 질감 · 색 · 거칠기 · 반사도 — Image 2(레퍼런스)의 재료 속성만
+---
 
-**프롬프트 구성:**
-1. 첫 문장 역할 선언: "Image 1 = BASE(보존), Image 2 = 재료 소스(REFERENCE)"
-2. 대상 지정: 자연어("the fabric sofa", "the upper wall band around the skylight") 또는 **빨간 마스크 규약** — Image 1의 빨간 하이라이트 영역 = 변경 대상. **⚠ 소스(Image 2) 쪽은 빨간 채움 금지** — 모델이 읽을 소스 색·질감이 오염된다. 소스 패치는 **크롭해 깨끗한 이미지로 전달**하고, 표시가 불가피하면 채움 없는 윤곽선만 사용
-3. 교체 문장: "Replace ONLY the surface material of [대상] with the material of the REFERENCE — transfer its texture, color, roughness and reflectance. Keep the shape, boundaries, composition and camera exactly unchanged."
-4. 마스크를 썼다면 제거 지시 필수: "Remove every red annotation line, hatch or highlight from the final output."
-5. 물리 정합 앵커로 마무리: "physically correct scale, contact shadows and lighting on the new material."
-
-**주의:** ① 구도 보존 최우선 원칙(위 ★ 블록) 그대로 적용 ② GPT 경로 = NEGATIVE 없이 긍정형 잠금(기존 규칙) ③ 새 재료의 반사도가 조명과 충돌하면(광택 재료 ← 무광 장면) 조명 방향을 명시해 하이라이트 위치를 고정한다.
-
-**엣지케이스:**
-- 이미지 0장 → 원본 이미지 첨부를 요청한다 (텍스트만으로 지어내지 않는다)
-- 이미지 2장이 같은 공간의 다른 앵글이라 리모델링 의도가 불명확하면 → 각각 단일 모드로 처리할지 사용자에게 확인 (다중 앵글 일괄 실사화 케이스 빈발)
-- 이미지 3장 이상 → 어느 것이 구조 원본(Image 1)이고 어느 것이 스타일 레퍼런스인지 확인 후 진행 ("Image 1 = 구조 고정" 가정은 PROMPT 첫 문장의 역할 선언으로 표현된다 — 별도 설명 출력 금지)
 
 ---
 
@@ -338,114 +323,10 @@ subtle warm-cool lighting contrast, subtle photographic sensor grain
 
 > 최종 출력 전 NEGATIVE에서 **중복 토큰을 제거**한다 — 같은 토큰이 두 카테고리에 있으면 한 번만 남긴다 (CLIP 청크 토큰 예산 희석 방지).
 
-### 1. 스타일화 억제
-```
-cartoon, anime, illustration, sketch, watercolor, concept art, matte painting, stylized, painterly
-```
+**카테고리 순서 (1→14 순서 엄수):** 1. 스타일화 억제 · 2. 렌더 엔진/CGI 억제 · 3. 카메라 오염 억제 (★ SD/MJ/ComfyUI 디퓨전 전용 — GPT image에는 NEGATIVE 자체를 넣지 않는다) · 4. 컬러 오염 억제 ★ · 5. 기하학 오염 억제 · 6. 구조 수정 억제 · 7. 재료 사실성 억제 · 8. 유리/반사 억제 · 9. 가구/오브젝트 물성 억제 · 10. 인물 해부학 억제 · 11. 조명/렌더 아티팩트 억제 · 12. 텍스트/로고/워터마크 억제 · 13. 공간별 조건부 억제 · 14. 리모델링 보호 (2장 모드에만)
 
-### 2. 렌더 엔진/CGI 억제
-```
-CGI, archviz look, render look, Unreal Engine look, Blender render look, game-engine look,
-SketchUp look, Rhino viewport look, Revit model look, Enscape look, D5 Render look,
-Lumion look, Twinmotion look, V-Ray render look, Corona render look,
-clay render, white model, obvious 3D render, artificial rendering, synthetic lighting,
-fake global illumination, plastic rendering, showroom CGI materials
-```
+→ 각 카테고리의 토큰 문구는 **`references/negative-categories.md` 에 있다.** NEGATIVE 를 쓰는 경로(SD/ComfyUI)면 그 파일을 반드시 읽고 1부터 14까지 순서대로 한 단락에 잇는다(14 는 2장 모드에만, 13 은 해당 공간만). Magnific·Gemini/Nano Banana·GPT image 경로는 읽지 않는다.
 
-### 3. 카메라 오염 억제 (★ SD/MJ/ComfyUI 디퓨전 전용 — GPT image에는 NEGATIVE 자체를 넣지 않는다)
-```
-changed camera angle, changed viewpoint, changed perspective, changed framing, changed crop,
-changed composition, changed lens perspective, reframed shot, perspective reinterpretation,
-altered focal length feel
-```
-**주의:** `wider angle of view`, `expanded field of view`, `added side columns`, `letterboxed`, `zoomed-in composition`, `distorted wide-angle view` 같이 **결과 장면을 직접 묘사·호명하는 토큰은 넣지 않는다** — 의미기반 모델에서 오히려 그 장면을 그리게 만든다. 판별 기준: '변형 행위'를 명명하는 토큰(`changed/altered X`)은 허용, '결과 장면'을 묘사하는 토큰은 금지. SD에서도 이 카테고리는 위 추상 항목 수준으로만 유지한다.
-
-### 4. 컬러 오염 억제 ★
-```
-changed color palette, recolored surfaces, altered material colors, color shift,
-changed accent color, changed wall color, changed upholstery color, changed floor color,
-material redesign, redesigned material identity, replaced materials, color reinterpretation,
-desaturated colors, oversaturated colors
-```
-
-### 5. 기하학 오염 억제
-```
-changed room geometry, changed room proportions, changed ceiling height, changed ceiling shape,
-changed wall positions, changed floor level, changed window placement, changed door positions,
-wrong scale, redesigned architecture, distorted room, enlarged room, shrunken room,
-stretched room, warped walls, melted architecture, unrealistic proportions
-```
-
-### 6. 구조 수정 억제
-```
-deleted architectural elements, moved walls, moved windows, moved doors,
-random added structural elements, fake openings, extra columns, altered circulation path,
-missing ceiling elements, floating architectural elements, impossible architecture,
-missing architectural details
-```
-
-### 7. 재료 사실성 억제
-```
-plastic materials, fake wood, fake stone, fake glass, flat painted surfaces, unrealistic textures,
-fake reflections, oversmoothed surfaces, texture repetition, procedural textures,
-unrealistic roughness, glossy plastic wood, glossy plastic surfaces, artificial textures,
-incorrect material scale, unrealistic wood texture
-```
-
-### 8. 유리/반사 억제
-```
-mirror glass, flat glazing, unrealistic glass, impossible reflections,
-floating reflections, opaque glass, incorrect transparency, fake window reflections
-```
-
-### 9. 가구/오브젝트 물성 억제
-```
-floating furniture, toy-like furniture, repeated objects, repeated assets, cloned objects,
-unrealistic furniture scale, impossible object placement, levitating decor,
-warped furniture, warped shelves, melted furniture, deformed chairs, deformed furniture,
-noisy geometry, blurry edges
-```
-
-### 10. 인물 해부학 억제
-```
-mannequin people, render people, entourage people, cutout people, CGI humans, 3D humans,
-cloned people, stock-photo models, fashion models, perfect skin, plastic skin, wax skin,
-AI beauty face, fake crowd, distorted faces, blurry faces, broken hands, bad anatomy,
-extra limbs, oversized people, tiny people, unrealistic anatomy
-```
-
-### 11. 조명/렌더 아티팩트 억제
-```
-fantasy lighting, excessive bloom, artificial glow, fake ambient occlusion, extreme HDR, overexposure,
-oversharpening, glowing corners, halo effects, unrealistic shadow gradients,
-artificial bounce light, fake ambient lighting,
-surreal lighting, synthetic atmosphere, unrealistic ceiling lighting,
-incorrect lighting direction, noisy render artifacts
-```
-
-### 12. 텍스트/로고/워터마크 억제
-```
-random text, logo, watermark, fake typography, distorted letters, readable fake signage
-```
-
-### 13. 공간별 조건부 억제
-
-거실: `showroom perfection, luxury showroom look, staged catalog appearance, empty sterile space`
-주방: `fake marble veining, impossible appliance reflections, oversized kitchen island, floating cabinetry`
-침실: `perfectly smooth bedding, floating blankets, unrealistic fabric tension`
-욕실: `mirror distortion, fake wet reflections, impossible tile alignment, unrealistic water behavior`
-오피스: `fake monitor glow, repeated office chairs, cloned desks, unrealistic workstation spacing`
-로비/공공: `impossible scale, fake luxury materials, sci-fi architecture, empty sterile space`
-레스토랑: `fake food, impossible occupancy density, cloned diners, unrealistic hospitality lighting`
-전시부스/전시장 (★SD/MJ 디퓨전 전용 · GPT엔 미사용 · 증상 직접호명 배제, 추상 명사만): `seamless drywall booth without visible panel seams, single flat featureless wall, dissolved modular grid, readable fascia text, fake company logo, legible signage typography, light source without a fixture, non-geometric aluminum, wrong module proportions, oversized booth`
-> 주의: `melting / warped / bent / garbled / floating / melted / tangled` 같은 동사형 증상 토큰은 넣지 않는다 — 의미기반 모델에서 오히려 그 증상을 그린다. 위처럼 '정상상태의 부재 / 비정상 명사'로만 억제한다.
-공통 품질: `low resolution, noisy geometry, blurry materials, missing architectural details, synthetic textures`
-
-### 14. 리모델링 보호 (2장 모드에만)
-```
-copied geometry from the second reference image, copied room structure from the second reference image,
-replaced architecture from the second image, structural transfer from reference image
-```
 
 ---
 
@@ -464,4 +345,10 @@ replaced architecture from the second image, structural transfer from reference 
 
 → **`references/examples.md` 에 있다.** 작성 형식이 헷갈리거나 완성본 참고가 필요할 때 읽는다.
 해당 상황이면 넘기지 말고 그 파일을 반드시 읽는다.
+
+## 내장 이미지 편집 납품 크기 검증
+
+- 내장 이미지 편집 결과가 목표와 같은 16:9로 보여도 실제 파일은 1672×941처럼 다른 크기일 수 있다.
+- 사용자가 정확한 픽셀 크기를 요구하면 생성 파일의 실제 크기를 읽고, 종횡비를 바꾸지 않는 리샘플링만 적용한 뒤 최종 파일을 다시 열어 경로와 픽셀 크기를 확인한다.
+- 카메라 가이드 편집에서는 리샘플링 전후에 기둥·수평선·소실선 좌표가 같은 비율로 유지되는지 확인한다.
 

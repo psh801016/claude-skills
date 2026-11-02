@@ -1,6 +1,6 @@
 ---
 name: adaptive-model-effort-advisor
-description: Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning effort for a task, with one escalation step. Apply proactively before any non-trivial work — state the route without waiting to be asked. Also use when the user asks which model to use, asks to cut cost or latency, compares models or effort levels, reports poor results, routes through C:\Users\PSH\dev\multi-model, or wants prior recommendations re-evaluated after a model upgrade.
+description: "Recommend the cheapest reliable Codex, Gemini, or Claude model and reasoning effort for a task, with one escalation step. Apply proactively before any non-trivial work — state the route without waiting to be asked. Also when the user asks '어떤 모델 쓸까', '모델 추천', '비용 줄여', '더 싼 모델로', 'which model', 'cut cost', compares models or effort levels, reports poor results, routes through C:\\Users\\PSH\\dev\\multi-model, or wants prior recommendations re-evaluated after a model upgrade."
 ---
 
 # Adaptive Model Effort Advisor

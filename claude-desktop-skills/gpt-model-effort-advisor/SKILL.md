@@ -1,6 +1,6 @@
 ---
 name: gpt-model-effort-advisor
-description: Recommend which GPT-5.6 model tier (Luna/Terra/Sol) and reasoning effort (Low..Ultra) fits a task, learn from the user's own successes and failures, diagnose quality problems, and report the live session's model and effort. Advisory — it proposes a grounded starting point and an escalation rule; the human decides and switches. Load when the user asks which model or effort to use, starts a substantial task without deliberately choosing a tier, reports a poor or unsatisfying result, wants to reduce cost without losing quality, or asks what model the session is running. Triggers — "which model", "which effort", "reasoning effort", "cut cost", "is a bigger model worth it", "do I need max/ultra", "result is bad", "quality dropped", "what model am I on", "record this combo".
+description: "Recommend which GPT-5.6 model tier (Luna/Terra/Sol) and reasoning effort (Low..Ultra) fits a task, learn from the user's own successes and failures, diagnose quality problems, and report the live session's model and effort. Advisory only — the human decides and switches. Triggers: 'which model', 'which effort', 'reasoning effort', 'cut cost', 'do I need max/ultra', 'result is bad', 'quality dropped', 'what model am I on', 'record this combo', or a substantial task started without choosing a tier."
 ---
 
 # GPT-5.6 Model & Effort Advisor

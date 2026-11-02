@@ -8,7 +8,7 @@ description: 에이전트 저널(compaction.jsonl)을 읽어 하네스·규칙 �
 Claude Code · Codex · Antigravity 세 런타임이 남긴 저널을 읽고, **하네스와 규칙을
 어떻게 고치면 좋을지 제안서를 쓴다.** 고치지는 않는다.
 
-## 절대 규칙 (★ ASURA님 지시 2026-08-13)
+## 절대 규칙
 
 - **제안만 한다.** `rules.md`, `~/.claude/settings.json`, `~/.codex/hooks.json`,
   `~/.gemini/config/plugins/**`, 훅 스크립트를 **직접 수정하지 않는다.**

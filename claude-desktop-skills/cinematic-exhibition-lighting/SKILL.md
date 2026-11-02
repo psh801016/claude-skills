@@ -1,6 +1,6 @@
 ---
 name: cinematic-exhibition-lighting
-description: "Create source-faithful, naturally photographed event-lighting prompts from an interior or stage render, with or without a lighting reference. Returns a final-composite prompt and a matching light-only plate prompt; generate images only when explicitly asked."
+description: "Create source-faithful, naturally photographed event-lighting prompts from an interior or stage render, with or without a lighting reference. Returns a final-composite prompt and a matching light-only plate prompt; generate images only when explicitly asked. Use when the user says '조명 바꿔줘', '이 조명으로', '레퍼런스 조명 적용', '조명 이식', '시네마틱 조명', '전시 느낌으로', '조명 레이어', 'lighting transfer'. Not for plain photorealism without lighting change (interior/arch-prompt-maker) or people compositing (person-layer-maker)."
 ---
 
 # Cinematic Exhibition Lighting
@@ -51,7 +51,7 @@ Before delivery, verify: exact requested dimensions for both members, locked sou
 - **Review before a skill edit:** When the user asks to see an image before changing this skill, generate the requested visual first and leave this skill unchanged until the user explicitly authorizes an update.
 - If full photorealization is also needed, `interior-prompt-maker` owns the material-preserving base; this skill owns the lighting plan and both final outputs. Magnific and person workflows preserve the user-selected composite and do not redesign its lighting.
 
-## ★ As-built reality rules — mandatory for exhibition and event scenes (wired 2026-09-21)
+## ★ As-built reality rules — mandatory for exhibition and event scenes
 
 When Image 1 shows an **exhibition booth, event hall, registration desk, entrance gate, photo zone, or backwall**, read this before planning any lighting:
 

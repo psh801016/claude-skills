@@ -22,7 +22,7 @@ Corona · Twinmotion · Blender 렌더, archviz, 클레이 모델, AI 렌더 전
 - 프롬프트 요청은 이미지 생성 권한이 아니다. 사용자가 생성·제작을 명시했을 때만
   생성 도구를 호출한다.
 
-## ★ as-built 실사 규칙 — 전시·행사 장면이면 필수 (2026-09-21 배선)
+## ★ as-built 실사 규칙 — 전시·행사 장면이면 필수
 
 화면에 **전시부스·행사장·등록데스크·게이트·포토존·백월**이 있으면 프롬프트를 쓰기 전에 읽는다:
 
@@ -314,27 +314,10 @@ PROMPT 마지막.
 → **`references/building-types.md` 에 있다.** 대상 건물 유형(공장·아파트·리테일·오피스·공공·교육·의료)이 정해지면 해당 항목만 읽는다.
 해당 상황이면 넘기지 말고 그 파일을 반드시 읽는다.
 
-## 입면 컨텍스트 블렌딩 — 2이미지 합성 모드 (2026-07-06 신규)
+## 입면 컨텍스트 블렌딩 — 2이미지 합성 모드
 
-사용자가 **건물/입면 이미지 2장**과 함께 "패턴을 입혀줘", "이 재료로 바꿔줘", "이 디자인을 저 건물에", "입면 대안", "컨텍스트 블렌딩", "3F~7F에 합성" 같은 요청을 하면 이 모드로 전환한다. (1장 실사화는 기존 흐름 유지)
+→ **`references/facade-context-blending.md` 에 있다.** 사용자가 **건물/입면 이미지 2장**과 함께 "패턴을 입혀줘", "이 재료로 바꿔줘", "이 디자인을 저 건물에", "입면 대안", "컨텍스트 블렌딩", "3F~7F에 합성" 이라고 하면 이 모드다 — 그 파일을 반드시 읽고 BASE/REFERENCE 역할 선언·합성 모드 4종·빨간 마스크 규약·물리 정합 앵커를 따른다. (1장 실사화는 기존 흐름 유지)
 
-**역할 선언 (첫 문장 필수):** BASE = 보존할 대상(매스·카메라·주변·조명 잠금), REFERENCE = 전이할 소스. 첫 문장에서 두 이미지의 역할을 명시한다.
-
-**합성 모드 4종 — 행위/기준/전이 3행 규격으로 프롬프트를 구성한다:**
-
-| 모드 | 행위 | 기준(보존) | 전이 |
-|---|---|---|---|
-| 패턴 매핑 | 기준 면에 패턴을 입힌다 | 축·그리드·경계·개구부 | 무늬·반복 리듬·그래픽 밀도 |
-| 재료 교체 | 표면 재료만 바꾼다 | 형상·구도·경계·카메라 | 질감·색·거칠기·반사도 |
-| 맥락 합성 | 실제 대지 사진 속 대상에만 디자인을 심는다 | 거리·이웃건물·차량·지형·조명 | 대상 건물/영역의 디자인 언어 |
-| 복합 합성 | 여러 모드를 순서대로 적용 | 코어 베이스·주 형상 | 선언된 속성만 (구조→객체/맥락→재료/패턴→광학 순) |
-
-**적용 범위는 자연어로 지정한다:** "3F~7F 입면", "저층부 포디움만", "코너 커튼월만" — 범위 문장 뒤에 "change ONLY this area, preserve everything else"를 붙인다.
-
-**빨간 마스크 규약 (마스크 이미지가 있을 때):** BASE의 빨간 하이라이트 = 변경 대상 영역. 결과물에서 빨간 주석·해치·점선은 반드시 제거 지시("Remove every red annotation from the final output").
-**⚠ 소스(REFERENCE) 쪽은 빨간 채움 금지 — 크롭이 정답:** 빨간 50% 채움은 모델이 읽어야 할 소스의 색·질감을 오염시킨다(타깃은 어차피 재생성될 영역이라 무해하지만 소스는 비대칭). 소스 패치는 **잘라내(크롭) 깨끗한 별도 레퍼런스로 전달**하고, 오버레이가 불가피하면 채움 없는 윤곽선 박스만 쓴 뒤 "reading the true colors beneath any red tint" 절을 추가한다.
-
-**주의:** ① 구도 보존 최우선 원칙(위 ★ 블록)이 BASE에 그대로 적용된다 ② GPT 경로에서는 부정문 대신 긍정형 잠금(기존 규칙과 동일) ③ 전이 강도는 "subtle / balanced / bold" 3단으로 별도 문장 처리 ④ 물리 정합(스케일·그림자·투시·경계·조명)이 어긋나기 쉬우므로 마지막에 "physically correct scale, shadows, perspective and lighting" 앵커를 부착한다.
 
 ---
 
@@ -342,122 +325,10 @@ PROMPT 마지막.
 
 **토큰 판정 규칙(전 카테고리 공통):** 토큰이 **억제하려는 결함·실패 상태**를 부르면 유지(예: `warped verticals`, `bad anatomy` — SD 부정 임베딩의 정상 메커니즘), **원하는 결과 장면·구도**를 이름으로 부르면 금지(예: `zoomed-in composition`, `wider angle of view` — 의미기반 모델에서 그 장면을 그리게 만든다). 판별이 애매하면 '변형 행위 명명형'(`changed/altered X`)으로 쓴다.
 
-### A. 카메라 실패 (항상 첫 번째)
-```
-changed camera angle, changed viewpoint, changed camera position, changed camera height,
-changed tilt, changed yaw, changed framing, changed crop, changed horizon, changed perspective,
-changed lens feel, orbit camera, zoom change, reframed composition, recropped image,
-tilted architecture, distorted perspective lines, warped verticals
-```
+**카테고리 순서 (A→O 순서 엄수):** A. 카메라 실패 (항상 첫 번째) · B. 구도 실패 · C. 기하학 실패 (핵심) · D. 컬러 오염 억제 ★ · E. 건축 재설계 실패 · F. 스케일 실패 · G. CGI/렌더 스타일 억제 (항상 포함) · H. 재료 실패 · I. 유리/반사 실패 (H와 분리) · J. 조경 실패 · K. 인물 실패 · L. 차량/대지 실패 · M. 조명 실패 · N. 이미지 품질 실패 · O. 텍스트/오염 (항상 마지막)
 
-### B. 구도 실패
-```
-altered composition, shifted focal hierarchy, unstable horizon, exaggerated perspective,
-changed foreground/background relationship, changed vertical alignment
-```
+→ 각 카테고리의 토큰 문구는 **`references/negative-categories.md` 에 있다.** NEGATIVE 를 쓰는 경로(SD/MJ/ComfyUI)면 그 파일을 반드시 읽고 A부터 O까지 순서대로 한 단락에 잇는다. 잠금 스코프 규칙(PROMPT 5단계)에 따라 요청 변경과 충돌하는 토큰은 뺀다.
 
-### C. 기하학 실패 (핵심)
-```
-changed building shape, changed massing, changed facade design, changed silhouette,
-changed proportions, changed floor count, changed roofline, changed terrace shape,
-changed balcony shape, changed railing geometry, changed opening sizes, changed window proportions,
-changed glazing divisions, changed mullion spacing, changed structural edges, changed slab edges,
-changed column positions, changed road alignment, changed site levels,
-changed retaining wall position, changed landscape boundary,
-changed fence layout, changed gate geometry, changed loading dock position
-```
-
-### D. 컬러 오염 억제 ★
-```
-changed color palette, recolored facade, changed material colors, altered facade colors,
-color reinterpretation, material color redesign, changed accent color, changed glazing tint,
-desaturated colors, oversaturated colors, unexpected color introduction, color shift, material redesign
-```
-
-### E. 건축 재설계 실패
-```
-redesigned architecture, distorted geometry, deformed building, deleted architectural elements,
-added random architectural elements, simplified architecture, missing architectural details,
-altered facade rhythm, random balconies, random skylights, asymmetrical facade mutation,
-fantasy architecture, warped facade
-```
-
-### F. 스케일 실패
-```
-wrong scale, wrong human scale, oversized people, tiny people, giant trees,
-oversized furniture, miniature vehicles, toy-like objects, inaccurate scale
-```
-
-### G. CGI/렌더 스타일 억제 (항상 포함)
-```
-CGI, archviz look, render look, SketchUp look, Rhino viewport look, Revit model look,
-clay render look, white model look, Lumion look, Enscape look, D5 render look,
-Twinmotion look, V-Ray render look, Corona render look, Unreal render look, Blender render look,
-game-engine look, concept art, illustration, cartoon, anime style,
-AI-generated aesthetic, showroom rendering, polished visualization, synthetic environment, fake realism
-```
-
-### H. 재료 실패
-```
-plastic materials, fake reflections, muddy textures, unrealistic concrete, fake stone,
-fake wood, flat painted surfaces, repeated texture, noisy material,
-over-clean materials, perfect surfaces, procedural stone texture, procedural texture,
-oversaturated wood grain, metallic plasticity, texture stretching, low-detail facade
-```
-
-### I. 유리/반사 실패 (H와 분리)
-```
-mirror glass, flat glass, black mirror glass, black void windows, empty glazing, textureless glazing,
-overreflective curtain wall, impossible reflections, glowing windows,
-inconsistent reflections, fake transparency, infinite mirror effect, flat blank glazing
-```
-
-### J. 조경 실패
-```
-repeated trees, cloned trees, procedural vegetation, rendering-library trees,
-identical canopies, repeated shrubs, synthetic grass, fake planting,
-plastic leaves, artificial grass, floating vegetation,
-tropical vegetation mismatch, floating landscape, impossible terrain
-```
-
-### K. 인물 실패
-```
-repeated people, cloned figures, mannequin people, CGI humans, floating people,
-deformed people, broken hands, distorted faces, unrealistic skin,
-fashion pose, fashion-model posing, exaggerated gestures,
-giant pedestrians, crowd duplication, extra limbs, melted anatomy
-```
-
-### L. 차량/대지 실패
-```
-fake cars, toy-like cars, unrealistic road texture, floating vehicles,
-impossible parking, distorted lane markings, unrealistic sidewalks, broken curb geometry,
-clean showroom streets, perfect paving, spotless sidewalks, no urban wear,
-fake asphalt texture, procedural pavement, unrealistic curb geometry
-```
-
-### M. 조명 실패
-```
-fantasy lighting, excessive bloom, fake ambient occlusion, extreme HDR,
-overexposed highlights, oversharpening, halo artifacts,
-cinematic teal-orange grading, dramatic sci-fi atmosphere,
-neon reflections, heavy fog, volumetric effects, unreal lighting,
-fake sunset glow, neon glow, unrealistic night lighting,
-overdramatic shadows, fake god rays, cinematic haze
-```
-
-### N. 이미지 품질 실패
-```
-blurry materials, noisy image, smeared texture, low-detail facade,
-compression artifacts, watercolor texture, painterly surface,
-painterly effect, cartoon effect, stylized illustration, surrealism
-```
-
-### O. 텍스트/오염 (항상 마지막)
-```
-random text, readable fake signage, logo, watermark, UI overlay,
-subtitle text, fake branding, QR codes, poster graphics, graphic overlay
-```
 
 ---
 

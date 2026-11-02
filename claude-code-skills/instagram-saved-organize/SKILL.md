@@ -40,8 +40,8 @@ ASURA님(@nana80psh)이 인스타에 저장(보관)한 게시물을 주제별 �
    - "레퍼런스·기타"는 미매칭 자동 낙하 지점이 아니라 **적극적 판정**이다. 여기로 보낼 땐
      이유를 한 줄 남긴다.
    - 애매하면 억지로 밀어넣지 말고 그대로 두고 보고에 올린다. 오분류는 사용자가 옮기며 조정한다.
-4. **폴더 확인/생성**: `GET /api/v1/collections/list/?collection_types=["MEDIA"]` **페이지네이션**(한번에 6개, next_max_id로 전량). 없는 카테고리는 `POST /api/v1/collections/create/` body `name=...` headers `X-CSRFToken`+`X-IG-App-ID`.
-5. **증분(월2회 새 저장분만)**: 이전 처리한 code 집합을 `slack-claude-bridge/insta_saved_seen.json`(또는 AUSURA)에 저장 → 이번엔 새 code만 처리. **파일이 없으면(첫 실행) 전량을 신규로 처리하고 완료 시 파일을 새로 생성한다.** (전량 재처리는 idempotent라 무해하나 느림·불필요.)
+4. **폴더 확인/생성**: ~~`GET /api/v1/collections/list/`~~ — 2026-10-12 기준 **404**(주소 폐기). 대신 `/nana80psh/saved/` 페이지를 열어 `a[href]` 의 `/saved/<이름>/<숫자id>/` 에서 이름→id 맵을 페이지 안(window)에서만 만든다(도구가 id 문자열을 가려도 페이지 안에선 쓸 수 있다). 페이지 이동하면 window 변수가 지워지니 **읽기 → 분류 → 저장은 같은 페이지에서** 한다. 없는 카테고리는 `POST /api/v1/collections/create/` body `name=...` headers `X-CSRFToken`+`X-IG-App-ID`.
+5. **증분(새 저장분만)**: 2026-10-12부터 **피드 항목의 `media.saved_collection_ids` 가 비어 있는 것만** 처리한다(폴더에 이미 든 건 건너뜀). seen 파일이 필요 없고 사람이 앱에서 직접 옮긴 것도 자동으로 빠진다. 새 저장분은 피드 앞쪽에 몰려 있다(10-12 실측: 미분류 123개 중 122개가 앞 250개 안).
 6. **자동 저장(핵심)** — 각 게시물을 해당 폴더에 add:
    - 토큰 추출(페이지 소스 정규식): `fb_dtsg`=`"DTSGInitialData",[],{"token":"([^"]+)"`, `lsd`=`"LSD",[],{"token":"([^"]+)"`, `csrf`=쿠키 `csrftoken`.
    - `media_id` = **shortcode를 base64 디코드**(알파벳 `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_`, n=n*64+idx). = media pk. (검증됨, 피드 pk와 일치)
@@ -54,5 +54,6 @@ ASURA님(@nana80psh)이 인스타에 저장(보관)한 게시물을 주제별 �
 
 ## 주의
 - 계정 리스크: 페이싱 지키면 안전(363개 연속 0실패 실증). 절대 무지연 연타 금지.
+- 2026-10-12 실측(봇 감지 회피): 피드 읽기 페이지당 2~5초 무작위, 저장 2~3.5초 무작위(탭이 백그라운드라 실제 ~4초/개) → 29페이지 읽기 + 109개 저장 **실패 0·차단 0·쿨다운 0**. 긴 대기는 `await` 로 하지 말고 detached 루프 + 짧은 상태 조회로(45초 CDP 한도에 걸린다).
 - 폴더 이동은 idempotent(이미 있으면 무해). 오분류는 사용자가 옮기며 조정.
 - 상세 실증·레시피: memory `project_instagram_saved_organize`, AUSURA `AI-Sessions/wiki/playbooks/user-routines.md`.
