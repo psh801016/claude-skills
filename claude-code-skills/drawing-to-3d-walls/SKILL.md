@@ -9,6 +9,8 @@ description: "건축·전시 평면도(사진·스샷·PDF·DWG/DXF)를 캐드 D
 엔진 = Python(판독·작도) + **Blender 5.1 headless**(압출·렌더).
 ASURA의 **CGI→AI 실사화** 파이프라인 입력 자산을 만드는 핵심·반복 작업이다.
 
+> 공통 원칙(스펙 JSON 정본·실행 루프·회색 상자 먼저·수치 검사·Blender 5.x API 변경·렌더 후보정)은 `../plan2max/references/ai-modeling-playbook.md` 하나에만 둔다. 경로 F 빌드 뒤 `C:\Users\PSH\dev\plan2max\blender_qa.py` 로 구조 검사(QA_OK/WARN/FAIL)를 돌린다.
+
 ## 이 스킬의 제1원칙 — AI에게 선을 긋게 하지 마라
 
 가장 흔한 실패는 "AI야 이 도면 보고 캐드 그려줘"다. 결과가 항상 엉망인 이유는 셋이다.

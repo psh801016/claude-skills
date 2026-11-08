@@ -32,6 +32,14 @@ def main():
     ap.add_argument("--size", default="2560x1440")
     ap.add_argument("--floor-y", type=int, required=True,
                     help="합성본 픽셀 기준 바닥이 시작되는 y. 이 아래만 후보의 그림자·빛 번짐(저주파 밝기)을 배경에 옮긴다")
+    ap.add_argument("--obj-margin", type=int, default=21,
+                    help="3D 물건 둘레를 후보 픽셀로 채우는 폭(px). 바닥 얼룩이 생기면 줄인다(2026-11-06 오디토리움 7)")
+    ap.add_argument("--color-gain", action="store_true",
+                    help="바닥 아래에 밝기비 대신 채널별 색비를 옮긴다 — LED 색 번짐이 물건 둘레만 남아 얼룩지는 것 방지")
+    ap.add_argument("--floor-y-end", type=int,
+                    help="빛 번짐을 옮길 바닥 띠의 끝 y. 무대 바닥만 바꾸고 객석은 원본으로 둘 때(2026-11-06 좌석 평균차 16 사고)")
+    ap.add_argument("--lock-graphics", action="store_true",
+                    help="그래픽 박스는 밝기도 원본 그대로(디자인 색 잠금). 끄면 후보 조명 ±20%%를 얹는다")
     a = ap.parse_args()
     out = Path(a.out)
     if out.exists():
@@ -70,15 +78,23 @@ def main():
 
     # 3) 배경도 원본으로 (2026-10-27 반려: "배경 같은 곳인데 왜 틀어져" — GPT 는 천장·샹들리에·벽까지 다시 그린다)
     #    후보에서 가져오는 건 3D 물건(합성본-플레이트 차이 영역, 가장자리 여유 포함)뿐이다.
-    obj = cv2.dilate(added, np.ones((21, 21), np.uint8)).astype(np.float32)
+    k = max(1, a.obj_margin)
+    obj = cv2.dilate(added, np.ones((k, k), np.uint8)).astype(np.float32)
     obj = cv2.GaussianBlur(obj, (0, 0), 3)[..., None]
     keep = np.maximum(m, 1 - obj)  # 1 = 원본 픽셀
     L = lambda x: cv2.GaussianBlur(cv2.cvtColor(x, cv2.COLOR_RGB2GRAY).astype(np.float32) + 1, (0, 0), 25)
     ratio = L(warped) / L(src)
     ramp = np.clip((np.arange(h, dtype=np.float32) - a.floor_y) / 30 + 0.5, 0, 1)[:, None]  # 바닥 위 = 1(밝기 그대로)
+    if a.floor_y_end:
+        ramp = ramp * np.clip((a.floor_y_end - np.arange(h, dtype=np.float32)) / 30 + 0.5, 0, 1)[:, None]
     gain_bg = 1 + (np.clip(ratio, 0.55, 1.25) - 1) * ramp  # 바닥: 접지 그림자·LED 스필
-    gain_g = np.clip(ratio, 0.8, 1.2)                       # 그래픽: 조명 얼룩만 약하게
+    gain_g = np.ones_like(ratio) if a.lock_graphics else np.clip(ratio, 0.8, 1.2)  # 그래픽: 조명 얼룩만 약하게
     gain = (gain_g * m[..., 0] + gain_bg * (1 - m[..., 0]))[..., None]
+    if a.color_gain:  # 2026-11-06: 밝기만 옮기면 GPT 바닥의 파란 LED 반사가 물건 둘레에만 남아 얼룩이 된다
+        Lc = lambda x: cv2.GaussianBlur(x.astype(np.float32) + 1, (0, 0), 25)
+        cr = np.clip(Lc(warped) / Lc(src), 0.5, 2.0)
+        gain_c = 1 + (cr - 1) * ramp[..., None]
+        gain = gain_g[..., None] * m + gain_c * (1 - m)
     res = warped * (1 - keep) + np.clip(src * gain, 0, 255) * keep
 
     W, Hh = map(int, a.size.split("x"))

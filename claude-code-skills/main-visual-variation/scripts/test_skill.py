@@ -60,8 +60,14 @@ def test_raster_effects():
 
 
 def test_jobs(jobs: Path):
-    """jobs.js 의 모든 layout 조각이 PIECES 에 있고, 발주 치수가 sizes.py 규칙과 맞는지."""
+    """jobs.js 의 모든 layout 조각이 PIECES 에 있고, 발주 치수가 sizes.py 규칙과 맞는지.
+    + node 로 실제 실행해 문법 오류를 잡는다(2026-11-03 주석이 쉼표를 먹어 일러에서 'Expected: ]' 로 6판 빌드 실패)."""
     src = jobs.read_text(encoding="utf-8-sig")
+    node = shutil.which("node")
+    if node:
+        r = subprocess.run([node, "-e", "global.$={evalFile(){}};global.PHOTOS={};eval(require('fs').readFileSync(process.argv[1],'utf8').replace(/^﻿/,''));if(!JOBS.length)process.exit(2)", str(jobs)],
+                           capture_output=True, text=True, encoding="utf-8")
+        assert r.returncode == 0, "jobs.js 실행 오류: " + (r.stderr.strip().splitlines() or ["?"])[0]
     pieces = set(re.findall(r'^\s*"?([가-힣A-Za-z0-9_]+)"?\s*:\s*\{\s*(?:src|region)', src, re.M))
     pieces |= set(re.findall(r'P\("([^"]+)"', src))
     used = set(re.findall(r'piece:\s*"([^"]+)"', src))

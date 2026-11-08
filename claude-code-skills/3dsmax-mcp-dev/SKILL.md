@@ -15,6 +15,7 @@ single tool can: routing, tool choice, cross-tool workflows, safety rules and MA
 
 ## Principles
 
+- Cross-tool modeling principles (spec JSON as source of truth, execute-and-traceback loop, graybox first, numeric QA before renders, fixed-view render set, reopen verification, render-then-AI 4-pass) live in `../plan2max/references/ai-modeling-playbook.md` (§7 is the Max-specific part). Do not restate them here.
 - **A running interactive 3ds Max belongs to the user (ASURA).** Never send scene-changing calls to it from a script, a batch job or a verification routine: no `loadMaxFile`, `resetMaxFile`, save, render or `allow_discard` unless the user asked for that action in this request. Automated checks run only in a separate 3dsmaxbatch instance, and only when no interactive Max is running. (2026-10-23: `plan2max/max_inspect.py` attached to the user's open Max and loaded a test file with `quiet:true`, replacing their unsaved scene and hanging Max.)
 - When the user says "upgrade the method / learn / don't touch it, I'm working on it", change code, skills and docs only. Do not open, build, render or save any model file.
 - Match the user's request. Do not run setup, discovery or scene analysis by habit, and do not call `get_bridge_status` or `get_session_context` as a preamble.

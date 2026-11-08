@@ -48,3 +48,9 @@
 ## 2026-10-29 — 이미지 평면도 경로 · 문틀 코너 참고 수치
 - INWEPF(이미지·PDF 경로)가 틀린 근본 원인 = 도면을 옆에 두고 좌표를 눈대중으로 추정해 상자를 놓은 것(`gen_solids.py`). 유튜브 비교 실험에서도 같은 지시("이 도면대로")로는 플래그십 모델도 창을 빠뜨리고 계단을 슬래브 더미로 흉내 냈다 → '밑그림 깔고 따라 그리고 겹쳐 본다'. 학습 정리 `wiki/reference/ai-3d-modeling-videos-2026-10.md`.
 - "문틀 옆 코너 여유 10cm 미만" 참고 수치 추가(실패 조건 아님, 0 이 아니면 보고).
+
+## 2026-11-04 — katalee95 분석 → "저렇게 스스로 하게 학습" 지시
+- 사용자: "너 저렇게 모델링이 자동화된다고 생각하냐" → 답은 "저가·박스 매스 + AI 배경 조건에서만". 이어 "웹 다 찾아서 학습해 스킬 업그레이드".
+- 논문(3DCodeBench·BlenderGym·LL3M·CodeGen-3D)·오픈소스(booth-image-to-model·blender-agent-studio)·ArchiGen 4-pass·Blender 5.0 API 변경표를 읽고 `references/ai-modeling-playbook.md` 로 정리. 핵심: 코딩 하네스는 실행률만 올리고 형상은 못 고친다, VLM 자기비평은 공간 결함을 놓친다 → 수치 검사가 정본.
+- 새 도구 `blender_qa.py`(비매니폴드·끊긴 조각·지면 아래·떠 있음·같은 종류 겹침) + `test_blender_qa.py`. 실행 순서 4단계에 삽입. INWEPF 2F 시험본으로 실제 조건 검증.
+- 외부 애드온 결론: Archipack 5.0 깨짐·Building Tools 방치 → bmesh 직접 생성 유지. 이미지→3D 생성기는 소품만.

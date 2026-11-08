@@ -7,6 +7,19 @@ description: "실내 CGI·렌더를 Magnific / Gemini·Nano Banana / SD·ComfyUI
 
 인테리어 CGI/렌더/모델 이미지를 실제 건축 인테리어 사진과 구분 불가능한 수준의 프롬프트로 변환한다.
 
+## ★ 납품 관문 — 반려 점검표 (프롬프트·이미지를 내기 전 항목마다 예/아니오를 보고에 붙인다)
+
+| # | 반려된 지적 (사용자 원문) | 통과 조건 |
+|---|---|---|
+| 1 | "배경이 왜 틀어져, 같은 곳인데" (2026-10-27) | 카메라·구도·배경 픽셀이 원본과 같다. 50% 오버레이에서 판넬 모서리·프레임·카펫 경계 이중선 없음 |
+| 2 | 글자·로고 깨짐("for" 누락, 로고 뭉개짐) | 원본 그래픽을 최상단 마스크로 복원했다(`references/exhibition-pixel-preservation.md`) |
+| 3 | 렌더 티(CGI 느낌) | 2영역 균형: ZONE A 잠금, ZONE B 는 실제 사진처럼 재질·그림자·노이즈가 바뀌었다 |
+| 4 | 시공 사실과 다름 | `references/as-built-reality.md`: LED 자발광·현수막 무광·Maxima 부재 발광·바미싱 면에 frame/rail 없음 |
+| 5 | 없던 물건 생김/있던 물건 사라짐 | 오브젝트 집합이 원본과 같다(매다는 줄·사람·소품 임의 추가 금지) |
+| 6 | 프롬프트 규칙 위반 | 초점거리 숫자 없음, 부정문 없음, GPT 에 NEGATIVE 없음 |
+
+자동 검사(이미지를 냈을 때 필수): `python ~/.agents/skills/venue-photo-variation/scripts/audit_realize.py --src 원본 --final 결과 --obj-mask 물건 --boxes "그래픽 박스" --floor-y <y>` → `REALIZE_AUDIT_PASS`. 프롬프트만 낼 때는 점검표 6항을 예/아니오로. 새 반려는 이 표에 추가한다.
+
 ## 발동 범위와 라우팅
 
 - **엔진을 먼저 확정한다.** 미지정이면 Magnific / Gemini / SD·ComfyUI 중 무엇인지 확인하고,

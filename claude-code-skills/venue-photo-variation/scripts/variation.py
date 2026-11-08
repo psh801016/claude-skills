@@ -54,16 +54,30 @@ The object set is exactly the set in Image 1.
 Save the final image as PNG to exactly this path: {out}"""
 
 
+def rebg_prompt(a, out):
+    # 2026-11-05 KOBC 로비 등록데스크: 3D 렌더(가짜 석재 배경)의 구도·물건은 그대로, 배경만 실제 현장(참고 사진)으로 바꾼다.
+    n = len(a.refs or [])
+    refs = f" Images 2 to {n + 1} = real photographs of the actual venue where these objects will stand (reference for architecture, materials, colors and light)." if n else ""
+    return f"""Image 1 = a 3D render of event objects (the foreground objects) standing in a placeholder environment.{refs}
+Create ONE believable on-location event photograph, 16:9, 2560x1440, at exactly the camera, framing, horizon, vanishing points and lens of Image 1.
+The foreground objects of Image 1 stay registered one-to-one: identical position, size, outline, edges, all typography, logos and artwork, as in Image 1.
+Everything around them becomes the real venue from the reference photographs, rebuilt in Image 1's perspective: its wall finishes, ceiling, light fixtures, floor finish and color, at true real-world scale relative to the objects.
+{a.extra or ''}
+The objects sit on the real floor with soft grounded contact shadows and ambient occlusion, lit by the venue's own light; their printed panels read as matte printed graphics with a faint broad light falloff. Color temperature, exposure, sensor noise and slight lens softness are one camera exposure across the whole frame.
+Save the final image as PNG to exactly this path: {out}"""
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")  # 콘솔 cp949 에서 한글 토큰 깨짐 방지
     p = argparse.ArgumentParser()
-    p.add_argument("mode", choices=["plate", "realize"])
+    p.add_argument("mode", choices=["plate", "realize", "rebg"])
     p.add_argument("--src", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--plate")
     p.add_argument("--view", choices=list(VIEW), default="front")
     p.add_argument("--keep")
     p.add_argument("--extra")
+    p.add_argument("--refs", nargs="*", help="rebg: 실제 현장 참고 사진들")
     a = p.parse_args()
 
     src, out = Path(a.src).resolve(), Path(a.out).resolve()
@@ -71,6 +85,8 @@ def main():
     if a.mode == "realize":
         if a.plate:  # 2026-10-28: 클린 플레이트 없이 3D 합성본만 오는 컷도 있다
             imgs.append(Path(a.plate).resolve())
+    if a.mode == "rebg":
+        imgs += [Path(r).resolve() for r in (a.refs or [])]
     for i in imgs:
         if not i.exists():
             print(f"VARIATION_FAIL 입력 없음: {i}"); sys.exit(1)
@@ -78,7 +94,7 @@ def main():
         print(f"VARIATION_FAIL 출력이 이미 있음(덮어쓰기 금지): {out}"); sys.exit(1)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    prompt = (plate_prompt if a.mode == "plate" else realize_prompt)(a, out)
+    prompt = {"plate": plate_prompt, "realize": realize_prompt, "rebg": rebg_prompt}[a.mode](a, out)
     out.with_suffix(".prompt.txt").write_text(prompt, encoding="utf-8")
     cmd = ["codex", "exec", "-m", MODEL, "--skip-git-repo-check"]
     for i in imgs:

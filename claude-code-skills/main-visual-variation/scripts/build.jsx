@@ -222,6 +222,13 @@ function build(job) {
     var st = job.layout[s];
     // 다각형 (간판의 흰 이름 판·테두리 꺾쇠 등): { poly:[[x,y]…] (보이는 면 실물 mm), open:true(열린 선), fill:[c,m,y,k], stroke:[c,m,y,k], sw(실물 mm) }
     // 모양 원본: 부산 2026 메인무대게이트.ai 간판 흰 판 = 모서리 45° 따기 + 위 가운데 홈 (INWEPF 2026 부스 간판. 둥근 판은 반려됨)
+    // 캡슐(둥근 끝 바탕): { pill:[x,y,w,h] (보이는 면 실물 mm), fill:[c,m,y,k] } — 구역 안내 바탕(사용자 참고 2026-11-03 "타원 들어간 바탕")
+    if (st.pill) {
+      var pr = st.pill[3] * U / 2, pl = lay.pathItems.roundedRectangle(oy - st.pill[1] * U, ox + st.pill[0] * U, st.pill[2] * U, st.pill[3] * U, pr, pr);
+      pl.filled = true; pl.fillColor = cmyk(st.fill[0], st.fill[1], st.fill[2], st.fill[3]); pl.name = st.name || "캡슐";
+      pl.stroked = !!st.stroke; if (st.stroke) { pl.strokeColor = cmyk(st.stroke[0], st.stroke[1], st.stroke[2], st.stroke[3]); pl.strokeWidth = st.sw * U; }
+      pl.move(PG, ElementPlacement.PLACEATBEGINNING); continue;
+    }
     if (st.poly) {
       var pts = [];
       for (var pi = 0; pi < st.poly.length; pi++) pts.push([ox + st.poly[pi][0] * U, oy - st.poly[pi][1] * U]);
@@ -238,11 +245,15 @@ function build(job) {
       var nca = nt.textRange.characterAttributes, nf = null;
       for (var fi = 0; st.font && fi < st.font.length && !nf; fi++) { try { nf = app.textFonts.getByName(st.font[fi]); } catch (e) {} }
       nca.textFont = nf || font; nca.fillColor = cmyk(st.color[0], st.color[1], st.color[2], st.color[3]); nca.size = 100;
+      // sizeRef: 크기를 잴 기준 글자(예 "SPEAKER"). 같은 줄 구역 글자들이 g·p 같은 아래 꼬리 유무로 크기가 달라졌다(2026-11-03 "텍스트 3개 비율 왜 틀려")
+      if (st.sizeRef) nt.contents = st.sizeRef;
       var nb = nt.visibleBounds, nsz = 100 * (st.h * U) / (nb[1] - nb[3]);
+      if (st.sizeRef) { nt.contents = st.newText; nca = nt.textRange.characterAttributes; nca.textFont = nf || font; nca.fillColor = cmyk(st.color[0], st.color[1], st.color[2], st.color[3]); nca.size = 100; nb = nt.visibleBounds; }
       if (st.maxW && (nb[2] - nb[0]) * nsz / 100 > st.maxW * U) nsz = 100 * (st.maxW * U) / (nb[2] - nb[0]);
       nca.size = nsz;
       nb = nt.visibleBounds;
-      nt.translate(ox + st.cx * U - (nb[0] + nb[2]) / 2, oy - st.cy * U - (nb[1] + nb[3]) / 2);
+      // left 를 주면 왼쪽 끝 맞춤(배지 옆에 행사명을 붙일 때), 아니면 cx 가운데
+      nt.translate((st.left != undefined ? ox + st.left * U - nb[0] : ox + st.cx * U - (nb[0] + nb[2]) / 2), oy - st.cy * U - (nb[1] + nb[3]) / 2);
       nt.name = st.name || st.newText;
       log("    새 글자 " + st.newText + " " + f1(nsz) + "pt 글꼴 " + (nf ? nf.name : font.name));
       nt.move(PG, ElementPlacement.PLACEATBEGINNING); continue;
@@ -258,6 +269,51 @@ function build(job) {
   }
   closeSrc();
   doc.activate();
+  // 가로 한 줄 맞춤: 이름이 'ROW:<id>:<순번>' 인 요소들을 순번대로 간격 ROWGAP 으로 붙이고, 묶음 가운데를 rowCx(실물 mm)에 둔다
+  // (DAY 배지 + 영문 행사명을 한 줄로 가운데 — 글자 폭을 미리 알 수 없어 빌드 뒤에 맞춘다, 2026-11-03)
+  if (job.rows) {
+    for (var rid in job.rows) {
+      var mem = [];
+      for (var ri = 0; ri < PG.pageItems.length; ri++) { var rm = /^ROW:([^:]+):(\d+)/.exec(PG.pageItems[ri].name); if (rm && rm[1] == rid) mem.push([+rm[2], PG.pageItems[ri]]); }
+      mem.sort(function (a, b) { return a[0] - b[0]; });
+      if (!mem.length) continue;
+      var gapR = (job.rows[rid].gap || 60) * U, xr = mem[0][1].visibleBounds[2];
+      for (var rk = 1; rk < mem.length; rk++) { var bb = mem[rk][1].visibleBounds; mem[rk][1].translate(xr + gapR - bb[0], 0); xr = mem[rk][1].visibleBounds[2]; }
+      var x0r = mem[0][1].visibleBounds[0], shift = ox + job.rows[rid].cx * U - (x0r + xr) / 2;
+      for (rk = 0; rk < mem.length; rk++) mem[rk][1].translate(shift, 0);
+      job.rows[rid]._m = mem; job.rows[rid]._w = xr - x0r;
+    }
+    // 같은 grp 의 줄들은 왼쪽 끝을 맞추고 묶음 전체를 가운데로(DAY1·DAY2 줄이 제각각 가운데면 들쭉날쭉했다)
+    var gw = {};
+    for (rid in job.rows) { var g = job.rows[rid].grp; if (g && job.rows[rid]._m) gw[g] = Math.max(gw[g] || 0, job.rows[rid]._w + (job.rows[rid].indent || 0) * U); }
+    for (rid in job.rows) {
+      var R0 = job.rows[rid]; if (!R0._m) continue;
+      if (R0.grp) { var left = ox + R0.cx * U - gw[R0.grp] / 2 + (R0.indent || 0) * U, dxl = left - R0._m[0][1].visibleBounds[0]; for (rk = 0; rk < R0._m.length; rk++) R0._m[rk][1].translate(dxl, 0); }
+    }
+    // 이어지는 줄(alignTo: [줄 id, 순번])은 그 줄의 그 요소 왼쪽 끝에 맞춘다 — 행사명 둘째 줄을 첫 글자에 들여 맞춤(폭 추정 들여쓰기는 어긋났다)
+    for (rid in job.rows) {
+      var R1 = job.rows[rid]; if (!R1._m || !R1.alignTo) continue;
+      var ref = job.rows[R1.alignTo[0]]._m[R1.alignTo[1]][1], dxa = ref.visibleBounds[0] - R1._m[0][1].visibleBounds[0];
+      for (rk = 0; rk < R1._m.length; rk++) R1._m[rk][1].translate(dxa, 0);
+    }
+    for (rid in job.rows) { var R2 = job.rows[rid]; if (!R2._m) continue;
+      for (rk = 0; rk < R2._m.length; rk++) R2._m[rk][1].name = R2._m[rk][1].name.replace(/^ROW:[^:]+:\d+:?/, "") || "줄"; }
+  }
+  // 자체 검수 — 앞에 보이는 요소(글자·로고·타이틀·캡슐)끼리 겹치면 로그에 '겹침:' 을 남긴다. 보여 드리기 전에 0건이어야 한다.
+  // (2026-11-03 캡슐이 BMFW·로고를 가렸는데 사용자가 먼저 찾았다 — "내가 일일이 다 이렇게 체크하면 널 왜쓰냐고")
+  // 배경·도시·지도·반투명·날개 흐린 글자처럼 일부러 깔리는 것은 뺀다. 한쪽이 다른 쪽을 통째로 품으면(캡슐 위 글자) 정상.
+  var FG = [], BACKRE = /배경|도시|지도|반투명|흐린|흰판|안내판|차트|물결/;
+  for (var fi = 0; fi < PG.pageItems.length; fi++) { var fp = PG.pageItems[fi]; if (!BACKRE.test(fp.name)) FG.push(fp); }
+  var nOv = 0;
+  for (var fa = 0; fa < FG.length; fa++) for (var fb = fa + 1; fb < FG.length; fb++) {
+    var A = FG[fa].visibleBounds, B2 = FG[fb].visibleBounds;
+    var ix = Math.min(A[2], B2[2]) - Math.max(A[0], B2[0]), iy = Math.min(A[1], B2[1]) - Math.max(A[3], B2[3]);
+    if (ix <= 0.5 || iy <= 0.5) continue;
+    var inA = B2[0] >= A[0] && B2[2] <= A[2] && B2[1] <= A[1] && B2[3] >= A[3], inB = A[0] >= B2[0] && A[2] <= B2[2] && A[1] <= B2[1] && A[3] >= B2[3];
+    if (inA || inB) continue;
+    log("  겹침: " + FG[fa].name + " × " + FG[fb].name + " (" + f1(ix / U) + "x" + f1(iy / U) + "mm)"); nOv++;
+  }
+  log("  겹침 검사 " + nOv + "건");
   var outer = job.shape == "circle" ? lay.pathItems.ellipse(py, px, w, h) : lay.pathItems.rectangle(py, px, w, h);
   outer.move(PG, ElementPlacement.PLACEATBEGINNING);
   PG.clipped = true;
@@ -267,10 +323,10 @@ function build(job) {
   if (bleed) {
     var ML = doc.layers.add(); ML.name = "여유 표시";
     var CM = ML.groupItems.add(); CM.name = "여유 표시(모서리)";
-    var leg = Math.min(240, 0.2 * Math.min(face.W, face.H)) * U, fx = ox + face.W * U, fy = oy - face.H * U;
-    var corners = [[[ox + leg, oy], [ox, oy], [ox, oy - leg]], [[fx - leg, oy], [fx, oy], [fx, oy - leg]],
-                   [[ox + leg, fy], [ox, fy], [ox, fy + leg]], [[fx - leg, fy], [fx, fy], [fx, fy + leg]]];
-    for (var c = 0; c < 4; c++) {
+    // 2026-11-03 사용자 "240mm 너무 길다 100mm 정도만 하고 대각선 쪽만 표시해 / 사각 다 표시하지말고" → 한 변 100, 왼쪽 위·오른쪽 아래 두 곳만
+    var leg = Math.min(100, 0.2 * Math.min(face.W, face.H)) * U, fx = ox + face.W * U, fy = oy - face.H * U;
+    var corners = [[[ox + leg, oy], [ox, oy], [ox, oy - leg]], [[fx - leg, fy], [fx, fy], [fx, fy + leg]]];
+    for (var c = 0; c < corners.length; c++) {
       var cp = CM.pathItems.add(); cp.setEntirePath(corners[c]);
       cp.filled = false; cp.stroked = true; cp.strokeColor = cmyk(0, 0, 0, 40); cp.strokeWidth = 0.25;
     }

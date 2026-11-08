@@ -7,6 +7,34 @@ description: "Create source-faithful, naturally photographed event-lighting prom
 
 Treat Image 1 as the immutable camera and construction source. When supplied, Image 2 contributes only lighting character: beam count, color, aiming behavior, haze, edge softness, and landing behavior. Never use Image 2's room, fixtures, people, screens, text, or architecture. Without Image 2, derive a restrained lighting design from the visible fixtures, venue type, and requested mood; do not invent a concert look.
 
+## ★ 납품 관문 — 반려 점검표 (모든 런타임 공통, 생략 금지)
+
+사용자가 같은 지적을 수십 번 반복했다(Claude·GPT 모두, 2026-11-05 KOBC 4차 반려). 이미지를 내기 전에 **아래 표를 항목마다 예/아니오로 채워 보고에 붙이고**, 자동 점검 토큰 없이 납품하지 않는다.
+
+| # | 반려된 지적 (사용자 원문) | 통과 조건 |
+|---|---|---|
+| 1 | "무대만 빔이 가냐" | 빔이 무대 면에만 있지 않다. 객석 공기·객석 수광이 있다 |
+| 2 | "무대 조명 이상해" | 빔 착지가 한 점에 모이지 않는다. 무대 가운데 X자 교차가 없다. 회색 기둥이나 뜬 빛자국이 없다 |
+| 3 | "실 조명에 맞게" / "찾은 게 엉뚱해" | 모든 광원이 **사진에 실제로 보이는 기구**의 렌즈 좌표에서 나온다. 레퍼런스 사진은 실제로 열어 보고 사용자에게 보여 준다 |
+| 4 | "객석에 조명이 묻어야 실감" | 객석 테이블·의자에 빛 번짐 풀이 있다 |
+| 5 | "굴곡에 맞게 빛이 꺾이고 실루엣이 나와야" | 테이블 윗면·의자 윗선만 빛을 받는다. 카메라 쪽 면은 그늘로, 의자 뒤 카펫엔 그림자가 진다 |
+| 6 | "빛줄기가 너무 얄상해" | 빔 능선 두께 12px 이상(2560 기준) + 넓은 헤이즈 외피 |
+| 7 | "고보가 딱 떨어져 인위적" ↔ "너무 뭉갰어, 선명하게" | 블러 4~5px(경계 기울기 0.075~0.16 띠), 핫스팟→가장자리 감쇠, 얼룩. 글자는 읽힌다. 조명판에 나무결 없음 |
+| 8 | "의자 테이블 빛 실루엣 이상해, 안 맞아" (평평한 보라 띠·대각선 끊김) | 테이블·의자 수광은 색 마스크 띠가 아니라 **원본 명암(위를 향한 면)** 을 따른다. 빔은 착지 전에 공기 속으로 사라진다. 자동 검사 "sticker edge" |
+| 10 | "고보 텍스트가 원 밖으로 왜 나가" | 고보 글자는 원형 구멍 마스크 안에서만, 폭은 구멍 지름의 80% 이하 |
+| 11 | "2027이 아니고 2026, 실수있다" | 고보·배너에 넣는 행사명·연도는 사진 속 LED·그래픽 표기와 대조해 다르면 빌드 전에 한 번 되묻는다(지시만 믿지 않는다) |
+| 9 | "무대 조명 이상해" (회색 기둥) | 화면 밖 가상 광원(앞트러스 키) 금지 — 사진에 근거가 없으면 장부에 넣지 않는다 |
+| 12 | "뭉게지는데" (2026-11-06 오디토리움) | GPT 재생성본(저해상도) 위에 조명을 얹지 않는다 — 고해상도 원본에서 레이어로. 반사광은 표면 반사율을 곱하고, 디자인물(사인·LED)에는 바닥 수광·과한 헤이즈를 얹지 않는다(LED 앞 헤이즈 30%). 예제 `scripts/examples/build_light_auditorium_blue.py` |
+
+시작 전 질문은 하나만(2026-11-05 6판 반려의 원인 = 기준이 매 판 하나씩 드러남): "레퍼런스 사진 파일 + 분위기(은은/화려) + 하지 말 것, 이 세 가지 주시겠어요?" — 답이 없으면 은은한 컨퍼런스 기본값으로 가고 그 사실을 보고에 적는다.
+
+자동 점검(필수, 성공 토큰 `AUDIT_PASS`):
+```
+python scripts/audit_light_rules.py --plate <조명판> --obj-mask <물건마스크> --src <원본> --ledger <ledger.json> --gobo <고보레이어> --beams <빔레이어> --floor-y <바닥선>
+python scripts/verify_light_pair.py <pair.json>
+```
+보존 레이어 방식(Python 직접 작성)으로 만들 때는 즉석 코드 대신 `scripts/examples/build_light_kobc.py` 를 복사해서 시작한다. 위 1~9 가 기본값으로 들어 있고 `ledger.json` 을 같이 낸다(수광면 지도, 굵은 빔+외피, 부드러운 고보, 실제 기구 좌표 장부). 새로 반려되면 이 표에 한 줄을 추가하고 audit 스크립트에도 검사를 넣는다. `references/lessons.md` 에만 적으면 아무 모델도 읽지 않는다.
+
 ## Image execution — use retained layers, not improvised subtraction
 
 For image requests, read [workflow and output contract](references/workflow-and-output-contract.md) before choosing the production method. Read [lighting layer set](references/lighting-layer-set.md) when separating effects or compositing across graphics/people. The [approved quality reference](references/forward-beam-quality-reference.md) is optional visual guidance, never a fixed lighting preset.
