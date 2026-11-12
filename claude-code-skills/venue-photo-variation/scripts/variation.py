@@ -8,7 +8,18 @@
 import argparse, re, shutil, subprocess, sys
 from pathlib import Path
 
-MODEL = "gpt-6-sol"  # 이미지 = 최고 등급 바로 아래 (rules.md AI 일 분배)
+def latest_best_model():
+    """2026-11-09 사용자 "지피티 항상 최신 최고로": 이름을 박지 않고 codex 모델 캐시의 1순위(최신 세대 최고)를 쓴다."""
+    import json
+    try:
+        d = json.loads((Path.home() / ".codex" / "models_cache.json").read_text(encoding="utf-8"))
+        ms = d.get("models", d) if isinstance(d, dict) else d
+        return min(ms, key=lambda m: int(m.get("priority", 99)))["slug"]
+    except Exception:
+        return "gpt-6.1-sol"
+
+
+MODEL = latest_best_model()
 
 REMOVE = ("every table and tablecloth, every chair and chair cover, pianos, music stands, podiums/lecterns, "
           "flags, flower stands and flower arches, sound desks, sofas, carts, banners, easels, cables and any "
@@ -22,6 +33,10 @@ VIEW = {
     "front": ("Move the camera sideways onto the center axis of the stage (or main wall), looking straight at it, "
               "eye height about 1.6 m, lens level, a wide view showing the whole stage, side walls and ceiling. Strict one-point perspective: all vertical lines "
               "vertical, frontal horizontals horizontal, single vanishing point at the center."),
+    # 2026-11-11 "카메라 각도도 틀리지 않냐, 내 껀 너무 정적인데" — 전시부스 히어로 컷(@ralphgalhardo_arquiteto 최근작) 구도
+    "corner": ("Move the camera to a dynamic three-quarter position: about 35-45 degrees off the stage (or main wall) axis, "
+               "slightly below eye level, close with a wide view, lens level so all vertical lines stay vertical. Two-point perspective: "
+               "the main wall and one side wall recede diagonally across the frame, the polished floor fills the lower third as leading lines."),
     "keep": ("Same camera position, angle, field of view and framing as the photo, with vertical lines "
              "made perfectly vertical."),
 }
@@ -29,10 +44,14 @@ VIEW = {
 
 def plate_prompt(a, out):
     keep = KEEP + (f", and also keep: {a.keep}" if a.keep else "")
+    rm = REMOVE
+    if getattr(a, "remove", None):  # 2026-11-09 "스크린 제거해": KEEP 의 'screens (blank)' 와 부딪히지 않게 빼고 REMOVE 에 더한다
+        if "screen" in a.remove.lower(): keep = keep.replace("screens (blank), ", "")
+        rm = REMOVE + f", and also: {a.remove} (show the wall surface behind them, continuing the same wall panels)"
     return f"""Edit the attached photo. Output ONE photorealistic image, 16:9 landscape, 2560x1440.
 GOAL: an EMPTY venue as a clean background plate for 3D compositing.
 CAMERA: {VIEW[a.view]}
-REMOVE completely and fill with the floor/wall/stage behind them (same pattern, same lighting): {REMOVE}.
+REMOVE completely and fill with the floor/wall/stage behind them (same pattern, same lighting): {rm}.
 KEEP EXACTLY (same design, materials, colors, positions - do not redesign): {keep}.
 Same light color and exposure as the photo. Real photograph look.
 The room contains only the kept elements above, empty and clean.
@@ -75,7 +94,7 @@ def main():
     p.add_argument("--out", required=True)
     p.add_argument("--plate")
     p.add_argument("--view", choices=list(VIEW), default="front")
-    p.add_argument("--keep")
+    p.add_argument("--keep"); p.add_argument("--remove", help="추가로 지울 것(영문). screen 이 들어가면 KEEP 의 스크린 항목을 뺀다")
     p.add_argument("--extra")
     p.add_argument("--refs", nargs="*", help="rebg: 실제 현장 참고 사진들")
     a = p.parse_args()
@@ -115,6 +134,10 @@ def main():
         print(f"VARIATION_FAIL codex exit={r.returncode}, 출력 없음 — 로그: {out.with_suffix('.log.txt')}"); sys.exit(1)
     from PIL import Image
     w, h = Image.open(out).size
+    if (w, h) != (2560, 1440):  # 2026-11-09: 저장 실패 회수본이 엔진 원본 1672x941 그대로 OK 로 나갔다 → 납품 규격으로 맞춘다
+        from PIL import ImageFilter
+        Image.open(out).convert("RGB").resize((2560, 1440), Image.LANCZOS).filter(ImageFilter.UnsharpMask(1.2, 40, 2)).save(out)
+        print(f"크기 보정: {w}x{h} → 2560x1440"); w, h = 2560, 1440
     print(f"VARIATION_OK {out} {w}x{h}")
 
 

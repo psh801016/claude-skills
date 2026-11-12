@@ -82,6 +82,28 @@ archviz 후보정 가이드(ArchiGen 4-pass)·Blender 5.0 API 변경표·Kling/S
 ## 10. 크몽식 상품화에 필요한 자동화 조각 (분석만, 미실행)
 - 견적 규칙(평형·컷수·단가·납기·수정 횟수)을 봇이 계산 → 작업 지시서(JSON 스펙) 자동 생성 → 빌드·렌더·후보정 → 리모트컨트롤로 수정 대화. 우리 쪽은 slack-claude-bridge/Hermes 가 CS 봇 자리, plan2max/max_shots 가 빌드·초안 렌더 자리. 빠진 것은 견적 규칙과 후보정 자동 패스(§5) 뿐.
 
+## 11. 무카 CAD(cowsdelete.com/cad) 에서 배운 검증 규칙 (2026-11-09 전수 분석)
+브라우저 2D 캐드 + MCP 로 AI 가 JSON 명령으로 그리는 도구. 3D 는 **기계 부품 2·3면도 전용** 규칙 엔진(회전체·2면 교차·단면 쌓기)이라 건축 벽체엔 안 쓰지만, 검증 설계는 우리와 같은 결론을 더 수치화했다. 분석 정본 `AUSURA/AI-Sessions/wiki/reference/mucca-cad-cowsdelete-analysis-2026-11-09.md`.
+- **핵심 치수 ≫ 모양**: "전체 크기·플랜지 외경·PCD·구멍·고정 홀만 맞으면 3D 로 쓸 수 있다". 건축으로 옮기면 **외곽 크기·개구부 개수와 폭·층고·기둥 간격**이 key. 보고 첫 표는 key 항목의 도면 값/모델 값/차이 — 선 일치율·렌더 인상은 그 다음.
+- **2D 대조를 숫자로**: 3D 를 도면 방향으로 재투상해 재현(도면 선 중 모델에 있는 비율)·정확(모델 선 중 도면에 있는 비율) 97% 통과, 빠진 선 빨강·남는 선 파랑. → **구현: `C:/Users/PSH/dev/plan2max/plan_recall.py`**(재현 = 도면 벽 선이 모델 벽 안에, 정확 = 모델 외곽이 도면 선 위에, 기본 0.90). 첫 판의 '도면 선이 모델 외곽 위' 재현은 벽 띠 안쪽 두 줄 도면에서 55% 오판 → 덮임 기준으로 바꿈. 도면 위생은 `drawing_check.py`(무카 AUDIT·가공 전 점검 차용). 97% 가 어려운 도면(로고·곡면)도 key 는 반드시 통과.
+- **5면 자가검사**: 겹침 = 작은 부품 부피의 5% 이상(그 미만은 '살짝 박힘', 볼트·용접처럼 일부러일 수 있음) · 떠 있음 = 어느 부품과도 안 닿음 · 부피 0. `blender_qa.py`(비매니폴드·떠 있음·지면 아래·같은 종류 겹침) 와 같은 자리 — 겹침 판정에 5% 부피 기준을 쓴다.
+- **규칙 엔진 먼저, AI 코드 나중**: 무료·결정론 결과가 통과하면 끝. 우리 plan_model → 사람 표(doors_px) → AI 는 마지막.
+- **독립 판정 AI**: 만든 과정을 모르는 새 대화에 "그리지 말고 판정만" → 불합격 사유로 1회 고치기. = cross-review 의 "만든 사람이 검수하지 않는다".
+- **저장 전 게이트**: 대조 미달 3D 는 STEP 저장 전에 한 번 막는다(자동 실행은 경고만 기록). = `WALLNET_FAIL`·`inventory_check` 미통과면 납품 금지.
+- **부품 하나씩**: 몸체 먼저 → 부품 몇 개씩 더하고 더한 것만 바로 점검. = 회색 상자 → 개구부 → 틀 순서(§3).
+- **사진→3D 절차**: 격자(crop·mark) → 치수 1개로 mm/px → 부품 목록(그룹 기호+번호) → 코드 → 투영 겹침 **최소 2회** → 5면 → 도면. 좌표계·뷰 이름(right/left/front/rear/top)을 먼저 선언하고, 원근 사진은 위·아래 모서리의 가운데를 쓴다. 우리 도구: `drawing-to-3d-walls/scripts/photo_grid.py`.
+- 안 가져온 것: replicad DSL·3D 규칙 엔진 코드(기계 전용)·블록 라이브러리.
+
+## 12. 휴플로우 스튜디오(교육) 방법 비교 — 2026-11-09 사이트·블로그 10편 전수 분석
+20년 차 공간설계자가 ChatGPT(Codex)+MCP 로 도면→SketchUp→렌더→제안서→물량→영상을 가르친다. 코드 공개 없음(리습 2개·베타 2개). 분석 정본 `AUSURA/AI-Sessions/wiki/reference/hueflow-studio-analysis-2026-11-09.md`.
+- **갈림길을 먼저 선언**: 구조·동선 설명용 그림 → 평면도 1장 i2i(1~2분) / 정확한 각도·치수·여러 뷰 → 3D 에서 세운다. **i2i 는 시점·각도 변경에 약하다**(뒤쪽 뷰 요청 → 배치부터 틀어짐). 우리 plan2max·build3d 의 자리 = 후자.
+- **요청 틀 `[절대 유지]/[변경]/[톤]` + 개수 숫자 + 새 대화 재투입** — interior-prompt-maker 8항. 반복 수정으로 흐려진 이미지를 '복구'하기보다 원본을 새 대화에 다시 넣는다.
+- **속도 기준은 입력 난도와 함께 적는다**: 치수 없는 부동산 평면도 1장 기준 CAD 5분 46초·SketchUp 2분 51초. 연회장 I-FIN·도면 세트와 비교 불가. 사용자에게 소요 시간을 말할 때 입력 종류를 같이 말한다.
+- **스킬 = 반려 축적**: "틀린 데를 짚어주고 어느 정도 되면 '지금까지 기준을 스킬로 만들어 줘'". 우리 반려 점검표 방식과 같다 — 새 사무소 도면마다 RULES 를 덧붙이는 이유.
+- **현장사진 입력 기준**: 창이 잘리지 않는 수평 정면·짐 적은 사진. 사진에 안 보이는 것은 AI 가 지어낸다 → 지킬 것이 다 보이게 찍거나 3D 렌더를 준다(venue-photo-variation 와 일치).
+- **모델 등급**: 디자인·도면 업무는 medium 이면 충분(그들 Q&A) — 비용 게이트와 같은 결론.
+- 채택 안 함: SketchUp MCP 경로, Computer Use 로 AutoCAD 화면 출력(accoreconsole 스크립트가 안정), 베타 도구.
+
 ## 출처
 - 3DCodeBench (arXiv 2606.01057) · BlenderGym (CVPR 2025) · LL3M (arXiv 2508.08228) · CodeGen-3D (IEEE Access 2026) · EZBlender (arXiv 2601.07143)
 - github.com/ocrevo/booth-image-to-model (SKILL.md v3.1.0-rc7) · github.com/ifBars/blender-agent-studio · github.com/ahujasid/blender-mcp · mcpmarket Blender Architect skill · Impertio Bonsai skill package

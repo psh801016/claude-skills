@@ -82,6 +82,8 @@ ASURA의 **CGI→AI 실사화** 파이프라인 입력 자산을 만드는 핵�
 └─ 치수 없는 래스터(스샷/사진)       → 경로 C. 픽셀 추출 + 제원표로 축척.
 ```
 
+**갈림길 — 이 스킬이 필요 없는 경우** (2026-11-09 휴플로우 분석): 고객 상담용으로 **구조·동선을 보여 주는 아이소메트릭·투시 그림 한 장**만 필요하면 평면도 이미지를 GPT i2i 에 넣는 쪽이 1~2분으로 끝난다(`interior-prompt-maker` 구도 보존 8항의 요청 틀). 반대로 **치수·정확한 시점·여러 뷰 일관성·3D 파일**이 필요하면 i2i 는 시점을 바꾸는 순간 배치가 틀어지므로 반드시 이 스킬(또는 plan2max)로 세운다. 어느 쪽인지 시작 전에 사용자 요청에서 판별하고 보고에 적는다.
+
 PDF가 오면 벡터 경로·레이어·회전·축척부터 확인한다. PDF의 레이어 보존 여부는 파일마다 다르다.
 사용자가 원본 DWG가 없다고 했거나 PDF 재구성을 지시했으면 되묻지 않고 해당 PDF로 진행한다.
 
@@ -135,6 +137,14 @@ PDF가 오면 벡터 경로·레이어·회전·축척부터 확인한다. PDF�
 
 ### E-1. 판독 — AI가 JSON을 채운다
 
+**좌표를 읽기 전에 격자를 깐다** (2026-11-09, 무카 CAD '사진→3D' 절차 차용). 이미지 위치를 눈대중으로 재면 틀린다 — 확대·축소된 화면이 아니라 **원본 픽셀 격자 숫자**로 읽는다.
+```bash
+python scripts/photo_grid.py 도면.jpg -o grid.png                     # 전체(굵은 선 ≈14칸), 빨강=x · 파랑=y(아래로 증가)
+python scripts/photo_grid.py 도면.jpg -o grid.png --crop x0 y0 x1 y1 --step 50 --mark 412,1180,A   # 구역 확대 + 표식
+python scripts/photo_grid.py 도면.jpg --measure 412,1180 980,1176 --mm 500   # 치수선 양 끝 → mm_per_px
+```
+순서: ① 전체 격자를 Read 로 보고 뷰·치수선 자리를 잡는다 ② 중요한 점(벽 모서리·치수선 끝·문틀)은 `--mark` 로 찍어 다시 보고 **맞는지 확인한 뒤** 쓴다 ③ 치수선 하나로 `mm_per_px` 를 구하고 다른 치수선 하나로 검산(두 값이 2% 넘게 다르면 축척·회전 의심) ④ 그 다음에야 JSON 을 채운다. 경로 C(치수 없는 래스터)도 같은 격자로 `rooms.json`·`doors_px.json` 좌표를 읽는다.
+
 `references/plan-json-판독-프롬프트.md` 를 그대로 프롬프트로 쓴다(도면 이미지 첨부).
 축척 확정 우선순위가 그 안에 박혀 있다: **① 치수선 → ② 면적 역산 → ③ 문 900mm 가정**.
 ③으로 갔으면 `meta.scale_ref`에 가정이라고 반드시 남긴다 — 나중에 이 도면을 믿을지 판단할 근거다.
@@ -184,6 +194,13 @@ python scripts/plan2dxf.py plan.json -o 도면.dxf
 ```
 단위 mm, 1:1 실척. 레이어 분리: `A-WALL / A-WALL-C / A-DOOR / A-WIND / A-ROOM / A-AREA / A-EQPT / A-MARK / A-PATH`.
 한글 실명은 `malgun.ttf` 스타일로 넣는다(기본 txt.shx는 한글이 깨진다).
+
+**입면 전개도 + 실 면적표** (2026-11-09, 휴플로우 리습 HF2·HFA 를 plan.json 위에 재구현):
+```bash
+python scripts/plan2elev.py plan.json -o elev.dxf --walls 3,4,5,6   # 한 실의 벽을 돌아가는 순서로 펼침(길이×층고, 문 바닥~2100·창 900~2100 뚫림, 벽 폭·층고·총폭 치수, 꺾임 ▽)
+python scripts/plan2elev.py plan.json -o elev.dxf                   # 전부 + 실마다 "㎡ / PY" 글자 + 합계표(1PY=3.305785㎡)
+```
+쓰는 때: 벽면 그래픽·목공 발주 폭 확인, 전개도 바탕, 실별 면적 보고. 개구부 높이는 plan.json 에 `h`(문)·`sill`/`head`(창)가 없으면 기본값이므로 보고에 '가정'으로 적는다. 결과 DXF 는 렌더(PNG)로 **눈으로 본 뒤** 넘긴다.
 
 독립 사각형만 출력하는 빌더의 모서리 겹침은 초안 한계다. 최종 DWG/3D용 결과는 교점 정리와
 벽 형상 합집합, 개구부 차집합을 먼저 수행한다. 사용자에게 TRIM 작업을 남기고 완료라고 하지 않는다.
@@ -354,6 +371,8 @@ blender --background --python scripts/check_openings.py -- <model.blend> <plan.j
 
 ```bash
 python scripts/test_plan2dxf.py    # 축척 2배 오류·개구부 이탈을 검산기가 잡는지 확인
+python scripts/test_photo_grid.py  # 격자 라벨이 원본 px 인지·mm/px·표식 위치 → TEST_PHOTO_GRID_OK
+python scripts/test_plan2elev.py   # 전개도 벽 폭·개구부 높이·면적(20㎡=6.05PY) → TEST_PLAN2ELEV_OK
 ```
 `plan2dxf.py`의 검산 로직을 고쳤으면 이걸 돌리고 결과를 보고에 적는다.
 
@@ -363,15 +382,18 @@ python scripts/test_plan2dxf.py    # 축척 2배 오류·개구부 이탈을 검
 - 곡선벽·복층 미지원(직선만). 의자·테이블 등 세부 가구는 도면에 없으면 **지어내지 않는다.**
 - 저작권: 네이버·분양사 평면도는 저작물이다. 내부 검토는 통상적이나 **대외 납품물에는 쓰지 않는다.**
 
-## 차용 출처
+## 반려 점검표 (납품·보고 전 항목마다 예/아니오)
+| 사용자 원문 | 통과 조건 |
+|---|---|
+| "벽체 도면있는데로 올려" · "벽체 직선으로, 일그러지게 하지 말라" | 도면의 벽 전부 세움 · `test_walls_straight.py` PASS |
+| "문이 표현이 왜이러냐" · "문도 넣어놔야지" | 문 표(doors_px.json)대로 개구부+문틀 50+문짝 40, 회전 범위 안 벽 0 |
+| "누가 설치하래, 얻어낼 걸 얻고 스킬 업그레이드" | 외부 도구 분석 = 기능을 우리 코드·규칙으로 옮김. 설치·MCP 등록 0건(따로 지시 있을 때만) |
 
-재질·조명을 조회 가능한 데이터로 분리하는 방식과 품질 등급·증거로그 공개 관행은
-`viettranx/3dviz-pro-max`(MIT, 2026-09)에서 가져왔다. 그 저장소 자체는 치수·도면 입력을 다루지
-않는 창작 3D 시각화용이라 코드는 쓰지 않았고, **설계 관행만 차용**했다.
+## 차용 출처
+재질·조명 데이터 분리·품질 등급 관행은 `viettranx/3dviz-pro-max`(MIT, 관행만). 무카 CAD·휴플로우에서 가져온 것은 `references/mucca-cad.md`.
 
 ## 남은 과제
 
 - **Archipack 연동** — 파라메트릭 벽·문·창(생성 후 치수 수정 가능) + 2D 도면 역추출. 미설치.
 - **Bonsai + IFC** — 수량산출·도면추출 통합. `ifcopenshell` 미설치.
-- **CubiCasa5K 계열 학습모델**로 경로 C 교체 — 벽 recall 0.89~0.94로 현 OpenCV보다 우위.
-- 치수 OCR(PaddleOCR)로 경로 E의 판독 자동화.
+- **CubiCasa5K 계열 학습모델**로 경로 C 교체(벽 recall 0.89~0.94) · 치수 OCR(PaddleOCR)로 경로 E 판독 자동화.

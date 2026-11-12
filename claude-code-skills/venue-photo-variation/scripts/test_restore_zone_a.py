@@ -36,6 +36,23 @@ def main():
         assert band > 5, f"바닥 띠에 파란 번짐이 안 옮겨짐 {band:.2f}"
         old = run(td)                                                        # 기존 동작은 그대로(그래픽 밝기 얹힘)
         assert np.abs(old[45:95, 105:215] - src[45:95, 105:215]).mean() > 3
+        # 4) 2026-11-09 레이더 워크숍: --obj-mask 경로에서 후보 의자가 원본보다 밝으면 그 밝기가 바닥비에 섞여
+        #    의자 밑 카펫이 하얗게 번졌고, 바닥비를 물건 빼고 재게 고친 첫 판은 물건 속 0/0 → 검은 사각형이 났다.
+        obj = np.zeros((180, 320), np.uint8); obj[120:175, 20:80] = 255           # 큰 3D 물건(의자 무리)
+        src2 = plate.copy(); src2[110:] = 150; src2[120:175, 20:80] = (20, 20, 90)
+        cand2 = src2.copy(); cand2[120:175, 20:80] = (90, 90, 220)                # 후보 의자가 훨씬 밝다
+        for n, a in [("src", src2), ("cand", cand2)]:
+            Image.fromarray(a).save(f"{td}/{n}.png")
+        Image.fromarray(obj).save(f"{td}/obj.png")
+        out = Path(td) / "o4.png"
+        r4 = subprocess.run([sys.executable, str(HERE / "restore_zone_a.py"), "--src", f"{td}/src.png", "--cand", f"{td}/cand.png",
+                             "--obj-mask", f"{td}/obj.png", "--boxes", "200,10,240,30", "--floor-y", "110", "--size", "320x180",
+                             "--out", str(out)], capture_output=True, text=True, encoding="utf-8")
+        assert "RESTORE_OK" in r4.stdout, r4.stdout + r4.stderr
+        o4 = np.asarray(Image.open(out).convert("RGB")).astype(float)
+        near = o4[125:170, 85:100].mean()                                         # 물건 바로 옆 바닥
+        assert near < 152, f"물건 옆 바닥이 밝아짐 {near:.1f}"
+        assert o4[130:165, 30:70].min() > 5, "물건 속에 검은 픽셀(0/0)"
     print("TEST_OK test_restore_zone_a")
 
 if __name__ == "__main__":

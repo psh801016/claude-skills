@@ -87,7 +87,14 @@ def main():
     ramp = np.clip((np.arange(h, dtype=np.float32) - a.floor_y) / 30 + 0.5, 0, 1)[:, None]  # 바닥 위 = 1(밝기 그대로)
     if a.floor_y_end:
         ramp = ramp * np.clip((a.floor_y_end - np.arange(h, dtype=np.float32)) / 30 + 0.5, 0, 1)[:, None]
-    gain_bg = 1 + (np.clip(ratio, 0.55, 1.25) - 1) * ramp  # 바닥: 접지 그림자·LED 스필
+    # 2026-11-09 레이더 워크숍 연회장: 바닥 밝기비를 물건까지 섞어 흐리게 재서, 후보 의자가 원본보다 밝은 곳은
+    #   의자 밑 카펫이 하얗게 번졌다(접지면이 오히려 밝아짐). 바닥비는 물건을 뺀 바닥 픽셀만으로 잰다.
+    wf = 1 - cv2.dilate(added, np.ones((7, 7), np.uint8)).astype(np.float32)
+    Lf = lambda x: (cv2.GaussianBlur((cv2.cvtColor(x, cv2.COLOR_RGB2GRAY).astype(np.float32) + 1) * wf, (0, 0), 25)
+                    / np.maximum(cv2.GaussianBlur(wf, (0, 0), 25), 1e-3))
+    ratio_f = Lf(warped) / np.maximum(Lf(src), 1e-3)
+    ratio_f = np.where(cv2.GaussianBlur(wf, (0, 0), 25) > 0.02, np.nan_to_num(ratio_f, nan=1.0), 1.0)  # 바닥이 없는 물건 속 = 1(0/0 → 검은 사각형 사고)
+    gain_bg = 1 + (np.clip(ratio_f, 0.55, 1.25) - 1) * ramp  # 바닥: 접지 그림자·LED 스필
     gain_g = np.ones_like(ratio) if a.lock_graphics else np.clip(ratio, 0.8, 1.2)  # 그래픽: 조명 얼룩만 약하게
     gain = (gain_g * m[..., 0] + gain_bg * (1 - m[..., 0]))[..., None]
     if a.color_gain:  # 2026-11-06: 밝기만 옮기면 GPT 바닥의 파란 LED 반사가 물건 둘레에만 남아 얼룩이 된다
